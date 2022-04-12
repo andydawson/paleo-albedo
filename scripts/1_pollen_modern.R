@@ -1,9 +1,10 @@
 # library(raster)
-# library(maps)
+library(maps)
 # library(reshape2)
-# library(dplyr)
-# library(tidyr)
-# library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(sp)
 
 pollen_data=readRDS('data/pollen-modern-slice_v2.0.RDS')
 
