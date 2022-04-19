@@ -41,7 +41,19 @@ ggplot() +
 
 k = k[which(!is.na(k$k)),]
 #if name has Canada and USA:Al then keep, else give name NA
-get_c <- function(x) {if (substr(x, 1,6) =="Canada") {"Canada"} else if (substr(x, 1,6) =="USA:Al") {"Alaska"} else {NA}}
+get_c <- function(x) {
+  if (substr(x, 1,6) =="Canada") {
+    "Canada"
+  } else if (substr(x, 1,6) =="USA:Al") {
+      "Alaska"
+  } else if (substr(x, 1,3) == "USA") {
+     "USA"
+  } else if (substr(x, 1,3) == "Mex"){
+    "Mexico"
+  } else {
+      NA
+    }
+  }
 
 k$country=sapply(k$k, get_c)
 #substr(k$k, 1,6) == "Canada"
@@ -155,13 +167,13 @@ pol_transform = spTransform(spdf, CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +
 latLong =data.frame(coordinates(pol_transform), modern)
 
 latLong = latLong[-c(3:7)]
-colnames(latLong) = c('lat', 'long')
+colnames(latLong) = c('long', 'lat')
 
 ele_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 ele_get = get_elev_point(latLong, ele_proj, src = "aws")
 
-lct_modern = data.frame(latLong, modern[,c('x','y')], ele_get$elevation, modern[, 3:5])
+lct_modern = data.frame(latLong, modern[,c('x','y')], elev = ele_get$elevation, modern[, 3:5])
 
 saveRDS(lct_modern, 'data/lct_modern.RDS')
 
