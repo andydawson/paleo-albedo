@@ -16,7 +16,8 @@ library(ncdf4)
 library(rgdal)
 # library(rhdf5)
 
-lct_modern = readRDS('data/lct_modern.RDS')
+# lct_modern = readRDS('data/lct_modern.RDS')
+lct_modern = readRDS('data/lct_modern_reveals.RDS')
 
 alb_proj = '+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0
 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
@@ -31,11 +32,11 @@ snow_spatial = SpatialPointsDataFrame(coords=lct_modern[,c('long', 'lat')],
 
 for(m in 1:12) {
 
-  bhr_sw  = raster(sprintf('data/GLOBALBEDO/GlobAlbedo.merge.albedo.005.2004%02d.nc', m), varname='BHR_SW')
+  bhr_sw  = raster(sprintf('data/GLOBALBEDO/albedo/GlobAlbedo.merge.albedo.005.2004%02d.nc', m), varname='BHR_SW')
 
   lct_spatial[[sprintf('alb%02d', m)]] <- raster::extract(bhr_sw, lct_spatial)
   
-  snow_frac  = raster(sprintf('data/GLOBALBEDO/GlobAlbedo.merge.albedo.005.2004%02d.nc', m), varname='Snow_Fraction')
+  snow_frac  = raster(sprintf('data/GLOBALBEDO/albedo/GlobAlbedo.merge.albedo.005.2004%02d.nc', m), varname='Snow_Fraction')
   
   snow_spatial[[sprintf('snow%02d', m)]] <- raster::extract(snow_frac, snow_spatial)
   
@@ -52,4 +53,6 @@ lct_snow = lct_snow[,!(colnames(lct_snow) %in% c('long.1', 'lat.1', 'optional'))
 lct_both = merge(lct_albedo, lct_snow)
 
 saveRDS(lct_both, 'data/lct_albedo_snow_modern_glob.RDS')
+
+# saveRDS(lct_both, 'data/lct_reveals_albedo_snow_modern_glob.RDS')
 

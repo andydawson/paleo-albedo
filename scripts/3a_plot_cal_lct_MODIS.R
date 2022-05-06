@@ -1,9 +1,6 @@
 library(ggplot2)
 library(scales)
 library(rgeos)
-library(rgdal)
-library(raster)
-library(reshape2)
 
 
 cal_data = readRDS('data/lct_albedo_snow_modern_glob.RDS')
@@ -38,25 +35,23 @@ cal_long = merge(foo, bar)
 # world = world[world$long<0,]
 
 
-
 pbs <- readOGR("data/map-data/geographic/PoliticalBoundaries/boundary_p_v2.shp",
                'boundary_p_v2', encoding='UTF-8')
-
 pbs_ll = spTransform(pbs, CRS("+init=epsg:4326"))
-pbs_ll = subset(pbs_ll, COUNTRY %in% c('CAN', 'USA', 'MEX'))
-pbs_ll = subset(pbs_ll, !(STATEABB %in% NA))
-pbs_ll = subset(pbs_ll, !(STATEABB %in% c('US-HI')))
-pbs_ll = subset(pbs_ll, !(NAME %in% 'United States Virgin Islands'))
-
 b = bbox(pbs_ll)
 b[1,2] = 0
 
 gClip <- function(shp, bb){
   if(class(bb) == "matrix") b_poly <- as(extent(as.vector(t(bb))), "SpatialPolygons")
   else b_poly <- as(extent(bb), "SpatialPolygons")
-  gIntersection(shp, b_poly, byid = TRUE)
+  gIntersection(shp, b_poly, byid = T)
 }
 pbs_ll <- gClip(pbs_ll, b)
+pbs_ll = subset(pbs_ll, COUNTRY %in% c('CAN', 'USA', 'MEX'))
+pbs_ll = subset(pbs_ll, !(STATEABB %in% NA))
+pbs_ll = subset(pbs_ll, !(STATEABB %in% c('US-HI')))
+pbs_ll = subset(pbs_ll, !(NAME %in% 'United States Virgin Islands'))
+
 # pbs = spTransform(pbs, CRS("+init=epsg:4326"))
 
 
@@ -66,6 +61,7 @@ saveRDS(pbs_ll, 'data/map-data/geographic/pbs_ll.RDS')
 pbs = spTransform(pbs_ll, CRS(alb_proj))
 
 saveRDS(pbs, 'data/map-data/geographic/pbs.RDS')
+
 
 ###############################################################################################################
 ## LCT maps
@@ -82,20 +78,6 @@ library(scatterpie)
 #         axis.title = element_blank())
 
 
-sc_colour_qual <- scale_colour_brewer(type = "qual",
-                                            palette = "Dark2",#"BrBG",
-                                            # labels = labels,
-                                            na.value="transparent",#grey", 
-                                            name="Albedo change",
-                                            labels = c("Open Land", "Summergreen", "Evergreen"))
-
-sc_fill_qual <- scale_fill_brewer(type = "qual",
-                                      palette = "Dark2",#"BrBG",
-                                      # labels = labels,
-                                      na.value="transparent",#grey", 
-                                      name="Albedo change",
-                                      labels = c("Open Land", "Summergreen", "Evergreen"))
-
 ggplot() +
   # geom_polygon(data=pbs, aes(x=x, y=y, group=group), color='black', fill=NA) +
   geom_path(data=pbs, aes(long,lat, group = group), color="black") +
@@ -110,26 +92,16 @@ ggsave('figures/LCT_cal_pie_map.png')
 
 
 ggplot() +
-  # geom_polygon(data=pbs_ll, aes(x=x, y=y, group=group), color='black', fill="lightgrey") +
-  geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="black", fill="grey") +
-  geom_scatterpie(data=cal_data, aes(x=long, y=lat), cols=c('OL', 'ST', 'ET'), pie_scale=0.5, alpha=0.9) +
+  # geom_polygon(data=pbs, aes(x=x, y=y, group=group), color='black', fill=NA) +
+  geom_path(data=pbs_ll, aes(long,lat, group = group), color="black") +
+  geom_scatterpie(data=cal_data, aes(x=long, y=lat), cols=c('ET', 'OL', 'ST'), pie_scale=0.6, alpha=0.7) +
   theme_bw() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
         axis.title = element_blank(),
         legend.text = element_text(size=14),
-        legend.title = element_text(size=16),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank()) +
-  labs(fill='Cover') +
-  scale_fill_discrete(labels = c("Open Land", "Summergreen", "Evergreen")) +
-  # scale_fill_manual(labels = c("Open Land", "Summergreen", "Evergreen"), values = c("#b15928", "#a6cee3","#33a02c")) +
-  # sc_fill_qual +
-  coord_fixed()
+        legend.title = element_text(size=16))
 ggsave('figures/LCT_cal_pie_map_ll.png')
-ggsave('figures/LCT_cal_pie_map_ll.pdf')
 
 ###############################################################################################################
 ## albedo versus other vars
@@ -140,7 +112,7 @@ ggsave('figures/LCT_cal_pie_map_ll.pdf')
 # strong relationship in month 4 and 5, weaker in 3
 ggplot(data=cal_long, aes(x=lat, y=albedo)) +
   geom_point() +
-  # geom_smooth(se = TRUE, method = lm)+
+  geom_smooth(se = TRUE, method = lm)+
   facet_wrap(~month)
 
 # weak month 4,5, & 11 relationship
@@ -187,13 +159,6 @@ ggplot(data=cal_lct_melt, aes(x=value, y=albedo, colour=variable)) +
   geom_smooth(se = TRUE, method = lm, fullrange=TRUE)+
   facet_wrap(~month)
 
-
-# relationship between land cover type and albedo in month 5; weak but there
-ggplot(data=cal_lct_melt, aes(x=lat, y=value, colour=variable)) +
-  geom_point(alpha=0.6) +
-  geom_smooth(se = TRUE, method = lm, fullrange=TRUE)
-
-
 corr_lct = cal_lct_melt %>% 
   filter((!(is.na(albedo)))&(!(is.na(value)))) %>%
   group_by(variable, month) %>% 
@@ -211,7 +176,7 @@ corr_lct = cal_lct_melt %>%
 #                        na.value = "grey50")
 
 ggplot(data=corr_lct) + 
-  geom_point(aes(y=variable, x=factor(month), size=abs(cor), colour=cor)) +
+  geom_point(aes(y=variable, x=factor(month), size=cor, colour=cor)) +
   scale_colour_gradient2(low = muted("red"),
                        mid = "white",
                        high = muted("blue"),

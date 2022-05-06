@@ -17,31 +17,25 @@ alb_proj = '+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0
 proj = '+init=epsg:4326 +proj=longlat +ellps=WGS84
 +datum=WGS84 +no_defs +towgs84=0,0,0'
 
-lct_albedo_snow_modern = readRDS('data/lct_albedo_snow_modern.RDS')
+# lct_albedo_snow_modern = readRDS('data/lct_albedo_snow_modern.RDS')
+lct_albedo_snow_modern = readRDS('data/lct_albedo_snow_modern_glob.RDS')
 
-tmax = read.csv('data/tmax_GCM.csv', stringsAsFactors = FALSE)
-tmin = read.csv('data/tmin_GCM.csv', stringsAsFactors = FALSE)
-ppt  = read.csv('data/ppt_GCM.csv', stringsAsFactors = FALSE)
-
-library(dplyr)
-library(tidyverse)
-# foo = tmax %>% group_by() %>% mutate(site = group_indices(tmax, .dots=c("lat", "long")))
-
-
-library(data.table)
-tmax = data.table(tmax)
-tmax = tmax[,site:= .GRP, by=.(lat, long)]
-tmax = data.frame(tmax)
-
-# tmax = tmax[, c('site', 'month', 'lat', 'long')]
+tmax = read.csv('data/tmax_CRU.csv', stringsAsFactors = FALSE)
+tmax = tmax[which((tmax$year>=2000)&(tmax$year<=2017)),]
+tmin = read.csv('data/tmin_CRU.csv', stringsAsFactors = FALSE)
+tmin = tmin[which((tmin$year>=2000)&(tmin$year<=2017)),]
+ppt  = read.csv('data/ppt_CRU.csv', stringsAsFactors = FALSE)
+ppt = ppt[which((ppt$year>=2000)&(ppt$year<=2017)),]
 
 # why won't this join work?!?!
-clim = left_join(tmax, tmin)
-clim = left_join(clim, ppt)
+clim = left_join(ppt, tmin)
+clim = left_join(clim, tmax)
 
 clim = clim[order(clim$site, clim$year, clim$month),]
 clim = clim[,c('site', 'year', 'month', 'ppt', 'tmin', 'tmax')]
 colnames(clim) = c('site', 'year', 'month', 'P', 'Tn', 'Tx')
+
+write.csv(clim, 'data/climate_CRU.csv', row.names=FALSE)
 
 first_year = min(clim$year)
 last_year  = max(clim$year)
@@ -58,10 +52,9 @@ N_sites = length(sites)
 # sm1: c(0.75, 0.25) 
 # sm2: c(0.5, 0.25, 0.25)
 # snow_melt_coeff = c(0.3, 0.4, 0.3)
-snow_melt_coeff = c(0.3, 0.4, 0.3)
-# snow_melt_coeff =  c(0.5, 0.25, 0.25)
+snow_melt_coeff =  c(0.5, 0.25, 0.25)
 
-Tsnow = 1
+Tsnow = 0
 
 thorn = list()
 snow = data.frame(month = numeric(0),
@@ -80,17 +73,14 @@ for (i in 1:N_sites){
     next
   }
   
-  # 
-  # dat_modern_sub = dat_modern[which(clim$site == site),2:6]
   normals = climate(dat_sub, 
                     first.yr = first_year, 
                     last.yr  = last_year, 
                     max.perc.missing = 15)
   
-  
   thorn[[i]] <-thornthwaite(series    = dat_sub, 
                             clim_norm = normals,
-                            latitude  = tmax[which(tmax$site == i),'lat'][1], 
+                            latitude  = lct_albedo_snow_modern[i,'lat'], 
                             first.yr  = first_year, 
                             last.yr   = last_year, 
                             snow_melt_coeff = snow_melt_coeff,
@@ -146,7 +136,7 @@ snow = merge(snow, clim)
 
 # saveRDS(snow, 'data/thorn_output.RDS')
 
-saveRDS(snow, 'data/thorn_output_paleo.RDS')
+saveRDS(snow, 'data/thorn_output_glob_sm1.RDS')
 
 # snow2 =snow %>% 
 #   group_by('lat', 'long', 'month') %>% 

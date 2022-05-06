@@ -1,6 +1,6 @@
 library(ggplot2)
 
-cal_data = readRDS('data/lct_albedo_snow_modern_glob.RDS')
+cal_data = readRDS('data/lct_albedo_snow_modern_glob.RDS')#[,2:ncol(cal_data)]
 
 # thorn_out_sm1 = readRDS('data/thorn_output_sm1.RDS')
 # 
@@ -98,19 +98,24 @@ ggplot(data=dat) +
 ggplot(data=dat) +
   geom_point(aes(y=et, x=psnow)) + 
   # geom_smooth(aes(y=et, x=psnow), formula = y~x, method='lm') +
-  facet_wrap(~month)
+  facet_wrap(~month, scales="free")
 
 ggplot(data=dat) +
   geom_point(aes(y=ppt, x=psnow)) +
-  facet_wrap(~month)
+  facet_wrap(~month, scales="free")
 
 ggplot(data=dat) +
-  geom_point(aes(y=snowpack, x=psnow)) +
+  geom_point(aes(y=tmin, x=psnow)) +
+  facet_wrap(~month, scales="free")
+
+ggplot(data=dat) +
+  geom_point(aes(y=snowpack_sm1, x=psnow)) +
   # geom_smooth(aes(y=snowpack, x=psnow), formula = y~x, method='lm') +
   facet_wrap(~month)
 
 ggplot(data=dat) +
-  geom_point(aes(y=log(snowpack), x=psnow)) +
+  geom_point(aes(y=log(snowpack_sm1), x=psnow)) +
+  geom_smooth(aes(y=log(snowpack_sm1), x=psnow), formula = y~x, method='lm') +
   facet_wrap(~month)
 
 ## compare others from thorn

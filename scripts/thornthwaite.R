@@ -152,11 +152,11 @@ thornthwaite<-function (series, latitude, clim_norm = NULL, first.yr = NULL,
             TmeanCor <- Tmean
             
             # updated here
-            # if (all(TmeanCor < 0)){
-            #   TmeanCor[TmeanCor < 0] <- 0.001
-            # } else {
+            if (all(TmeanCor < 0)){
+              TmeanCor[TmeanCor < 0] <- 0.001
+            } else {
               TmeanCor[TmeanCor < 0] <- 0
-            # }
+            }
             
             ITM <- ((TmeanCor/5)^1.514)
             ITA <- sum(ITM)
@@ -200,9 +200,8 @@ thornthwaite<-function (series, latitude, clim_norm = NULL, first.yr = NULL,
                 count_thaw <- count_thaw + 1
                 if (count_thaw > length(snow_melt_coeff)) {
                   snow_depl[i] <- SnowAcc[i]
-                }
-                else snow_depl[i] <- snow_depl[i] + SnowAcc[i] * 
-                    snow_melt_coeff[count_thaw]
+                } else {snow_depl[i] <- snow_depl[i] + SnowAcc[i] * 
+                    snow_melt_coeff[count_thaw] }
               }
               SnowAcc[i] <- SnowAcc[i] - snow_depl[i]
             }
@@ -219,8 +218,7 @@ thornthwaite<-function (series, latitude, clim_norm = NULL, first.yr = NULL,
                 Percola[1] <- Storage[1] - TAW
                 Storage[1] <- TAW
               }
-            }
-            else {
+            } else {
               PETvir <- (log10(TAW) - log10(last_Storage))/fTAW
               Storage[1] <- TAW * 10^(-(PETvir + P.minus.ET[1]) * 
                                         fTAW)
@@ -232,8 +230,7 @@ thornthwaite<-function (series, latitude, clim_norm = NULL, first.yr = NULL,
                   Percola[i] <- Storage[i] - TAW
                   Storage[i] <- TAW
                 }
-              }
-              else {
+              } else {
                 PETvir <- (log10(TAW) - log10(Storage[i - 1]))/fTAW
                 Storage[i] <- TAW * 10^(-(PETvir + P.minus.ET[i]) * 
                                           fTAW)

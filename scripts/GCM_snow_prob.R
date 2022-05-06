@@ -14,20 +14,30 @@ ccsm3_bins = c(-3, -2, -1, seq(0, 2000, by=1))
 
 paleo_bins = seq(100, 2000, by=200)
 
+# 
+# breaks = c(-74, 0.1, 0.35, 0.7, seq(1.2, 11.7, by=0.5))
+# slice_bins = seq(1, 25)
+paleo_bins = c(50, 200, seq(500, 11500, by=500))
+
 # ccsm3_bins[which(ccsm3_bins %in% paleo_bins)]
 
-idx_keep = which(ccsm3_bins %in% paleo_bins)
+idx_keep = which(ccsm3_bins %in% (paleo_bins/10))
 
 alb_proj = '+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0
 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
 
 
-lct_paleo = readRDS('data/lct_paleo.RDS')
+# lct_paleo = readRDS('data/lct_paleo.RDS')
+lct_paleo = readRDS('data/lct_paleo_reveals.RDS')
 
 sites = sort(unique(lct_paleo$site))
 N_sites = length(sites)
 
-lct_paleo = lct_paleo[!duplicated(lct_paleo$site),]
+lct_paleo = lct_paleo[!duplicated(lct_paleo[,c('x', 'y')]),]
+lct_paleo$site = rep(1, nrow(lct_paleo))
+
+sites = sort(unique(lct_paleo$site))
+N_sites = length(sites)
 
 lct_paleo_spatial = SpatialPointsDataFrame(coords=lct_paleo[,c('x', 'y')], 
                                            data=lct_paleo, 
@@ -91,6 +101,13 @@ ppt_pm = data.frame(month=numeric(0),
                      year=character(0),
                      tmax=numeric(0))
 
+gdd_pm = data.frame(month=numeric(0),
+                    lat=numeric(0),
+                    long=numeric(0),
+                    year=character(0),
+                    gdd=numeric(0))
+
+
 for (i in 1:12){
   
   for (k in 1:length(idx_keep)){
@@ -120,7 +137,7 @@ for (i in 1:12){
     tmax_month_pm = melt(tmax_month_pm)
     tmax_month_pm = data.frame(lat=lct_paleo_spatial$lat, 
                                long=lct_paleo_spatial$long, 
-                               year=k, 
+                               year=ccsm3_bins[idx_keep[k]]*10, 
                                tmax=tmax_month_pm$value)
     tmax_pm = rbind(tmax_pm, 
                     data.frame(month = i, tmax_month_pm))
@@ -140,7 +157,7 @@ for (i in 1:12){
     tmin_month_pm = melt(tmin_month_pm)
     tmin_month_pm = data.frame(lat=lct_paleo_spatial$lat, 
                                long=lct_paleo_spatial$long, 
-                               year=k, 
+                               year=ccsm3_bins[idx_keep[k]]*10, 
                                tmin=tmin_month_pm$value)
     tmin_pm = rbind(tmin_pm,
                     data.frame(month = i, tmin_month_pm))
@@ -160,10 +177,30 @@ for (i in 1:12){
     ppt_month_pm = melt(ppt_month_pm)
     ppt_month_pm = data.frame(lat=lct_paleo_spatial$lat, 
                                long=lct_paleo_spatial$long, 
-                               year=k, 
+                               year=ccsm3_bins[idx_keep[k]]*10, 
                                ppt=ppt_month_pm$value)
     ppt_pm = rbind(ppt_pm,
                    data.frame(month = i, ppt_month_pm))
+    
+    gdd_month = brick('data/GCM/ccsm3_22-0k_gdd.nc', level=i, varname='gdd5')
+    gdd_month_alb = projectRaster(gdd_month[[idx_keep[k]]], crs = crs(alb_proj))
+    gdd_month_pm = raster::extract(gdd_month_alb, lct_paleo_spatial)
+    
+    if (any(is.na(gdd_month_pm))){
+      gdd_month_pm[which(is.na(gdd_month_pm))] = raster::extract(gdd_month_alb, 
+                                                                 lct_paleo_spatial[which(is.na(gdd_month_pm)),], 
+                                                                 buffer=350000, 
+                                                                 fun=mean)
+      
+    }
+    
+    gdd_month_pm = melt(gdd_month_pm)
+    gdd_month_pm = data.frame(lat=lct_paleo_spatial$lat, 
+                              long=lct_paleo_spatial$long, 
+                              year=ccsm3_bins[idx_keep[k]]*10, 
+                              gdd=gdd_month_pm$value)
+    gdd_pm = rbind(gdd_pm,
+                   data.frame(month = i, gdd_month_pm))
 
   }
 }
@@ -175,3 +212,4 @@ for (i in 1:12){
 write.csv(tmax_pm, 'data/tmax_GCM.csv', row.names = FALSE)
 write.csv(tmin_pm, 'data/tmin_GCM.csv', row.names = FALSE)
 write.csv(ppt_pm, 'data/ppt_GCM.csv', row.names = FALSE)
+write.csv(gdd_pm, 'data/gdd_GCM.csv', row.names = FALSE)

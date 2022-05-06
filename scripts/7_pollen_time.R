@@ -7,6 +7,7 @@ library(ggplot2)
 library(sp)
 library(reshape2)
 
+
 pollen_time = readRDS('data/pollen-sites-times-series-all_v2.0.RDS')
 
 alb_proj = '+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0
@@ -21,6 +22,7 @@ alb_proj = '+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0
 #                    summarise(across(ARTEMISIA:CUPRESSAX, sum), .groups='keep'))
 
 pollen_time = data.frame(pollen_time)
+pollen_time = pollen_time[which(pollen_time$long < 0),]
 
 xy = pollen_time[,1:2]
 
@@ -41,7 +43,19 @@ ggplot() +
 
 k = k[which(!is.na(k$k)),]
 #if name has Canada and USA:Al then keep, else give name NA
-get_c <- function(x) {if (substr(x, 1,6) =="Canada") {"Canada"} else if (substr(x, 1,6) =="USA:Al") {"Alaska"} else {NA}}
+get_c <- function(x) {
+  if (substr(x, 1,6) =="Canada") {
+    "Canada"
+  } else if (substr(x, 1,6) =="USA:Al") {
+    "Alaska"
+  } else if (substr(x, 1,3) == "USA") {
+    "USA"
+  } else if (substr(x, 1,3) == "Mex"){
+    "Mexico"
+  } else {
+    NA
+  }
+}
 
 k$country=sapply(k$k, get_c)
 #substr(k$k, 1,6) == "Canada"
@@ -172,3 +186,16 @@ lct_paleo = lct_paleo[,site:= .GRP, by=.(lat, long)]
 lct_paleo = data.frame(lct_paleo[,'site'], lct_paleo[,1:9])
 
 saveRDS(lct_paleo, 'data/lct_paleo.RDS')
+
+site_meta = data.frame(ID1=lct_paleo$site,
+                       ID2=rep('region1',nrow(lct_paleo)), 
+                       lat = lct_paleo[,'lat'],
+                       long = lct_paleo[,'long'],
+                       el = lct_paleo[,'elev'])
+colnames(site_meta) = c('ID1', 'ID2', 'lat', 'long', 'el')
+
+site_meta = site_meta[!duplicated(site_meta),]
+
+site_meta$long = -site_meta$long
+
+write.csv(site_meta, 'data/climateNA_input_paleo.csv', row.names = FALSE, quote=FALSE, na='.', eol = "\r\n")
