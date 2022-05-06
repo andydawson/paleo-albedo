@@ -62,11 +62,12 @@ write.csv(site_meta, 'data/climateNA_input.csv', row.names = FALSE, quote=FALSE,
 #                     ppt=numeric(0))
 
 # clim = read.csv('data/climateNA_1901-2019.csv', stringsAsFactors = FALSE)
-clim = read.csv('data/climateNA_1901-2019MP.csv', stringsAsFactors = FALSE)
+# clim = read.csv('data/climateNA_1901-2019MP.csv', stringsAsFactors = FALSE)
+clim = read.csv('data/climateNA_output_2000-2019MSY.csv', stringsAsFactors = FALSE)
 
 ppt = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
                  year = clim[,'Year'], 
-                 clim[,which(substr(colnames(clim), 1, 3)=='PPT')])
+                 clim[,which(substr(colnames(clim), 1, 3)=='PPT')][,1:12])
 colnames(ppt) = c('site', 'year', seq(1, 12))
 ppt_m = melt(ppt, id.vars=c('site', 'year'))
 colnames(ppt_m) = c('site', 'year', 'month', 'ppt')
@@ -75,7 +76,7 @@ write.csv(ppt_m, 'data/ppt_CRU.csv', row.names=FALSE)
 
 tmean = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
                  year = clim[,'Year'], 
-                 clim[,which(substr(colnames(clim), 1, 3)=='Tav')])
+                 clim[,which(substr(colnames(clim), 1, 3)=='Tav')][,1:12])
 colnames(tmean) = c('site', 'year', seq(1, 12))
 tmean_m = melt(tmean, id.vars=c('site', 'year'))
 colnames(tmean_m) = c('site', 'year', 'month', 'tmean')
@@ -84,7 +85,7 @@ write.csv(tmean_m, 'data/tmean_CRU.csv', row.names=FALSE)
 
 tmin = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
                    year = clim[,'Year'], 
-                   clim[,which(substr(colnames(clim), 1, 3)=='Tmi')])
+                   clim[,which(substr(colnames(clim), 1, 3)=='Tmi')][,1:12])
 colnames(tmin) = c('site', 'year', seq(1, 12))
 tmin_m = melt(tmin, id.vars=c('site', 'year'))
 colnames(tmin_m) = c('site', 'year', 'month', 'tmin')
@@ -93,10 +94,84 @@ write.csv(tmin_m, 'data/tmin_CRU.csv', row.names=FALSE)
 
 tmax = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
                    year = clim[,'Year'], 
-                   clim[,which(substr(colnames(clim), 1, 3)=='Tma')])
+                   clim[,which(substr(colnames(clim), 1, 3)=='Tma')][,1:12])
 colnames(tmax) = c('site', 'year', seq(1, 12))
 tmax_m = melt(tmax, id.vars=c('site', 'year'))
 colnames(tmax_m) = c('site', 'year', 'month', 'tmax')
 tmax_m = tmax_m[, c('month', 'site', 'year', 'tmax')]
 write.csv(tmax_m, 'data/tmax_CRU.csv', row.names=FALSE)
+
+pas = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
+                  year = clim[,'Year'], 
+                  clim[,which(substr(colnames(clim), 1, 3)=='PAS')][,1:12])
+colnames(pas) = c('site', 'year', seq(1, 12))
+pas_m = melt(pas, id.vars=c('site', 'year'))
+colnames(pas_m) = c('site', 'year', 'month', 'pas')
+pas_m = pas_m[, c('month', 'site', 'year', 'pas')]
+write.csv(pas_m, 'data/pas_CRU.csv', row.names=FALSE)
+
+ffd = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
+                 year = clim[,'Year'], 
+                 clim[,which(substr(colnames(clim), 1, 4)=='NFFD')][,1:12])
+colnames(ffd) = c('site', 'year', seq(1, 12))
+ffd_m = melt(ffd, id.vars=c('site', 'year'))
+colnames(ffd_m) = c('site', 'year', 'season', 'ffd')
+ffd_m = ffd_m[, c('season', 'site', 'year', 'ffd')]
+write.csv(ffd_m, 'data/ffd_CRU.csv', row.names=FALSE)
+
+pas = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
+                 year = clim[,'Year'], 
+                 clim[,which(substr(colnames(clim), 1, 3)=='PAS')][,13:17])
+colnames(pas) = c('site', 'year', 'wt', 'sp', 'sm', 'at', 'annual')
+pas_m = melt(pas, id.vars=c('site', 'year'))
+colnames(pas_m) = c('site', 'year', 'season', 'pas')
+pas_m = pas_m[, c('season', 'site', 'year', 'pas')]
+write.csv(pas_m, 'data/pas_season_CRU.csv', row.names=FALSE)
+
+dd0 = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
+                 year = clim[,'Year'], 
+                 clim[,which(substr(colnames(clim), 1, 4)=='DD_0')][,1:12])
+colnames(dd0) = c('site', 'year', seq(1, 12))
+dd0_m = melt(dd0, id.vars=c('site', 'year'))
+colnames(dd0_m) = c('site', 'year', 'month', 'dd0')
+dd0_m = dd0_m[, c('month', 'site', 'year', 'dd0')]
+write.csv(dd0_m, 'data/dd0_CRU.csv', row.names=FALSE)
+
+dd5 = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
+                 year = clim[,'Year'], 
+                 clim[,which(substr(colnames(clim), 1, 3)=='DD5')][,1:12])
+colnames(dd5) = c('site', 'year', seq(1, 12))
+dd5_m = melt(dd5, id.vars=c('site', 'year'))
+colnames(dd5_m) = c('site', 'year', 'month', 'dd5')
+dd5_m = dd5_m[, c('month', 'site', 'year', 'dd5')]
+write.csv(dd5_m, 'data/dd5_CRU.csv', row.names=FALSE)
+
+
+dd0 = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
+                 year = clim[,'Year'], 
+                 clim[,which(substr(colnames(clim), 1, 4)=='DD_0')][,13:17])
+colnames(dd0) = c('site', 'year', 'wt', 'sp', 'sm', 'at', 'annual')
+dd0_m = melt(dd0, id.vars=c('site', 'year'))
+colnames(dd0_m) = c('site', 'year', 'season', 'dd0')
+dd0_m = dd0_m[, c('season', 'site', 'year', 'dd0')]
+write.csv(dd0_m, 'data/dd0_season_CRU.csv', row.names=FALSE)
+
+dd5 = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
+                 year = clim[,'Year'], 
+                 clim[,which(substr(colnames(clim), 1, 3)=='DD5')][,13:17])
+colnames(dd5) = c('site', 'year', 'wt', 'sp', 'sm', 'at', 'annual')
+dd5_m = melt(dd5, id.vars=c('site', 'year'))
+colnames(dd5_m) = c('site', 'year', 'season', 'dd5')
+dd5_m = dd5_m[, c('season', 'site', 'year', 'dd5')]
+write.csv(dd5_m, 'data/dd5_season_CRU.csv', row.names=FALSE)
+
+ffd = data.frame(site = substr(clim[,c('ID1')], 5, 8), 
+                 year = clim[,'Year'], 
+                 clim[,which(substr(colnames(clim), 1, 4)=='NFFD')][,13:17])
+colnames(ffd) = c('site', 'year', 'wt', 'sp', 'sm', 'at', 'annual')
+ffd_m = melt(ffd, id.vars=c('site', 'year'))
+colnames(ffd_m) = c('site', 'year', 'season', 'ffd')
+ffd_m = ffd_m[, c('season', 'site', 'year', 'ffd')]
+write.csv(ffd_m, 'data/ffd_season_CRU.csv', row.names=FALSE)
+
 
