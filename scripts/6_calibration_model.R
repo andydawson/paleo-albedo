@@ -343,7 +343,7 @@ dat_sub$preds = preds$fit
 
 ggplot(data=dat_sub) + 
   geom_point(aes(x=alb, y=preds)) +
-  geom_abline(slope=1, intercept=0, colour="red", size=1) +
+  geom_abline(slope=1, intercept=0, colour="red", size=1, lty=2) +
   xlim(c(0,1)) + 
   ylim(c(0,1)) +
   coord_fixed() +  

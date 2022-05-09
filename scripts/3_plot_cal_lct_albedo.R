@@ -111,8 +111,8 @@ ggsave('figures/LCT_cal_pie_map.png')
 
 ggplot() +
   # geom_polygon(data=pbs_ll, aes(x=x, y=y, group=group), color='black', fill="lightgrey") +
-  geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="black", fill="grey") +
-  geom_scatterpie(data=cal_data, aes(x=long, y=lat), cols=c('OL', 'ST', 'ET'), pie_scale=0.5, alpha=0.9) +
+  geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
+  geom_scatterpie(data=cal_data, aes(x=long, y=lat), cols=c('OL', 'ST', 'ET'), pie_scale=0.5, alpha=0.7) +
   theme_bw() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
@@ -124,7 +124,7 @@ ggplot() +
         panel.border = element_blank(),
         panel.background = element_blank()) +
   labs(fill='Cover') +
-  scale_fill_discrete(labels = c("Open Land", "Summergreen", "Evergreen")) +
+  scale_fill_discrete(labels = c("Open Land", "Summergreen", "Evergreen"), guide = guide_legend(reverse = TRUE)) +
   # scale_fill_manual(labels = c("Open Land", "Summergreen", "Evergreen"), values = c("#b15928", "#a6cee3","#33a02c")) +
   # sc_fill_qual +
   coord_fixed()

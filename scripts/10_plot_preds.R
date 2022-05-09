@@ -330,15 +330,14 @@ sc_colour_diverge <- scale_colour_distiller(type = "div",
 
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
-  geom_point(data=diff, aes(x=long, y=lat, colour = diff), size=1)+
+  geom_point(data=diff, aes(x=long, y=lat, colour = diff), size=1, alpha=1)+
   sc_colour_diverge + 
   # scale_fill_gradient2(low = 'blue', high = 'red', mid= 'white',  limits = c(-0.1,0.1))+
   # scale_colour_gradient2(low = 'blue', high = 'red', mid= 'white',  limits = c(-0.1,0.1))+
   facet_grid(facets~.)+
   # facet_wrap(year~.)+
   theme_bw()+
-  theme(axis.line = element_line(colour = "black"),
-        panel.grid.major = element_blank(),
+  theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
         strip.text = element_text(size=14),
@@ -350,6 +349,7 @@ ggplot()+
   coord_fixed()
 # scale_fill_brewer(type = "div", palette = 'Rd
 ggsave('figures/alb_preds_diff_subset_point.png')
+ggsave('figures/alb_preds_diff_subset_point.pdf')
 
 ggplot()+
   geom_path(data=pbs_ll, aes(long,lat, group = group), color="grey") +

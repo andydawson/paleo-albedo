@@ -72,20 +72,23 @@ breaks = c(0, 10, 20, 30, 40, 60, 80, 100)/100
 # cover_melt2$value_binned = factor(cut(cover_melt2$value, breaks, include.lowest=TRUE, labels=FALSE), levels=seq(1, 11))
 labels = c("   0 - 0.1", "0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", "0.4 - 0.6", "0.6 - 0.8",  "0.8 -  1")
 
+alb_na[which(alb_na$alb > 1), 'alb'] = 1
+alb_na[which(alb_na$alb < 0), 'alb'] = 1e-6
+
 alb_na$value_bin = cut(alb_na$alb, breaks, labels=FALSE)
 
 
 sc_fill_seq <- scale_fill_brewer(type = "seq",
                                  palette = "YlOrBr",#"BrBG",
                                  labels = labels,
-                                 na.value="grey",
+                                 # na.value="grey",
                                  direction=1,
                                  name="Albedo")
 
 sc_colour_seq <- scale_colour_brewer(type = "seq",
                                  palette = "YlOrBr",#"BrBG",
                                  labels = labels,
-                                 na.value="grey",
+                                 # na.value="grey",
                                  direction=1,
                                  name="Albedo")
 
@@ -112,6 +115,7 @@ ggplot() +
         panel.border = element_blank(),
         panel.background = element_blank()) +
   sc_fill_seq +
-  sc_colour_seq
+  sc_colour_seq +
+  guides(colour = guide_legend(reverse=T), fill = guide_legend(reverse=T))
 ggsave('figures/GLOBALBEDO_march.png')
 ggsave('figures/GLOBALBEDO_march.pdf')
