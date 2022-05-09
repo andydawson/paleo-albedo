@@ -41,10 +41,10 @@ diff_paleo = merge(diff_paleo, diff_paleo_unique[,c('lat', 'long', 'rk')], by=c(
 
 diff_paleo$forcing = diff_paleo$diff * diff_paleo$rk
 
-labels = c('2 - 0.05', '4 - 2', '4 - 6', '8 - 4', '10 - 8')
+labels = c('2 - 0.05', '4 - 2', '4 - 6', '8 - 6', '10 - 8')
 diff_years = years[-1]
 diff_paleo$facets = labels[match(diff_paleo$year, diff_years)]
-diff_paleo$facets = factor(diff_paleo$facets, levels =  c('2 - 0.05', '4 - 2', '4 - 6', '8 - 4', '10 - 8'))
+diff_paleo$facets = factor(diff_paleo$facets, levels =  c('2 - 0.05', '4 - 2', '4 - 6', '8 - 6', '10 - 8'))
 
 # thresh = round_any(max(abs(diff$diff), na.rm=TRUE), 0.01, f=ceiling)
 max_diff = max(abs(diff_paleo$forcing), na.rm=TRUE)
@@ -72,7 +72,7 @@ sc_colour_diverge <- scale_colour_distiller(type = "div",
                                             palette = "RdYlBu",#"BrBG",
                                             # labels = labels,
                                             na.value="transparent", 
-                                            name="Forcing (W/m^2)",
+                                            name=expression(Forcing (W/m^2)),
                                             limits = c(-thresh,thresh), 
                                             values = values)
 
@@ -86,8 +86,7 @@ ggplot()+
   facet_grid(facets~.)+
   # facet_wrap(year~.)+
   theme_bw()+
-  theme(axis.line = element_line(colour = "black"),
-        panel.grid.major = element_blank(),
+  theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
         strip.text = element_text(size=14),
@@ -99,3 +98,4 @@ ggplot()+
   coord_fixed()
 # scale_fill_brewer(type = "div", palette = 'Rd
 ggsave('figures/alb_preds_radiative_subset_point.png')
+ggsave('figures/alb_preds_radiative_subset_point.pdf')
