@@ -4,7 +4,11 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 
-cal_data = readRDS('data/lct_albedo_snow_modern_glob.RDS')
+# cal_data = readRDS('data/lct_albedo_snow_modern_glob.RDS')
+# cal_data = readRDS('data/lct_albedo_snow_modern_albclim.RDS')
+cal_data = readRDS('data/lct_albedo_snow_modern_bluesky.RDS')
+
+
 cal_data = data.frame(site=seq(1,nrow(cal_data)), cal_data)
 cal_data = cal_data[,c('site', 'ET', 'OL', 'ST')]
 
@@ -16,6 +20,9 @@ dat_clim_alb = readRDS('data/calibration-albedo-climateNA-season.RDS')
 
 
 dat = merge(dat_clim_alb, cal_data, by=c('site'))
+
+dat = dat[which(dat$ppt != -9999),]
+
 # 
 # dat$snowpack = dat$snowpack_sm2
 # dat$log_snowpack = log(dat$snowpack_sm2+0.1)
@@ -35,7 +42,7 @@ ctrl <- list(nthreads=4)
 # dat_sub = merge(dat_sub_alb, dat_sub_dd0)
 
 dat_sub = dat[which(dat$season=='annual'),]
-dat_sub = dat_sub[which(dat_sub$month==4),]
+dat_sub = dat_sub[which(dat_sub$month==3),]
 
 
 # some NA values for albedo

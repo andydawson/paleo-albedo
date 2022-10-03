@@ -29,12 +29,12 @@ pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
 pbs = readRDS('data/map-data/geographic/pbs.RDS')
 
 
-# breaks = c(0, 10, 20, 30, 40, 50, 60, 80, 90, 100)/100
+breaks = c(0, 10, 20, 30, 40, 50, 60, 80, 90, 100)/100
 
-breaks = c(0, 4, 8, 12, 16, 20, 30, 40, 60, 80, 100)/100
+# breaks = c(0, 4, 8, 12, 16, 20, 30, 40, 60, 80, 100)/100
 # breaks = c(0, 0.001, 5, 10, 20, 40, 50, 60, 80, 100)/100
 # cover_melt2$value_binned = factor(cut(cover_melt2$value, breaks, include.lowest=TRUE, labels=FALSE), levels=seq(1, 11))
-labels = c("0-10", "10 - 20", "20 - 30", "30 - 40", "40 - 50", "50 - 60", "60 - 70", "70 - 80",  "80 - 90", "90 - 100")
+# labels = c("0-10", "10 - 20", "20 - 30", "30 - 40", "40 - 50", "50 - 60", "60 - 70", "70 - 80",  "80 - 90", "90 - 100")
 labels = c("0-0.1", "0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", "0.4 - 0.5", "0.5 - 0.6", "0.6 - 0.7", "0.7 - 0.8",  "0.8 - 0.9", "0.9 - 1")
 
 # labels = seq(1, length(breaks)-1)
@@ -158,10 +158,10 @@ years = c(50, 2000, 4000, 6000, 8000, 10000)
 
 alb_grid_sub = subset(alb_grid, year %in% years) 
 
-labels = c('0.05', '2', '4', '6', '8', '10')
+labels_age = c('0.05', '2', '4', '6', '8', '10')
 
-alb_grid_sub$facets = labels[match(alb_grid_sub$year, years)]
-alb_grid_sub$facets = factor(alb_grid_sub$facets, levels = c('0.05', '2', '4', '6', '8', '10'))
+alb_grid_sub$facets = labels_age[match(alb_grid_sub$year, years)]
+alb_grid_sub$facets = factor(alb_grid_sub$facets, levels = labels_age)
 
 # map predictions lat long points
 ggplot()+
@@ -290,13 +290,14 @@ diff = subset(alb_grid, year %in% years) %>%
   mutate(diff = alb_pred - lag(alb_pred, order_by =year))
 
 diff = diff[which(!(diff$year %in% years[1])),]
+diff$diff = -diff$diff
 
 saveRDS(diff, 'data/preds_alb_diffs_sub.RDS')
 
-labels = c('2 - 0.05', '4 - 2', '4 - 6', '8 - 6', '10 - 8')
+labels = c('0.05 - 2', '2 - 4', '4 - 6', '6 - 8', '8 - 10')
 diff_years = years[-1]
 diff$facets = labels[match(diff$year, diff_years)]
-diff$facets = factor(diff$facets, levels =  c('2 - 0.05', '4 - 2', '4 - 6', '8 - 6', '10 - 8'))
+diff$facets = factor(diff$facets, levels =  labels)
 
 # thresh = round_any(max(abs(diff$diff), na.rm=TRUE), 0.01, f=ceiling)
 max_diff = max(abs(diff$diff), na.rm=TRUE)
@@ -330,7 +331,7 @@ sc_colour_diverge <- scale_colour_distiller(type = "div",
 
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
-  geom_point(data=diff, aes(x=long, y=lat, colour = diff), size=1, alpha=1)+
+  geom_point(data=diff, aes(x=long, y=lat, colour = diff), size=1, alpha=0.8)+
   sc_colour_diverge + 
   # scale_fill_gradient2(low = 'blue', high = 'red', mid= 'white',  limits = c(-0.1,0.1))+
   # scale_colour_gradient2(low = 'blue', high = 'red', mid= 'white',  limits = c(-0.1,0.1))+
