@@ -8,11 +8,12 @@ library(fields)
 ###############################################################################################################
 
 alb_preds = readRDS('data/lct_paleo_preds.RDS')
+alb_preds = readRDS('data/cal_data.RDS')
+
 
 ggplot() + 
   geom_point(data=alb_preds, aes(x=long, y=lat), colour="blue") +
   facet_wrap(~year)
-
 
 # paleo_bins <- seq(0, 20000, by = 2000)
 # paleo_labels = seq(1000, 19000, by = 2000)
