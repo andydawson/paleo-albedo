@@ -18,7 +18,7 @@ ctrl <- list(nthreads=4)
 
 # # just x and y
 #works better with smaller k values 
-mod = gam(bs03 ~ s(x, y, bs="gp", k=130),
+mod = gam(bs03 ~ s(x, y, bs="gp", k=900),
           data=cal_data, 
           family=betar(link="logit"), 
           method="REML", 
@@ -41,7 +41,7 @@ vis.gam(mod,theta=30)
 
 # add elevation
 #tp vs gp model
-mod2 = gam(bs03 ~ s(x, y, bs='tp', k=175) + s(elev, k=30),
+mod2 = gam(bs03 ~ s(x, y, bs='tp', k=900) + s(elev, k=30),
           data=cal_data,
           family=betar(link="logit"),
           method="REML",
@@ -49,7 +49,7 @@ mod2 = gam(bs03 ~ s(x, y, bs='tp', k=175) + s(elev, k=30),
 
 # add eleveation
 #gp model works better than tp
-mod2 = gam(bs03 ~ s(x, y, bs="gp", k=100) + s(elev, k=30),
+mod2 = gam(bs03 ~ s(x, y, bs="gp", k=100) + s(elev, k=10),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -61,7 +61,7 @@ gam.check(mod2)
 AIC(mod, mod2)
 
 # add OL
-mod3 = gam(bs03 ~ s(x, y, bs='gp', k=100) + s(elev, k=30) + s(OL, k=20),
+mod3 = gam(bs03 ~ s(x, y, bs='gp', k=100) + s(elev, k=10) + s(OL, k=10),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -73,7 +73,7 @@ AIC(mod, mod2, mod3)
 anova.gam(mod, mod2, mod3)
 
 # add ET
-mod4 = gam(bs03 ~ s(x, y, bs='gp', k=80) + s(elev, k=30) + s(OL, k=20) + s(ET, k=20),
+mod4 = gam(bs03 ~ s(x, y, bs='gp', k=100) + s(elev, k=10) + s(OL, k=10) + s(ET, k=10),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -86,7 +86,7 @@ AIC(mod, mod2, mod3, mod4)
 
 # add ST
 #this takes a while 
-mod5 = gam(bs03 ~ s(x, y, bs='gp', k=100) + s(elev, k=30) + s(OL, k=20) + s(ET, k=20) + s(ST, k=20),
+mod5 = gam(bs03 ~ s(x, y, bs='gp', k=500) + s(elev, k=10) + s(OL, k=10) + s(ET, k=10) + s(ST, k=5),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -98,6 +98,8 @@ AIC(mod, mod2, mod3, mod4, mod5)
 
 
 saveRDS(mod, 'data/calibration_model1.RDS')
+
+saveRDS(mod5, 'data/calibration_model5.RDS')
 
 ###############################################################################################################
 ## plotting model fit for bs03
@@ -183,42 +185,24 @@ pbs = readRDS('data/map-data/geographic/pbs.RDS')
 
 #difference figure 
 ggplot()+
-  geom_polygon(data=world_proj, aes(x=x, y=y, group=group), fill='black')+
-  geom_point(data=cal_data, aes(x=x, y=y, colour = diff_mod5))+
-  scale_colour_gradient2(low = 'blue', high = 'red', mid= 'white', limits = c(-0.2,0.2))+
-  theme_bw()+
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-                      panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-ggsave('figures/march_modern_diff.png')
-
-
-#better version of above but the background is white 
-ggplot()+
-  geom_polygon(data=pbs_ll, aes(long,lat, group = group), fill='black') +
+  geom_polygon(data=pbs_ll, aes(long,lat, group = group), fill='grey') +
   geom_point(data=cal_data, aes(x=long, y=lat, colour = diff_mod5))+
-  scale_colour_gradient2(low = 'blue', high = 'red', mid= 'white', limits = c(-0.2,0.2))+
+  scale_colour_gradient2(low = 'green', high = 'pink', mid= 'yellow', limits = c(-0.2,0.2))+
+  ggtitle("Difference between predicted values and data")+
   theme_bw()+
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-
+ggsave("marchmod5.differencemap.png")
 
 
 #frequency of differences 
 #we can see that it is mainly focused at 0
 ggplot(data=cal_data) + 
-  geom_histogram(aes(x=diff_mod5)) +
-  theme_bw()
+  geom_histogram(aes(x=diff_mod5), fill = "dark blue") +
+  labs( x="albedo differences", 
+       title="distribution of albedo differences using model 5" )+
+  theme_bw()+
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 ggsave('figures/march_histo_frequency.png')
 
-
-
-
-
-
-
-
-ggplot()+
-  geom_path(data=pbs_ll, aes(x=long, y=lat, group=group), colour='grey')+
-  geom_point(data=cal_data, aes(x=long, y=lat, colour = diff_mod5))+
-  scale_colour_gradient2(low = 'blue', high = 'red', mid= 'white', limits = c(-0.2,0.2))+
-  theme_bw()
