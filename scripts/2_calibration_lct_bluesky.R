@@ -49,7 +49,7 @@ bs_df = data.frame(matrix(NA, nrow=nrow(lct_spat), ncol=12))
 colnames(bs_df) = paste0('bs', c(paste0('0', seq(1, 9)), seq(10,12)))
 
 
-blue_all_months = rast('/scratch/blue-sky/blue_sky_monthly_2000-2009.tif')
+blue_all_months = rast('data/blue_sky_monthly_2000-2009.tif')
 
 
 # lct_spat = cbind(lct_spat, bs_df)
