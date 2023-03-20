@@ -34,6 +34,8 @@ months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct',
 pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
 pbs = readRDS('data/map-data/geographic/pbs.RDS')
 
+grid <- rast(readRDS("data/grid.RDS"))
+
 # lct_modern = readRDS('data/lct_modern.RDS')
 lct_modern = readRDS('data/lct_modern_reveals.RDS')
 
@@ -50,7 +52,7 @@ colnames(bs_df) = paste0('bs', c(paste0('0', seq(1, 9)), seq(10,12)))
 
 
 blue_all_months = rast('data/blue_sky_monthly_2000-2009.tif')
-
+blue_coarse = resample(blue_all_months, grid)
 
 # lct_spat = cbind(lct_spat, bs_df)
 pdf('figures/monthly_BLUESKY_maps.pdf')

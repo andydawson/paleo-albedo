@@ -5,20 +5,25 @@ library(rgdal)
 library(raster)
 library(reshape2)
 
+alb_prod = 'bluesky'
 
-cal_data = readRDS('data/lct_albedo_snow_modern_glob.RDS')
+# cal_data = readRDS('data/lct_albedo_snow_modern_glob.RDS')
+# cal_data = readRDS('data/lct_albedo_snow_modern_albclim.RDS')
 
-foo = melt(cal_data[,1:20], id.vars=c('long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST'))
-colnames(foo) = c('long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST', 'month', 'albedo')
-foo$month = as.numeric(substr(foo$month, 4, 5))
-
-
-bar = melt(cal_data[,c(1:8,21:ncol(cal_data))], id.vars=c('long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST'))
-colnames(bar) = c('long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST', 'month', 'snow_prob')
-bar$month = as.numeric(substr(bar$month, 5, 6))
+cal_data = readRDS(paste0('data/calibration_modern_lct_', alb_prod, '.RDS'))
 
 
-cal_long = merge(foo, bar)
+cal_long = melt(cal_data[,1:20], id.vars=c('long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST'))
+colnames(cal_long) = c('long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST', 'month', 'albedo')
+cal_long$month = as.numeric(substr(cal_long$month, 4, 5))
+
+
+# bar = melt(cal_data[,c(1:8,21:ncol(cal_data))], id.vars=c('long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST'))
+# colnames(bar) = c('long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST', 'month', 'snow_prob')
+# bar$month = as.numeric(substr(bar$month, 5, 6))
+# 
+# 
+# cal_long = merge(foo, bar)
 
 ###############################################################################################################
 ## maps data

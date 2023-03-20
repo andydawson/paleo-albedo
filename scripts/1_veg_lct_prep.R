@@ -28,6 +28,13 @@ veg_pred = readRDS('data/veg_pred_LGM_8.0.RDS')
 
 taxon2pft = read.csv('data/taxon2LCT_translation_v2.csv')
 
+grid <- readRDS("data/grid.RDS")
+
+cell_id <- raster::extract(grid, veg_pred[,c('long', 'lat')])
+
+coords   = xyFromCell(grid, veg_pred$cell_id)
+veg_pred = cbind(coords, veg_pred)
+
 # breaks = c(-74, 0.1, 0.35, 0.7, seq(1.2, 11.7, by=0.5))
 # slice_bins = seq(1, 25)
 # slice_labels = c(50, 200, seq(500, 11500, by=500))
@@ -36,9 +43,19 @@ taxon2pft = read.csv('data/taxon2LCT_translation_v2.csv')
 # 
 ############################################################################################
 
-veg_pred$LCT = taxon2pft$LCT[match(veg_pred$taxon, tolower(taxon2pft$taxon))]
+veg_grid = aggregate(mediansim ~ taxon + ages + cell_id + x+ y, veg_pred, sum)
 
-veg_lct = aggregate(meansim ~ dataset_id + long + lat + ages + LCT, veg_pred, sum, na.rm=TRUE)
+veg_cast = dcast(veg_grid, cell_id + x + y + ages ~ taxon, value.var='mediansim')
+veg_cast[,5:ncol(veg_cast)] = t(apply(veg_cast[,5:ncol(veg_cast)], 1, function(x) x/sum(x)))
+veg_grid = melt(veg_cast, id.vars=c('cell_id', 'x', 'y', 'ages'))
+
+
+veg_grid$LCT = taxon2pft$LCT[match(veg_grid$variable, tolower(taxon2pft$taxon))]
+veg_lct = aggregate(value ~ cell_id + x + y + ages + LCT, veg_grid, sum, na.rm=TRUE)
+
+colnames(veg_lct) = c('cell_id', 'long', 'lat', 'ages', 'LCT', 'value')
+
+# veg_lct = aggregate(meansim ~ dataset_id + long + lat + ages + LCT, veg_pred, sum, na.rm=TRUE)
 
 # k = veg_lct
 
@@ -56,7 +73,7 @@ colnames(coords)[2] <- 'y'
 veg_lct = data.frame(coords, veg_lct)
 
 pivot_mod = veg_lct %>%
-  pivot_wider(names_from = LCT, values_from = meansim)
+  pivot_wider(names_from = LCT, values_from = value)
 
 pivot_mod = data.frame(pivot_mod)
 
@@ -107,74 +124,74 @@ ggplot() +
 ############################################################################################
 # for paleo use 2000 year time bins
 ############################################################################################
-
-# veg_pred = readRDS('data/veg_pred_LC6k.RDS')
-veg_pred = readRDS('data/veg_pred_LGM_8.0.RDS')
-
-taxon2pft = read.csv('data/taxon2LCT_translation_v2.csv')
-
-# breaks = c(-74, 0.1, 0.35, 0.7, seq(1.2, 11.7, by=0.5))
-# slice_bins = seq(1, 25)
-# slice_labels = c(50, 200, seq(500, 11500, by=500))
-
-############################################################################################
 # 
-############################################################################################
-
-veg_pred$LCT = taxon2pft$LCT[match(veg_pred$taxon, tolower(taxon2pft$taxon))]
-
-veg_lct = aggregate(meansim ~ dataset_id + long + lat + ages + LCT, veg_pred, sum, na.rm=TRUE)
-
-# k = veg_lct
-
-#assigning a crs to the pollen coordinates
-veg_lct_spatial = SpatialPointsDataFrame(coords = veg_lct[,c('long', 'lat')], 
-                                         data = veg_lct,
-                                         proj4string = CRS(ll_proj))
-
-#transforming to the albedo crs
-veg_transform = spTransform(veg_lct_spatial, alb_proj)
-coords = coordinates(veg_transform)
-colnames(coords)[1] <- 'x'
-colnames(coords)[2] <- 'y'
-
-veg_lct = data.frame(coords, veg_lct)
-
-pivot_mod = veg_lct %>%
-  pivot_wider(names_from = LCT, values_from = meansim)
-
-pivot_mod = data.frame(pivot_mod)
-
-############################################################################################
+# # veg_pred = readRDS('data/veg_pred_LC6k.RDS')
+# veg_pred = readRDS('data/veg_pred_LGM_8.0.RDS')
 # 
-############################################################################################
-
-# ele_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+# taxon2pft = read.csv('data/taxon2LCT_translation_v2.csv')
 # 
-# latLong = data.frame(pivot_mod[,c('long', 'lat')])
-
-ele_get = get_elev_point(pivot_mod[,c('long', 'lat')], ll_proj, src = "aws")
-
-# ele_get = get_elev_point(latLong, ele_proj, src = "aws")
-
-lct_all = data.frame(pivot_mod[,c('ages', 'long', 'lat', 'x', 'y')], 
-                     elev = ele_get$elevation, 
-                     pivot_mod[,c('ET', 'OL', 'ST')])
-
-ggplot() + 
-  geom_point(data=lct_all, aes(x=long, y=lat), colour="blue") +
-  facet_wrap(~ages)
-
-lct_all = lct_all[which((lct_all$lat > latlimits[1])&
-                          (lct_all$lat < latlimits[2])&
-                          (lct_all$long > longlimits[1])&
-                          (lct_all$long < longlimits[2])), ]
-
-# lct_all = lct_all[which(lct_all$long<(-40)),]
-# lct_all = lct_all[which(lct_all$long>(-160)),]
-# lct_all= lct_all[which(lct_all$lat<(73)),]
-
-lct_all = lct_all[which(!((lct_all$lat<25)&(lct_all$long<(-150)))),]
+# # breaks = c(-74, 0.1, 0.35, 0.7, seq(1.2, 11.7, by=0.5))
+# # slice_bins = seq(1, 25)
+# # slice_labels = c(50, 200, seq(500, 11500, by=500))
+# 
+# ############################################################################################
+# # 
+# ############################################################################################
+# 
+# veg_pred$LCT = taxon2pft$LCT[match(veg_pred$taxon, tolower(taxon2pft$taxon))]
+# 
+# veg_lct = aggregate(meansim ~ dataset_id + long + lat + ages + LCT, veg_pred, sum, na.rm=TRUE)
+# 
+# # k = veg_lct
+# 
+# #assigning a crs to the pollen coordinates
+# veg_lct_spatial = SpatialPointsDataFrame(coords = veg_lct[,c('long', 'lat')], 
+#                                          data = veg_lct,
+#                                          proj4string = CRS(ll_proj))
+# 
+# #transforming to the albedo crs
+# veg_transform = spTransform(veg_lct_spatial, alb_proj)
+# coords = coordinates(veg_transform)
+# colnames(coords)[1] <- 'x'
+# colnames(coords)[2] <- 'y'
+# 
+# veg_lct = data.frame(coords, veg_lct)
+# 
+# pivot_mod = veg_lct %>%
+#   pivot_wider(names_from = LCT, values_from = meansim)
+# 
+# pivot_mod = data.frame(pivot_mod)
+# 
+# ############################################################################################
+# # 
+# ############################################################################################
+# 
+# # ele_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+# # 
+# # latLong = data.frame(pivot_mod[,c('long', 'lat')])
+# 
+# ele_get = get_elev_point(pivot_mod[,c('long', 'lat')], ll_proj, src = "aws")
+# 
+# # ele_get = get_elev_point(latLong, ele_proj, src = "aws")
+# 
+# lct_all = data.frame(pivot_mod[,c('ages', 'long', 'lat', 'x', 'y')], 
+#                      elev = ele_get$elevation, 
+#                      pivot_mod[,c('ET', 'OL', 'ST')])
+# 
+# ggplot() + 
+#   geom_point(data=lct_all, aes(x=long, y=lat), colour="blue") +
+#   facet_wrap(~ages)
+# 
+# lct_all = lct_all[which((lct_all$lat > latlimits[1])&
+#                           (lct_all$lat < latlimits[2])&
+#                           (lct_all$long > longlimits[1])&
+#                           (lct_all$long < longlimits[2])), ]
+# 
+# # lct_all = lct_all[which(lct_all$long<(-40)),]
+# # lct_all = lct_all[which(lct_all$long>(-160)),]
+# # lct_all= lct_all[which(lct_all$lat<(73)),]
+# 
+# lct_all = lct_all[which(!((lct_all$lat<25)&(lct_all$long<(-150)))),]
 
 
 lct_paleo = lct_all
