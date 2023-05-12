@@ -1,5 +1,16 @@
+library(sp)
+library(ggplot2)
+library(raster)
+
+alb_prod = "bluesky"
+
 alb_proj = '+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0
 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
+
+
+pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
+
+pbs = readRDS('data/map-data/geographic/pbs.RDS')
 
 # 
 # diffs_paleo = readRDS('data/lct_paleo.RDS')
@@ -17,7 +28,7 @@ alb_proj = '+proj=aea +lat_1=50 +lat_2=70 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0
 #                                            proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
 
 # diff_paleo = readRDS('data/preds_alb_diffs_all.RDS')
-diff_paleo = readRDS('data/preds_alb_diffs_sub.RDS')
+diff_paleo = readRDS(paste0('data/preds_alb_diffs_sub_', alb_prod, '.RDS'))
 
 diff_paleo_unique = diff_paleo[!duplicated(diff_paleo[,c('lat', 'long')]),]
 
@@ -30,13 +41,14 @@ diff_paleo_spatial = SpatialPointsDataFrame(coords=diff_paleo_unique[,c('long360
 
 
 rk = brick('data/radiative-kernels/HadGEM3-GA7.1_TOA_kernel_L19.nc', level=1, varname='albedo_sw_cs')
+
 # foo = as.data.frame(rk, xy=TRUE, na.rm=TRUE)
 # ggplot() +
 #   geom_raster(data=foo, aes(x=x, y=y, fill=X4))
 
 # rk = brick('data/radiative-kernels/HadGEM3-GA7.1_srf_kernel_L19.nc', level=1)
 # rk_proj = projectRaster(rk[[4]], crs =CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
-rk_month = raster::extract(rk[[4]], diff_paleo_spatial)
+rk_month = raster::extract(rk[[3]], diff_paleo_spatial)
 
 diff_paleo_unique$rk = rk_month 
 
@@ -62,7 +74,7 @@ sc_fill_diverge <- scale_fill_distiller(type = "div",
                                         palette = "RdYlBu",#"BrBG",
                                         # labels = labels,
                                         na.value="grey", 
-                                        name="Radiative Forcing (W/m^2)",
+                                        name="RF (W/m^2)",
                                         limits = c(-thresh,thresh),
                                         values = values)
 
@@ -194,7 +206,9 @@ ggplot()+
 ggsave(paste0('figures/alb_preds_radiative_subset_point.png'))
 ggsave(paste0('figures/alb_preds_radiative_subset_point.pdf'))
 
-
+# b = bbox(pbs_ll)
+# bbox(pbs_ll)[1] = -170
+# bbox(pbs_ll)[2] = -45
 
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
@@ -216,7 +230,7 @@ ggplot()+
         axis.text = element_blank(),
         legend.text = element_text(size=14),
         legend.title = element_text(size=14)) +
-  coord_fixed()
+  coord_fixed(xlim=c(-165, -55), ylim = c(20, 80)) 
 # scale_fill_brewer(type = "div", palette = 'Rd
 ggsave(paste0('figures/alb_preds_radiative_subset_tile.png'))
 ggsave(paste0('figures/alb_preds_radiative_subset_tile.pdf'))
@@ -225,6 +239,8 @@ ggsave(paste0('figures/alb_preds_radiative_subset_tile.pdf'))
 ###############################################################################################################
 ## summarize
 ###############################################################################################################
+
+
 
 
 library(sf)
@@ -323,3 +339,107 @@ ggplot() +
 ggsave('figures/rf_bar_both.pdf')
 ggsave('figures/rf_bar_both.png')
 
+
+###############################################################################################################
+## summarize by region
+###############################################################################################################
+
+## CASE: ENA
+xlo = -100
+xhi = -52
+ylo = 48
+yhi = 67
+xlim = c(xlo, xhi)
+ylim = c(ylo, yhi)
+
+diff_paleo_merge_ENA = subset(diff_paleo_merge, (long.x>xlo) & (long.x<xhi) & (lat.y>ylo) & (lat.y<yhi))
+
+rf_summary_ENA = diff_paleo_merge_ENA %>% 
+  group_by(facets) %>%
+  dplyr::summarize(total_forcing = sum(forcing), 
+                   mean_forcing = mean(forcing), 
+                   mean_weighted = sum(forcing * area) / sum(area),
+                   cells = n_distinct(cell_id), 
+                   total_area = sum(area_km2))
+
+rf_summary_ENA = rf_summary_ENA %>%
+  mutate(pos = mean_forcing > 0)
+rf_summary_ENA$type = rep("ENA")
+
+
+# CASE: HEMLOCK
+xlo = -90
+xhi = -60 
+ylo = 37
+yhi = 48
+xlim = c(xlo, xhi)
+ylim = c(ylo, yhi)
+
+diff_paleo_merge_HEM = subset(diff_paleo_merge, (long.x>xlo) & (long.x<xhi) & (lat.y>ylo) & (lat.y<yhi))
+
+rf_summary_HEM = diff_paleo_merge_HEM %>% 
+  group_by(facets) %>%
+  dplyr::summarize(total_forcing = sum(forcing), 
+                   mean_forcing = mean(forcing), 
+                   mean_weighted = sum(forcing * area) / sum(area),
+                   cells = n_distinct(cell_id), 
+                   total_area = sum(area_km2))
+
+rf_summary_HEM = rf_summary_HEM %>%
+  mutate(pos = mean_forcing > 0)
+rf_summary_HEM$type = rep("HEM")
+
+
+# CASE: WCAN
+xlo = -165
+xhi = -105
+ylo = 45
+yhi = 75
+xlim = c(xlo, xhi)
+ylim = c(ylo, yhi)
+
+xmid = -141
+
+diff_paleo_merge_WCAN = subset(diff_paleo_merge, (long.x>xlo) & (long.x<xhi) & (lat.y>ylo) & (lat.y<yhi))
+
+rf_summary_WCAN = diff_paleo_merge_WCAN %>% 
+  group_by(facets) %>%
+  dplyr::summarize(total_forcing = sum(forcing), 
+                   mean_forcing = mean(forcing), 
+                   mean_weighted = sum(forcing * area) / sum(area),
+                   cells = n_distinct(cell_id), 
+                   total_area = sum(area_km2))
+
+rf_summary_WCAN = rf_summary_WCAN %>%
+  mutate(pos = mean_forcing > 0)
+rf_summary_WCAN$type = rep("WCAN")
+
+
+rf_all = rbind(rf_summary,
+      rf_summary_ENA,
+      rf_summary_HEM,
+      rf_summary_WCAN)
+
+rf_all$type = factor(rf_all$type, levels=c('Holocene', 'ENA', 'HEM', 'WCAN'))
+
+ggplot() +
+  geom_col(data=rf_all, aes(x = mean_forcing, y = facets, fill = pos), width=0.9) +
+  scale_y_discrete(limits=rev) +
+  theme_bw(18) +
+  theme(legend.position = "none") +
+  xlab(bquote(radiative~forcing~(W/m^2))) +
+  ylab('time period (k years)') +
+  facet_grid(type~., scales="free_y", space = "free")
+ggsave('figures/rf_bar_all.pdf')
+ggsave('figures/rf_bar_all.png')
+
+ggplot() +
+  geom_bar(data=rf_all, aes(x = facets, y = mean_forcing, fill = type), stat='identity', position='dodge') +
+  # scale_y_discrete(limits=rev) +
+  theme_bw(18) +
+  # theme(legend.position = "none") +
+  xlab('time period (k years)') +
+  ylab(bquote(radiative~forcing~(W/m^2))) #+
+  # facet_grid(type~., scales="free_y", space = "free")
+ggsave('figures/rf_forcing_vs_time_all.pdf')
+ggsave('figures/rf_forcing_vs_time_all.png')
