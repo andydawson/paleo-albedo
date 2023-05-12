@@ -23,7 +23,7 @@ ctrl <- list(nthreads=8)
 # # just x and y
 #works better with smaller k values 
 # # was 900
-# mod = mgcv::bam(bs03 ~ s(x, y, bs="gp", k=300),
+# mod = mgcv::bam(mar ~ s(x, y, bs="gp", k=300),
 #           data=cal_data, 
 #           family=betar(link="logit"), 
 #           method="REML", 
@@ -34,7 +34,7 @@ ctrl <- list(nthreads=8)
 
 
 # # just x and y
-mod1 = mgcv::bam(bs03 ~ s(x, y, bs="gp", k=300),
+mod1 = mgcv::bam(mar ~ s(x, y, bs="gp", k=300),
           data=cal_data, 
           family=betar(link="logit"), 
           method="REML", 
@@ -49,7 +49,7 @@ vis.gam(mod,theta=30)
 
 # # add elevation
 # #tp vs gp model
-# mod2 = mgcv::bam(bs03 ~ s(x, y, bs='tp', k=400) + s(elev, k=30),
+# mod2 = mgcv::bam(mar ~ s(x, y, bs='tp', k=400) + s(elev, k=30),
 #           data=cal_data,
 #           family=betar(link="logit"),
 #           method="REML",
@@ -57,7 +57,7 @@ vis.gam(mod,theta=30)
 
 # add eleveation
 #gp model works better than tp
-mod2 = mgcv::bam(bs03 ~ s(x, y, bs="gp", k=300) + s(elev, k=30),
+mod2 = mgcv::bam(mar ~ s(x, y, bs="gp", k=300) + s(elev, k=30),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -72,7 +72,7 @@ saveRDS(mod2, paste0('data/calibration_mod2_', alb_prod, '.RDS'))
 AIC(mod1, mod2)
 
 # add OL
-mod3 = mgcv::bam(bs03 ~ s(x, y, bs='gp', k=300) + s(elev, k=30) + s(OL, k=30),
+mod3 = mgcv::bam(mar ~ s(x, y, bs='gp', k=300) + s(elev, k=30) + s(OL, k=30),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -84,10 +84,14 @@ saveRDS(mod3, paste0('data/calibration_mod3_', alb_prod, '.RDS'))
 
 
 AIC(mod1, mod2, mod3)
-anova.gam(mod1, mod2, mod3)
+
+anova_gam = anova.gam(mod1, mod2, mod3, test = "Chisq")
+anova_gam
+
+summary(mod3)
 
 # add ET
-mod4 = mgcv::bam(bs03 ~ s(x, y, bs='gp', k=300) + s(elev, k=30) + s(OL, k=30) + s(ET, k=30),
+mod4 = mgcv::bam(mar ~ s(x, y, bs='gp', k=300) + s(elev, k=30) + s(OL, k=30) + s(ET, k=30),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -100,16 +104,20 @@ saveRDS(mod4, paste0('data/calibration_mod4_', alb_prod, '.RDS'))
 
 AIC(mod1, mod2, mod3, mod4)
 
+anova_gam = anova.gam(mod1, mod2, mod3, mod4, test = "Chisq")
+anova_gam
+
+summary(mod4)
 
 # add ST
 #this takes a while 
-# mod5 = mgcv::gam(bs03 ~ s(x, y, bs='gp', k=30) + s(elev, k=10) + s(OL, k=10) + s(ET, k=10) + s(ST, k=10),
+# mod5 = mgcv::gam(mar ~ s(x, y, bs='gp', k=30) + s(elev, k=10) + s(OL, k=10) + s(ET, k=10) + s(ST, k=10),
 #            data=cal_data, 
 #            family=betar(link="logit"), 
 #            method="REML", 
 #            na.action=na.omit, 
 #            control=ctrl)
-mod5 = mgcv::bam(bs03 ~ s(x, y, bs='gp', k=300) + s(elev, k=40) + s(OL, k=40) + s(ET, k=30) + s(ST, k=30),
+mod5 = mgcv::bam(mar ~ s(x, y, bs='gp', k=300) + s(elev, k=40) + s(OL, k=40) + s(ET, k=30) + s(ST, k=30),
                  data=cal_data, 
                  family=betar(link="logit"), 
                  method="REML", 
@@ -121,7 +129,12 @@ saveRDS(mod5, paste0('data/calibration_mod5_', alb_prod, '.RDS'))
 
 AIC(mod1, mod2, mod3, mod4, mod5)
 
-mod6 = mgcv::bam(bs03 ~ s(x, y, bs='gp', k=375) + s(elev, k=60) + s(OL, ET, ST, k=30),
+anova_gam = anova.gam(mod1, mod2, mod3, mod4, test = "Chisq")
+anova_gam
+
+summary(mod4)
+
+mod6 = mgcv::bam(mar ~ s(x, y, bs='gp', k=375) + s(elev, k=60) + s(OL, ET, ST, k=30),
                  data=cal_data, 
                  family=betar(link="logit"), 
                  method="REML", 
@@ -133,6 +146,59 @@ saveRDS(mod6, paste0('data/calibration_mod6_', alb_prod, '.RDS'))
 
 AIC(mod1, mod2, mod3, mod4, mod5, mod6)
 
+anova_gam = anova.gam(mod1, mod2, mod3, mod4, mod5, mod6, test = "Chisq")
+anova_gam
+
+summary(mod6)
+
+mod7 = mgcv::bam(mar ~ s(x, y, bs='gp', k=375) + s(elev, k=60) + s(OL, ET, ST, bs='gp', k=30),
+                 data=cal_data, 
+                 family=betar(link="logit"), 
+                 method="REML", 
+                 na.action=na.omit, 
+                 control=ctrl)
+gam.check(mod7)
+
+saveRDS(mod7, paste0('data/calibration_mod7_', alb_prod, '.RDS'))
+
+AIC(mod1, mod2, mod3, mod4, mod5, mod6, mod7)
+
+anova_gam = anova.gam(mod1, mod2, mod3, mod4, mod5, mod6, mod7, test = "Chisq")
+anova_gam
+
+summary(mod7)
+
+
+mod8 = mgcv::bam(mar ~ s(x, y, bs='gp', k=375) + s(elev, k=60) + s(OL, ET, ST, bs='tp', k=50),
+                 data=cal_data, 
+                 family=betar(link="logit"), 
+                 method="REML", 
+                 na.action=na.omit, 
+                 control=ctrl)
+gam.check(mod8)
+
+saveRDS(mod8, paste0('data/calibration_mod8_', alb_prod, '.RDS'))
+
+AIC(mod1, mod2, mod3, mod4, mod5, mod6, mod7, mod8)
+
+anova_gam = anova.gam(mod1, mod2, mod3, mod4, mod5, mod6, mod7, mod8, test = "Chisq")
+anova_gam
+
+anova_gam = anova.gam(mod5, mod7, mod8, test = "Chisq")
+anova_gam
+
+anova_gam = anova.gam(mod7, mod8, test = "Chisq")
+anova_gam
+
+anova_gam = anova.gam(mod2, mod5, test = "Chisq")
+anova_gam
+
+anova_gam = anova.gam(mod1, mod2, mod7, test = "Chisq")
+anova_gam
+
+summary(mod7)
+
+
 ###############################################################################################################
 ## compare models
 ###############################################################################################################
@@ -140,7 +206,7 @@ AIC(mod1, mod2, mod3, mod4, mod5, mod6)
 paste0('data/calibration_mod6_', alb_prod, '.RDS')
 
 ###############################################################################################################
-## plotting model fit for bs03
+## plotting model fit for mar
 ###############################################################################################################
 preds3 = predict.gam(mod3, 
                      type="response", 
@@ -151,7 +217,7 @@ cal_data$preds_mod3 = preds3$fit
 #dat_all$predict = preds$fit
 
 ggplot(data=cal_data) + 
-  geom_point(aes(x=bs03, y=preds_mod3)) +
+  geom_point(aes(x=mar, y=preds_mod3)) +
   geom_abline(slope=1, intercept=0, colour="red") +
   xlim(c(0,1)) + 
   ylim(c(0,1))
@@ -169,7 +235,7 @@ cal_data$preds_mod4 = preds$fit
 #dat_all$predict = preds$fit
 
 ggplot(data=cal_data) + 
-  geom_point(aes(x=bs03, y=preds_mod4)) +
+  geom_point(aes(x=mar, y=preds_mod4)) +
   geom_abline(slope=1, intercept=0, colour="red") +
   xlim(c(0,1)) + 
   ylim(c(0,1))
@@ -191,7 +257,7 @@ cal_data$preds_mod5 = preds$fit
 #dat_all$predict = preds$fit
 
 ggplot(data=cal_data) + 
-  geom_point(aes(x=bs03, y=preds_mod5), size=2, alpha=0.5) +
+  geom_point(aes(x=mar, y=preds_mod5), size=2, alpha=0.5) +
   geom_abline(slope=1, intercept=0, colour="red", lwd=1, lty=2) +
   xlim(c(0,1)) + 
   ylim(c(0,1)) +
@@ -205,14 +271,14 @@ ggsave('figures/cal_model_vs_datamod5.png')
 ggsave('figures/cal_model_vs_datamod5.pdf')
 
 # cal_data$preds = cal_model$fitted.values
-cor(cal_data$bs03, cal_data$preds_mod5, use = 'complete.obs')
-summary(lm(preds_mod5~bs03, data=cal_data))
+cor(cal_data$mar, cal_data$preds_mod5, use = 'complete.obs')
+summary(lm(preds_mod5~mar, data=cal_data))
 ################################################################################################
 #difference maps 
 #################################################################################################
 #calculating difference between model and predicted values from model #5
 #this is for march 
-cal_data$diff_mod5 = cal_data$preds_mod5 - cal_data$bs03
+cal_data$diff_mod5 = cal_data$preds_mod5 - cal_data$mar
 saveRDS(cal_data, 'data/cal_data.RDS')
 ######################################################################################################
 #FIGURES
@@ -339,7 +405,7 @@ saveRDS(april_mod, 'data/calibration_model1_april.RDS')
 saveRDS(april_mod5, 'data/calibration_model5_april.RDS')
 
 ###############################################################################################################
-## plotting model fit for bs03
+## plotting model fit for mar
 ###############################################################################################################
 preds3 = predict.gam(mod3, 
                      type="response", 
@@ -350,7 +416,7 @@ cal_data$preds_mod3 = preds3$fit
 #dat_all$predict = preds$fit
 
 ggplot(data=cal_data) + 
-  geom_point(aes(x=bs03, y=preds_mod3)) +
+  geom_point(aes(x=mar, y=preds_mod3)) +
   geom_abline(slope=1, intercept=0, colour="red") +
   xlim(c(0,1)) + 
   ylim(c(0,1))
@@ -368,7 +434,7 @@ cal_data$preds_mod4 = preds$fit
 #dat_all$predict = preds$fit
 
 ggplot(data=cal_data) + 
-  geom_point(aes(x=bs03, y=preds_mod4)) +
+  geom_point(aes(x=mar, y=preds_mod4)) +
   geom_abline(slope=1, intercept=0, colour="red") +
   xlim(c(0,1)) + 
   ylim(c(0,1))
@@ -390,7 +456,7 @@ cal_data$preds_mod5 = preds$fit
 #dat_all$predict = preds$fit
 
 ggplot(data=cal_data) + 
-  geom_point(aes(x=bs03, y=preds_mod5)) +
+  geom_point(aes(x=mar, y=preds_mod5)) +
   geom_abline(slope=1, intercept=0, colour="red", size=1, lty=2) +
   xlim(c(0,1)) + 
   ylim(c(0,1)) +
@@ -410,7 +476,7 @@ cal_data$preds = cal_model$fitted.values
 #################################################################################################
 #calculating difference between model and predicted values from model #5
 #this is for march 
-cal_data$diff_mod5 = cal_data$preds_mod5 - cal_data$bs03
+cal_data$diff_mod5 = cal_data$preds_mod5 - cal_data$mar
 saveRDS(cal_data, 'data/cal_data.RDS')
 ######################################################################################################
 #FIGURES
