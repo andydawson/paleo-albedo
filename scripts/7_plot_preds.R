@@ -1,6 +1,7 @@
 library(ggplot2)
 library(fields)
 # library(dplyr)
+library(reshape2)
 
 
 alb_prod = "bluesky"
@@ -9,7 +10,7 @@ alb_prod = "bluesky"
 ## read in prediction and map data
 ###############################################################################################################
 
-alb_preds = readRDS(paste0('data/lct_paleo_preds_', alb_prod, '.RDS'))
+alb_preds = readRDS(paste0('data/paleo_predict_gam_', alb_prod, '.RDS'))
 
 pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
 
@@ -21,7 +22,7 @@ pbs = readRDS('data/map-data/geographic/pbs.RDS')
 breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 # breaks = c(0, 4, 8, 12, 16, 20, 30, 40, 60, 100)/100
 # breaks = c(0, 0.001, 5, 10, 20, 40, 50, 60, 80, 100)/100
-# cover_melt2$value_binned = factor(cut(cover_melt2$value, breaks, include.lowest=TRUE, labels=FALSE), levels=seq(1, 11))
+# cover_melt2$alb_binned = factor(cut(cover_melt2$value, breaks, include.lowest=TRUE, labels=FALSE), levels=seq(1, 11))
 # labels = c("0 - 20", "20 - 30", "30 - 40", "40 - 50", "50 - 60", "60 - 70", "70 - 80",  "80 - 90", "90 - 100")
 # labels = c("0 - 0.1", "0.1 - 0.2", "0.2 - 0.3", "0.3 - 0.4", "0.4 - 0.5", "0.5 - 0.6", "0.6 - 0.7", "0.7 - 0.8",  "0.8 - 0.9", "0.9 - 1")
 
@@ -48,7 +49,7 @@ sc_fill <- scale_fill_manual(values = c(tim.colors(length(breaks)), "grey"), lab
 ## summary plots of values
 ###############################################################################################################
 
-alb_preds$value_bin = cut(alb_preds$alb_pred, breaks, labels=FALSE)
+alb_preds$alb_bin = cut(alb_preds$alb_mean, breaks, labels=FALSE)
 
 ###############################################################################################################
 ## aggregate to 1 degree by 1 degree tiles
@@ -75,18 +76,19 @@ alb_grid <- data.frame(cell_id, alb_preds)
 coords   = xyFromCell(grid, alb_grid$cell_id)
 colnames(coords) = c('long', 'lat')
 
-alb_grid = cbind(coords, alb_grid[,c('x', 'y', 'cell_id', 'year', 'alb_pred')])
+alb_grid = cbind(coords, alb_grid[,c('x', 'y', 'cell_id', 'year', 'alb_mean')])#, 'alb_sd')])
 
+# IF USE LCT AT POINT SCALE
 # take sd as well, mean of other vars too 
 # alb_grid = aggregate(alb_pred ~ cell_id + long + lat + x + y + year, alb_grid, median)
-alb_grid = aggregate(alb_pred ~ cell_id + long + lat + year, alb_grid, median)
+# alb_grid = aggregate(alb_mean ~ cell_id + long + lat + year, alb_grid, median)
 
+alb_grid$alb_bin = cut(alb_grid$alb_mean, breaks, labels=FALSE)
+# alb_grid[which(alb_grid$alb_pred==0),'alb_bin'] = 1
+# alb_grid[which(alb_grid$alb_pred>0.99999999999999),'alb_bin'] = length(breaks)-1
+# veg_lct$alb_bin[which(is.na(veg_lct$alb_bin))] = 1
 
-alb_grid$value_bin = cut(alb_grid$alb_pred, breaks, labels=FALSE)
-# alb_grid[which(alb_grid$alb_pred==0),'value_bin'] = 1
-# alb_grid[which(alb_grid$alb_pred>0.99999999999999),'value_bin'] = length(breaks)-1
-# veg_lct$value_bin[which(is.na(veg_lct$value_bin))] = 1
-
+alb_grid$alb_cv = alb_grid$alb_sd / alb_grid$alb_mean
 
 
 
@@ -120,9 +122,10 @@ alb_grid_sub$facets = factor(alb_grid_sub$facets, levels = labels)
 # map predictions lat long points
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
-  geom_tile(data=alb_grid_sub, aes(x=long,y=lat, fill=factor(value_bin))) +
-  # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(value_bin))) +
-  sc_fill_seq + 
+  geom_tile(data=alb_grid_sub, aes(x=long,y=lat, fill=factor(alb_bin))) +
+  # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(alb_bin))) +
+  scale_fill_manual(values=terrain.colors(10), na.value='transparent', name = "Albedo", labels=breaks[-1]) + 
+  # sc_fill_seq + 
   facet_grid(facets~.)+
   # facet_wrap(year~.)+
   theme_bw()+
@@ -138,13 +141,104 @@ ggplot()+
         legend.title = element_text(size=14)) +
   coord_fixed()
 
+ggplot()+
+  geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
+  geom_tile(data=alb_grid_sub, aes(x=long,y=lat, fill=factor(alb_bin))) +
+  # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(alb_bin))) +
+  scale_fill_manual(values=terrain.colors(10), na.value='transparent', name = "Albedo", labels=breaks[-1]) + 
+  # sc_fill_seq + 
+  # facet_grid(facets~variable)+
+  facet_wrap(year~.)+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        strip.text = element_text(size=14),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        legend.text = element_text(size=14),
+        legend.title = element_text(size=14)) +
+  coord_fixed()
+
+# ggplot()+
+#   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
+#   geom_tile(data=alb_grid_sub, aes(x=long,y=lat, fill=alb_sd)) +
+#   # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(alb_bin))) +
+#   # scale_fill_gradientn(colors=terrain.colors(10), na.value='transparent', name = "Albedo") + 
+#   scale_fill_distiller(type='seq', palette='YlOrBr', na.value='transparent', name = "SD") + 
+#   # sc_fill_seq + 
+#   # facet_grid(facets~variable)+
+#   facet_wrap(year~.)+
+#   theme_bw()+
+#   theme(axis.line = element_line(colour = "black"),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         panel.background = element_blank(),
+#         strip.text = element_text(size=14),
+#         axis.title = element_blank(),
+#         axis.ticks = element_blank(),
+#         axis.text = element_blank(),
+#         legend.text = element_text(size=14),
+#         legend.title = element_text(size=14)) +
+#   coord_fixed()
+# 
+# 
+# ggplot()+
+#   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
+#   geom_tile(data=alb_grid_sub, aes(x=long,y=lat, fill=alb_cv)) +
+#   # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(alb_bin))) +
+#   # scale_fill_gradientn(colors=terrain.colors(10), na.value='transparent', name = "Albedo") + 
+#   scale_fill_distiller(type='seq', palette='YlOrBr', na.value='transparent', name = "CV") + 
+#   # sc_fill_seq + 
+#   # facet_grid(facets~variable)+
+#   facet_wrap(year~.)+
+#   theme_bw()+
+#   theme(axis.line = element_line(colour = "black"),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         panel.background = element_blank(),
+#         strip.text = element_text(size=14),
+#         axis.title = element_blank(),
+#         axis.ticks = element_blank(),
+#         axis.text = element_blank(),
+#         legend.text = element_text(size=14),
+#         legend.title = element_text(size=14)) +
+#   coord_fixed()
+
+alb_grid_sub_melt = melt(alb_grid_sub, id.vars = c('long', 'lat', 'x', 'y', 'cell_id', 'year', 'facets'))
+alb_grid_sub_melt = alb_grid_sub_melt[which(alb_grid_sub_melt$variable != 'alb_bin'),]
+
+ggplot()+
+  geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
+  geom_tile(data=alb_grid_sub_melt, aes(x=long,y=lat, fill=value)) +
+  # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(alb_bin))) +
+  # scale_fill_manual(values=terrain.colors(10), na.value='transparent', name = "Albedo", labels=breaks[-1]) + 
+  # sc_fill_seq + 
+  facet_grid(facets~variable)+
+  # facet_wrap(year~.)+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        strip.text = element_text(size=14),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        legend.text = element_text(size=14),
+        legend.title = element_text(size=14)) +
+  coord_fixed()
+
+
 pdf(paste0('figures/alb_preds_tile_pages_', alb_prod, '.pdf'))
 for (year in years){
   
 p<-ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
-  geom_tile(data=subset(alb_grid_sub, year=year), aes(x=long,y=lat, fill=factor(value_bin))) +
-  # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(value_bin))) +
+  geom_tile(data=subset(alb_grid_sub, year=year), aes(x=long,y=lat, fill=factor(alb_bin))) +
+  # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(alb_bin))) +
   sc_fill_seq + 
   facet_grid(facets~.)+
   # facet_wrap(year~.)+
@@ -168,8 +262,8 @@ dev.off()
 # map predictions lat long points
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
-  geom_point(data=alb_grid_sub, aes(x=long,y=lat, colour=factor(value_bin)), size=0.9) +
-  # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(value_bin))) +
+  geom_point(data=alb_grid_sub, aes(x=long,y=lat, colour=factor(alb_bin)), size=0.9) +
+  # geom_tile(data=alb_grid, aes(x=x,y=y, fill=factor(alb_bin))) +
   sc_colour_seq + 
   facet_grid(facets~.)+
   # facet_wrap(year~.)+
@@ -194,7 +288,7 @@ ggplot()+
 year_df = data.frame(year = years)
 
 diff = data.frame(matrix(NA, nrow=0, ncol=9))
-colnames(diff) = c('cell_id', 'long', 'lat', 'x', 'y', 'year', 'alb_pred', 'value_bin', 'diff')
+colnames(diff) = c('cell_id', 'long', 'lat', 'x', 'y', 'year', 'alb_pred', 'alb_bin', 'diff')
 
 cell_ids = unique(alb_grid$cell_id)
 N_cells  = length(cell_ids)
@@ -213,7 +307,7 @@ for (i in 1:N_cells){
     # foo = data.frame(alb_sub[1:(nrow(alb_sub)-1), ], diff =  diff(alb_sub$alb_pred))
     # print(foo)
     
-    diff = rbind(diff, data.frame(alb_sub_filled[1:(nrow(alb_sub_filled)-1), ], diff = -diff(alb_sub_filled$alb_pred)))
+    diff = rbind(diff, data.frame(alb_sub_filled[1:(nrow(alb_sub_filled)-1), ], diff = -diff(alb_sub_filled$alb_mean)))
 }
 
 
@@ -243,7 +337,7 @@ sc_colour_diverge <- scale_colour_distiller(type = "div",
 
 # breaks_diff = c(-0.1, 4, 8, 12, 16, 20, 30, 40, 60, 80, 100)/100
 # # breaks = c(0, 0.001, 5, 10, 20, 40, 50, 60, 80, 100)/100
-# # cover_melt2$value_binned = factor(cut(cover_melt2$value, breaks, include.lowest=TRUE, labels=FALSE), levels=seq(1, 11))
+# # cover_melt2$alb_binned = factor(cut(cover_melt2$value, breaks, include.lowest=TRUE, labels=FALSE), levels=seq(1, 11))
 # labels = c("0-10", "10 - 20", "20 - 30", "30 - 40", "40 - 50", "50 - 60", "60 - 70", "70 - 80",  "80 - 90", "90 - 100")
 
 # ggplot()+
@@ -308,7 +402,7 @@ years = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
 alb_years = subset(alb_grid, year  %in% years)
 
 diff = data.frame(matrix(NA, nrow=0, ncol=9))
-colnames(diff) = c('cell_id', 'long', 'lat', 'x', 'y', 'year', 'alb_pred', 'value_bin', 'diff')
+colnames(diff) = c('cell_id', 'long', 'lat', 'x', 'y', 'year', 'alb_pred', 'alb_bin', 'diff')
 
 cell_ids = unique(alb_years$cell_id)
 N_cells  = length(cell_ids)
@@ -328,7 +422,8 @@ for (i in 1:N_cells){
   # foo = data.frame(alb_sub[1:(nrow(alb_sub)-1), ], diff =  diff(alb_sub$alb_pred))
   # print(foo)
   
-  diff = rbind(diff, data.frame(alb_sub_filled[1:(nrow(alb_sub_filled)-1), ], diff = -diff(alb_sub_filled$alb_pred)))
+  diff = rbind(diff, data.frame(alb_sub_filled[1:(nrow(alb_sub_filled)-1), ], 
+                                diff = -diff(alb_sub_filled$alb_mean)))
   
 }
 
@@ -454,7 +549,10 @@ ggplot()+
   theme(axis.line = element_line(colour = "black"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        panel.background = element_blank()) +
+        panel.background = element_blank(),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank()) +
   coord_fixed()
 ggsave(paste0('figures/alb_preds_diff_subset_tile_', alb_prod, '.png'))
 ggsave(paste0('figures/alb_preds_diff_subset_tile_', alb_prod, '.pdf'))
@@ -591,13 +689,13 @@ ggsave('figures/albaverage_cut.png')
 # # map predictions albers
 # ggplot()+
 #   geom_path(data=pbs, aes(long,lat, group = group), color="black") +
-#   geom_point(data=alb_preds, aes(x=x,y=y, colour=factor(value_bin))) +
+#   geom_point(data=alb_preds, aes(x=x,y=y, colour=factor(alb_bin))) +
 #   sc_colour + 
 #   facet_wrap(~year)
 # 
 # # map predictions albers
 # ggplot()+
 #   geom_path(data=pbs_ll, aes(long,lat, group = group), color="black") +
-#   geom_point(data=alb_preds, aes(x=long,y=lat, colour=factor(value_bin))) +
+#   geom_point(data=alb_preds, aes(x=long,y=lat, colour=factor(alb_bin))) +
 #   sc_colour + 
 #   facet_wrap(~year)
