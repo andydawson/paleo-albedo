@@ -53,11 +53,11 @@ cal_sim_gam = simulate(mod7,
                        nsim = 100,
                        data = cal_data)
 
-foo = data.frame(mar = cal_data[,'mar'], cal_sim_gam)
-foo_melt = melt(foo, id.vars = c('mar'))
+foo = data.frame(cal_data[,c('long', 'lat', 'mar')], cal_sim_gam)
+foo_melt = melt(foo, id.vars = c('long', 'lat', 'mar'))
 
 cal_sim_gam_sum = foo_melt %>% 
-  group_by(mar) %>%
+  group_by(long, lat, mar) %>%
   summarize(alb_mean = mean(value), 
             alb_lo = quantile(value, c(0.025)), 
             alb_mid = quantile(value, c(0.5)), 
