@@ -25,6 +25,7 @@ mod7 = readRDS(paste0('data/calibration_mod7_', alb_prod, '.RDS'))
 plot(mod7, shade = TRUE, seWithMean = TRUE, residuals = TRUE, pch = 16, cex = 0.8)
 
 
+#predicting data using model #7
 cal_predict_gam = predict(mod7, 
                      newdata = cal_data,
                      type = 'response')#,
@@ -32,7 +33,7 @@ cal_predict_gam = predict(mod7,
 cal_eval_gam = data.frame(cal_data, alb_mean = cal_predict_gam)  
 
 
-
+#calculates correlation coefficient between mar and alb_mean
 cor(cal_eval_gam$mar, cal_eval_gam$alb_mean, use='complete')
 
 ggplot(data=cal_eval_gam) + 
@@ -63,6 +64,11 @@ cal_sim_gam_sum = foo_melt %>%
             alb_mid = quantile(value, c(0.5)), 
             alb_hi = quantile(value, c(0.975)))
 
+#difference between albedo in march and mean albedo predictions
+cal_sim_gam_sum$diff = cal_sim_gam_sum$mar - cal_sim_gam_sum$alb_mean
+cal_sim_gam_sum$diff2 = cal_sim_gam_sum$alb_mean - cal_sim_gam_sum$mar
+
+#model vs modern data with error bars  
 ggplot(data=cal_sim_gam_sum) + 
   geom_point(aes(x=mar, y=alb_mean), size=2, alpha=0.5) +
   geom_linerange(aes(x=mar, ymin=alb_lo, ymax=alb_hi), alpha=0.5) +
@@ -77,6 +83,20 @@ ggplot(data=cal_sim_gam_sum) +
   ylab('albedo (model)')
 ggsave('figures/cal_model_vs_data_gam_error.png')
 ggsave('figures/cal_model_vs_data_gam_error.pdf')
+
+pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
+pbs = readRDS('data/map-data/geographic/pbs.RDS')
+#difference figure of mar-alb_mean 
+ggplot()+
+  geom_polygon(data=pbs_ll, aes(long,lat, group = group), fill='grey') +
+  geom_point(data=cal_sim_gam_sum, aes(x=long, y=lat, colour = diff))+
+  scale_colour_gradient2(low = 'green', high = 'pink', mid= 'yellow', limits = c(-0.2,0.2))+
+  ggtitle("")+
+  theme_bw()+
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+ggsave('figures/diff_fig.png')
+
 ###############################################################################################################
 ## BRMS: compare models
 ###############################################################################################################
