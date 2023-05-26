@@ -39,6 +39,7 @@ colnames(paleo_sim_gam_melt) = c('cell_idx', 'iter', 'value')
 paleo_sim_gam_sum = paleo_sim_gam_melt %>% 
   group_by(cell_idx) %>%
   summarize(alb_mean = mean(value), 
+            alb_sd = sd(value),
             alb_lo = quantile(value, c(0.025)), 
             alb_mid = quantile(value, c(0.5)), 
             alb_hi = quantile(value, c(0.975)))
@@ -47,11 +48,13 @@ paleo_sim_gam_df = data.frame(lct_paleo,  paleo_sim_gam_sum)
 
 saveRDS(paleo_sim_gam_df, paste0('data/paleo_predict_gam_', alb_prod, '.RDS'))
 
+
+##modify families for use in GAM fitting and checking 
 # fix.family.rd(betar())$rd
-# function (mu, wt, scale) 
+# function (mu, wt, scale)
 # {
 #   Theta <- exp(get(".Theta"))
-#   r <- rbeta(n = length(mu), shape1 = Theta * mu, shape2 = Theta * 
+#   r <- rbeta(n = length(mu), shape1 = Theta * mu, shape2 = Theta *
 #                (1 - mu))
 #   eps <- get(".betarEps")
 #   r[r >= 1 - eps] <- 1 - eps
