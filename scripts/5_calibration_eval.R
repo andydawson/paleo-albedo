@@ -21,19 +21,46 @@ mod4 = readRDS(paste0('data/calibration_mod4_', alb_prod, '.RDS'))
 mod5 = readRDS(paste0('data/calibration_mod5_', alb_prod, '.RDS'))
 mod6 = readRDS(paste0('data/calibration_mod6_', alb_prod, '.RDS'))
 mod7 = readRDS(paste0('data/calibration_mod7_', alb_prod, '.RDS'))
+mod7_free = readRDS(paste0('data/calibration_mod7_free_', alb_prod, '.RDS'))
+mod8 = readRDS(paste0('data/calibration_mod8_', alb_prod, '.RDS'))
+
+AIC(mod1, mod2, mod3, mod4, mod5, mod6, mod7, mod7_free, mod8)
+
+anova_gam = anova.gam(mod1, mod2, mod3, mod4, mod5, mod6, mod7, mod8, test = "Chisq")
+anova_gam
+
+anova_gam = anova.gam(mod5, mod7, mod7_free, mod8, test = "Chisq")
+anova_gam
+
+anova_gam = anova.gam(mod7_free, mod8, test = "Chisq")
+anova_gam
+
+anova_gam = anova.gam(mod2, mod5, test = "Chisq")
+anova_gam
+
+anova_gam = anova.gam(mod1, mod2, mod7, test = "Chisq")
+anova_gam
+
+
+summary(mod7_free)
+summary(mod8)
+
 
 plot(mod7, shade = TRUE, seWithMean = TRUE, residuals = TRUE, pch = 16, cex = 0.8)
 
 
-#predicting data using model #7
-cal_predict_gam = predict(mod7, 
+cal_model = mod8
+
+saveRDS(cal_model, paste0('data/calibration_model_selected_', alb_prod, '.RDS'))
+
+cal_predict_gam = predict(cal_model, 
                      newdata = cal_data,
                      type = 'response')#,
 # se.fit = TRUE)
 cal_eval_gam = data.frame(cal_data, alb_mean = cal_predict_gam)  
 
 
-#calculates correlation coefficient between mar and alb_mean
+
 cor(cal_eval_gam$mar, cal_eval_gam$alb_mean, use='complete')
 
 ggplot(data=cal_eval_gam) + 
@@ -50,25 +77,21 @@ ggplot(data=cal_eval_gam) +
 ggsave('figures/cal_model_vs_data_gam.png')
 ggsave('figures/cal_model_vs_data_gam.pdf')
 
-cal_sim_gam = simulate(mod7,
+cal_sim_gam = simulate(cal_model,
                        nsim = 100,
                        data = cal_data)
 
-foo = data.frame(cal_data[,c('long', 'lat', 'mar')], cal_sim_gam)
-foo_melt = melt(foo, id.vars = c('long', 'lat', 'mar'))
+cal_sim_gam = data.frame(cal_data[,c('long', 'lat', 'mar')], cal_sim_gam)
+cal_sim_gam_melt = melt(cal_sim_gam, id.vars = c('long', 'lat', 'mar'))
 
-cal_sim_gam_sum = foo_melt %>% 
+cal_sim_gam_sum = cal_sim_gam_melt %>% 
   group_by(long, lat, mar) %>%
   summarize(alb_mean = mean(value), 
             alb_lo = quantile(value, c(0.025)), 
             alb_mid = quantile(value, c(0.5)), 
-            alb_hi = quantile(value, c(0.975)))
+            alb_hi = quantile(value, c(0.975)),
+            .groups = "keep")
 
-#difference between albedo in march and mean albedo predictions
-cal_sim_gam_sum$diff = cal_sim_gam_sum$mar - cal_sim_gam_sum$alb_mean
-cal_sim_gam_sum$diff2 = cal_sim_gam_sum$alb_mean - cal_sim_gam_sum$mar
-
-#model vs modern data with error bars  
 ggplot(data=cal_sim_gam_sum) + 
   geom_point(aes(x=mar, y=alb_mean), size=2, alpha=0.5) +
   geom_linerange(aes(x=mar, ymin=alb_lo, ymax=alb_hi), alpha=0.5) +
@@ -83,20 +106,6 @@ ggplot(data=cal_sim_gam_sum) +
   ylab('albedo (model)')
 ggsave('figures/cal_model_vs_data_gam_error.png')
 ggsave('figures/cal_model_vs_data_gam_error.pdf')
-
-pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
-pbs = readRDS('data/map-data/geographic/pbs.RDS')
-#difference figure of mar-alb_mean 
-ggplot()+
-  geom_polygon(data=pbs_ll, aes(long,lat, group = group), fill='grey') +
-  geom_point(data=cal_sim_gam_sum, aes(x=long, y=lat, colour = diff))+
-  scale_colour_gradient2(low = 'green', high = 'pink', mid= 'yellow', limits = c(-0.2,0.2))+
-  ggtitle("")+
-  theme_bw()+
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-ggsave('figures/diff_fig.png')
-
 ###############################################################################################################
 ## BRMS: compare models
 ###############################################################################################################

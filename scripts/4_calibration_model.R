@@ -18,7 +18,7 @@ cal_data3 = cal_data2[,c('site', 'ET', 'OL', 'ST')]
 ## march calibration model
 ###############################################################################################################
 
-ctrl <- list(nthreads=8)
+ctrl <- list(nthreads=8, maxit=500)
 
 # # just x and y
 #works better with smaller k values 
@@ -34,7 +34,7 @@ ctrl <- list(nthreads=8)
 
 
 # # just x and y
-mod1 = mgcv::bam(mar ~ s(x, y, bs="gp", k=300),
+mod1 = mgcv::bam(mar ~ s(x, y, bs="gp", k=350),
           data=cal_data, 
           family=betar(link="logit"), 
           method="REML", 
@@ -45,7 +45,7 @@ gam.check(mod1)
 saveRDS(mod1, paste0('data/calibration_mod1_', alb_prod, '.RDS'))
 
 
-vis.gam(mod,theta=30)
+vis.gam(mod1,theta=30)
 
 # # add elevation
 # #tp vs gp model
@@ -57,7 +57,7 @@ vis.gam(mod,theta=30)
 
 # add eleveation
 #gp model works better than tp
-mod2 = mgcv::bam(mar ~ s(x, y, bs="gp", k=300) + s(elev, k=30),
+mod2 = mgcv::bam(mar ~ s(x, y, bs="gp", k=350) + s(elev, k=50),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -72,7 +72,7 @@ saveRDS(mod2, paste0('data/calibration_mod2_', alb_prod, '.RDS'))
 AIC(mod1, mod2)
 
 # add OL
-mod3 = mgcv::bam(mar ~ s(x, y, bs='gp', k=300) + s(elev, k=30) + s(OL, k=30),
+mod3 = mgcv::bam(mar ~ s(x, y, bs='gp', k=350) + s(elev, k=50) + s(OL, k=30),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -91,7 +91,7 @@ anova_gam
 summary(mod3)
 
 # add ET
-mod4 = mgcv::bam(mar ~ s(x, y, bs='gp', k=300) + s(elev, k=30) + s(OL, k=30) + s(ET, k=30),
+mod4 = mgcv::bam(mar ~ s(x, y, bs='gp', k=350) + s(elev, k=50) + s(OL, k=30) + s(ET, k=30),
            data=cal_data, 
            family=betar(link="logit"), 
            method="REML", 
@@ -117,7 +117,7 @@ summary(mod4)
 #            method="REML", 
 #            na.action=na.omit, 
 #            control=ctrl)
-mod5 = mgcv::bam(mar ~ s(x, y, bs='gp', k=300) + s(elev, k=40) + s(OL, k=40) + s(ET, k=30) + s(ST, k=30),
+mod5 = mgcv::bam(mar ~ s(x, y, bs='gp', k=350) + s(elev, k=50) + s(OL, k=30) + s(ET, k=30) + s(ST, k=30),
                  data=cal_data, 
                  family=betar(link="logit"), 
                  method="REML", 
@@ -134,7 +134,7 @@ anova_gam
 
 summary(mod4)
 
-mod6 = mgcv::bam(mar ~ s(x, y, bs='gp', k=375) + s(elev, k=60) + s(OL, ET, ST, k=30),
+mod6 = mgcv::bam(mar ~ s(x, y, bs='gp', k=350) + s(elev, k=50) + s(OL, ET, ST, k=30),
                  data=cal_data, 
                  family=betar(link="logit"), 
                  method="REML", 
@@ -151,7 +151,7 @@ anova_gam
 
 summary(mod6)
 
-mod7 = mgcv::bam(mar ~ s(x, y, bs='gp', k=375) + s(elev, k=60) + s(OL, ET, ST, bs='gp', k=30),
+mod7 = mgcv::bam(mar ~ s(x, y, bs='gp', k=350) + s(elev, k=50) + s(OL, ET, ST, bs='gp', k=30),
                  data=cal_data, 
                  family=betar(link="logit"), 
                  method="REML", 
@@ -161,6 +161,16 @@ gam.check(mod7)
 
 saveRDS(mod7, paste0('data/calibration_mod7_', alb_prod, '.RDS'))
 
+mod7_free = mgcv::bam(mar ~ s(x, y, bs='gp', k=350) + s(elev, k=50) + s(OL, ET, ST, bs='gp', k=50),
+                 data=cal_data, 
+                 family=betar(link="logit"), 
+                 method="REML", 
+                 na.action=na.omit, 
+                 control=ctrl)
+gam.check(mod7_free)
+
+saveRDS(mod7, paste0('data/calibration_mod7_free_', alb_prod, '.RDS'))
+
 AIC(mod1, mod2, mod3, mod4, mod5, mod6, mod7)
 
 anova_gam = anova.gam(mod1, mod2, mod3, mod4, mod5, mod6, mod7, test = "Chisq")
@@ -169,7 +179,7 @@ anova_gam
 summary(mod7)
 
 
-mod8 = mgcv::bam(mar ~ s(x, y, bs='gp', k=375) + s(elev, k=60) + s(OL, ET, ST, bs='tp', k=50),
+mod8 = mgcv::bam(mar ~ s(x, y, bs='gp', k=350) + s(elev, k=50) + s(OL, ET, ST, bs='tp', k=50),
                  data=cal_data, 
                  family=betar(link="logit"), 
                  method="REML", 
@@ -198,6 +208,14 @@ anova_gam
 
 summary(mod7)
 
+mod9 = mgcv::bam(mar ~ s(x, y, bs='gp', k=350) + s(elev, k=50) + s(OL, ET, ST, bs='tp', k=30),
+                 data=cal_data, 
+                 family=betar(link="logit"), 
+                 method="REML", 
+                 na.action=na.omit, 
+                 control=ctrl,
+                 select = TRUE)
+gam.check(mod9)
 
 ###############################################################################################################
 ## compare models

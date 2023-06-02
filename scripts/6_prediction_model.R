@@ -18,7 +18,7 @@ colnames(lct_paleo)[1] = 'year'
 
 # lct_paleo = lct_paleo[which(lct_paleo$month == 4),]
 
-cal_model = readRDS(paste0('data/calibration_mod7_', alb_prod, '.RDS'))
+cal_model = readRDS(paste0('data/calibration_model_selected_', alb_prod, '.RDS'))
 
 
 paleo_predict_gam = predict.gam(cal_model, 
@@ -33,28 +33,33 @@ paleo_sim_gam = simulate(cal_model,
                    nsim = 100,
                    data = lct_paleo)
 
-paleo_sim_gam_melt = melt(paleo_sim_gam)
-colnames(paleo_sim_gam_melt) = c('cell_idx', 'iter', 'value')
+paleo_sim_gam_df = data.frame(lct_paleo,  paleo_sim_gam)  
+
+paleo_sim_gam_melt = melt(paleo_sim_gam_df, id.vars = c('year', 'long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST'))
+colnames(paleo_sim_gam_melt) = c('year', 'long', 'lat', 'x', 'y', 'elev', 'ET', 'OL', 'ST', 'iter', 'value')#c('cell_idx', 'iter', 'value')
+
+paleo_sim_gam_melt$iter = as.numeric(substr(paleo_sim_gam_melt$iter, 2, 4))
+
+saveRDS(paleo_sim_gam_melt, paste0('data/paleo_predict_gam_samps_', alb_prod, '.RDS'))
 
 paleo_sim_gam_sum = paleo_sim_gam_melt %>% 
-  group_by(cell_idx) %>%
+  group_by(year, long, lat, x, y, elev, ET, OL, ST) %>%
   summarize(alb_mean = mean(value), 
             alb_sd = sd(value),
             alb_lo = quantile(value, c(0.025)), 
             alb_mid = quantile(value, c(0.5)), 
-            alb_hi = quantile(value, c(0.975)))
+            alb_hi = quantile(value, c(0.975)), 
+            .groups = 'keep')
 
-paleo_sim_gam_df = data.frame(lct_paleo,  paleo_sim_gam_sum)  
+# paleo_sim_gam_sum_df = data.frame(lct_paleo,  paleo_sim_gam_sum)  
 
-saveRDS(paleo_sim_gam_df, paste0('data/paleo_predict_gam_', alb_prod, '.RDS'))
+saveRDS(paleo_sim_gam_sum, paste0('data/paleo_predict_gam_summary_', alb_prod, '.RDS'))
 
-
-##modify families for use in GAM fitting and checking 
 # fix.family.rd(betar())$rd
-# function (mu, wt, scale)
+# function (mu, wt, scale) 
 # {
 #   Theta <- exp(get(".Theta"))
-#   r <- rbeta(n = length(mu), shape1 = Theta * mu, shape2 = Theta *
+#   r <- rbeta(n = length(mu), shape1 = Theta * mu, shape2 = Theta * 
 #                (1 - mu))
 #   eps <- get(".betarEps")
 #   r[r >= 1 - eps] <- 1 - eps
