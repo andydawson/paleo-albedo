@@ -14,6 +14,7 @@ alb_prod = "bluesky"
 alb_preds = readRDS(paste0('data/paleo_predict_gam_summary_', alb_prod, '.RDS'))
 
 pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
+
 pbs = readRDS('data/map-data/geographic/pbs.RDS')
 
 
@@ -61,6 +62,38 @@ sc_colour_seq <- scale_colour_brewer(type = "seq",
                                      direction=-1,
                                      na.value="grey", 
                                      name="Albedo")
+
+sc_fill_diverge <- scale_fill_distiller(type = "div",
+                                        palette = "RdYlBu",#"BrBG",
+                                        # labels = labels,
+                                        na.value="grey", 
+                                        name="Percent",
+                                        limits = c(-thresh,thresh))
+
+sc_colour_diverge <- scale_colour_distiller(type = "div",
+                                            palette = "RdYlBu",#"BrBG",
+                                            # labels = labels,
+                                            na.value="grey", 
+                                            name="Percent",
+                                            limits = c(-thresh,thresh))
+sc_fill_diverge <- scale_fill_distiller(type = "div",
+                                        palette = "RdYlBu",#"BrBG",
+                                        # labels = labels,
+                                        direction=1,
+                                        na.value="grey", 
+                                        name="Albedo change",
+                                        limits = c(-thresh,thresh),
+                                        values = values)
+
+
+sc_fill_diverge <- scale_fill_distiller(type = "div",
+                                        palette = "BrBG",
+                                        # labels = labels,
+                                        na.value="grey",
+                                        name="Albedo change",
+                                        limits = c(-thresh,thresh),
+                                        values = values)
+
 
 
 ###############################################################################################################
