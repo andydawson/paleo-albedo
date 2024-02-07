@@ -7,6 +7,9 @@ library(dplyr)
 library(tidyr)
 library(elevatr)
 library(ggplot2)
+library(raster)
+library(terra)
+library(reshape2)
 
 ############################################################################################
 # read in REVEALS reconstructions
@@ -30,7 +33,9 @@ taxon2pft = read.csv('data/taxon2LCT_translation_v2.csv')
 
 grid <- readRDS("data/grid.RDS")
 
-cell_id <- raster::extract(grid, veg_pred[,c('long', 'lat')])
+foo = rast(grid)
+
+cell_id <- terra::extract(grid, veg_pred[,c('long', 'lat')])
 
 coords   = xyFromCell(grid, veg_pred$cell_id)
 veg_pred = cbind(coords, veg_pred)
@@ -85,7 +90,10 @@ pivot_mod = data.frame(pivot_mod)
 # 
 # latLong = data.frame(pivot_mod[,c('long', 'lat')])
 
-ele_get = get_elev_point(pivot_mod[,c('long', 'lat')], ll_proj, src = "aws")
+locations = pivot_mod[,c('long', 'lat')]
+colnames(locations) = c('x', 'y')
+
+ele_get = get_elev_point(locations, prj=ll_proj, src = "aws")
 
 # ele_get = get_elev_point(latLong, ele_proj, src = "aws")
 
@@ -203,3 +211,36 @@ ggplot() +
   geom_point(data=lct_paleo, aes(x=long, y=lat), colour="blue") +
   facet_wrap(~ages)
 
+############################################################################################
+# interpolated veg
+############################################################################################
+
+lct_interp = readRDS('data/veg_posts_interp_ice.RDS')
+
+lct_interp = lct_interp %>% 
+  group_by(cell_id, x, y, ages, LCT) %>%
+  summarize(value = mean(value))
+
+lct_interp_wide = pivot_wider(lct_interp, id_cols = c('cell_id', 'x', 'y', 'ages'), names_from = c('LCT'), values_from = c('value'))
+lct_interp_wide = data.frame(lct_interp_wide)
+
+locations_interp = lct_interp_wide[,c('x', 'y')]
+# colnames(locations_interp) = c('x', 'y')
+
+ele_get_interp = get_elev_point(locations_interp, prj=ll_proj, src = "aws")
+
+lct_interp_all = data.frame(lct_interp_wide[,c('ages', 'x', 'y')], 
+                     elev = ele_get_interp$elevation, 
+                     lct_interp_wide[,c('ET', 'OL', 'ST')])
+
+lct_interp_modern = lct_interp_all[which(lct_interp_all$ages == 50), ]
+
+lct_interp_modern = lct_interp_modern[, which(!(colnames(lct_interp_modern) %in% c('ages')))]
+
+saveRDS(lct_interp_modern, 'data/lct_modern_reveals_interp.RDS')
+
+
+lct_interp_paleo = lct_interp_all
+
+# lct_paleo = rbind(data.frame(ages=50, lct_modern), lct_paleo)
+saveRDS(lct_interp_paleo, 'data/lct_paleo_reveals_interp.RDS')
