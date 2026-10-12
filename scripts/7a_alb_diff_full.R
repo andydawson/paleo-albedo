@@ -28,7 +28,10 @@ ages = c(50, 200, seq(500, 11500, by=500))
 N_times = length(ages)
 ages_sub = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
+# (issue I02, 2026-10-12).
+source('R/calendar.R')
+months = MONTHS
 
 breaks_alb = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
@@ -156,7 +159,7 @@ cell_count_summary = alb_grid_full[,c('cell_id', 'month', 'year')] %>%
   group_by(cell_id, month) %>%
   dplyr::summarize(cell_count = n()) #%>%
 
-cell_id_missing = unique(cell_count_summary[which(cell_count_summary$cell_count < 25), 'cell_id'])
+cell_id_missing = unique(cell_count_summary[which(cell_count_summary$cell_count < length(ages)), 'cell_id'])
 cell_id_missing$lat = alb_grid_full[match(cell_id_missing$cell_id, alb_grid_full$cell_id),'lat']
 
 N_missing = nrow(cell_id_missing)
@@ -169,7 +172,7 @@ cell_count_summary_new = alb_grid_full_new[,c('cell_id', 'month', 'year')] %>%
   group_by(cell_id, month) %>%
   dplyr::summarize(cell_count = n()) #%>%
 
-cell_id_missing_new = unique(cell_count_summary_new[which(cell_count_summary_new$cell_count < 25), 'cell_id'])
+cell_id_missing_new = unique(cell_count_summary_new[which(cell_count_summary_new$cell_count < length(ages)), 'cell_id'])
 
 alb_grid_full$alb_bin = cut(alb_grid_full$alb_mean, breaks_alb, labels=FALSE)
 

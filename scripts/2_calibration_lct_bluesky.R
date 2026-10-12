@@ -8,7 +8,10 @@ library(ggplot2)
 library(reshape2)
 library(tidyterra)
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
+# (issue I02, 2026-10-12).
+source('R/calendar.R')
+months = MONTHS
 
 pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
 
@@ -35,12 +38,12 @@ lct_interp_spat = vect(lonlat_interp,
 
 # albedo native resolution
 bs_interp_df = data.frame(matrix(NA, nrow=nrow(lct_interp_spat), ncol=12))
-colnames(bs_interp_df) = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+colnames(bs_interp_df) = MONTHS
 
 # albedo coarser resolution (same as grid?)
 bs_interp_df_coarse = data.frame(matrix(NA, nrow=nrow(lct_interp_spat), ncol=12))
 colnames(bs_interp_df_coarse) = paste0('bs', c(paste0('0', seq(1, 9)), seq(10,12)))
-colnames(bs_interp_df_coarse) = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+colnames(bs_interp_df_coarse) = MONTHS
 
 grid = rast(grid)
 
@@ -50,8 +53,8 @@ blue_all_months = rast('data/blue_sky_monthly_2000-2009.tif')
 # CM: this cell-averaged albedo is saved but not currently used downstream
 blue_all_months_coarse = resample(blue_all_months, grid, method="average")
 
-names(blue_all_months) = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
-names(blue_all_months_coarse) = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+names(blue_all_months) = MONTHS
+names(blue_all_months_coarse) = MONTHS
 
 # crop albedo (I think this removes the ocean grid cells? not sure)
 # CM: this crop is not needed (and not doing anything - cropping the raster to a box that is bigger than itself) - line 123 samples the raster at the 2870 land cover cells.

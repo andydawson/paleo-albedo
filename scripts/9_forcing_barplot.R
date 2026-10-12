@@ -330,6 +330,12 @@ d7 = inner_join(d7, distinct(d, cell_id, month, rk_hadgem, area), by = c('cell_i
 d7$facets = sub(' ka$', '', labels_period)[match(d7$year, sort(unique(d7$year)))]
 d7$rf = d7$alb_diff * 100 * d7$rk_hadgem
 d7$rf[!is.na(d7$ice_young) | !is.na(d7$ice_old)] = NA
+# CM: the recipe needs all four of its months; it is skipped, never computed on a subset,
+# when any is missing (issue I02).
+egu_months = c('feb','may','aug','nov')
+if (!all(egu_months %in% unique(d7$month))) {
+  message('EGU 2024 recipe skipped: needs ', paste(egu_months, collapse = '/'), ' in the data')
+} else {
 egu = d7 %>% filter(month %in% c('feb','may','aug','nov')) %>%
   group_by(facets) %>%
   summarise(mean_forcing  = mean(rf, na.rm = TRUE),
@@ -348,6 +354,7 @@ p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE) /
 ggsave('figures/forcing_barplot_slide18_egu2024recipe.pdf', p_egu, width = 8, height = 6.5)
 ggsave('figures/forcing_barplot_slide18_egu2024recipe.png', p_egu, width = 8, height = 6.5, dpi = 150)
 write.csv(egu, 'output/forcing/forcing_by_period_egu2024recipe_vs_slide.csv', row.names = FALSE)
+} # CM: end of the EGU 2024 recipe
 
 # --- numbers out -------------------------------------------------------------
 write.csv(main, 'output/forcing/forcing_by_period.csv', row.names = FALSE)

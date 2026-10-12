@@ -18,7 +18,10 @@ cal_interp_data =readRDS(paste0('data/calibration_modern_lct_interp_', alb_prod,
 cal_data2 = data.frame(site=seq(1,nrow(cal_interp_data)), cal_interp_data)
 cal_data3 = cal_data2[,c('site', 'ET', 'OL', 'ST')]
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
+# (issue I02, 2026-10-12).
+source('R/calendar.R')
+months = MONTHS
 
 ctrl <- list(nthreads=8, maxit=500)
 
@@ -106,18 +109,18 @@ for (month in months) {
 
 }
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+months = MONTHS
 
 ctrl <- list(nthreads=8, maxit=500)
 
-AIC_list =  vector("list", 12)
+AIC_list =  vector("list", length(months))
 names(AIC_list) = months
 
-AIC_df = data.frame(matrix(NA, nrow=8, ncol=13))
+AIC_df = data.frame(matrix(NA, nrow=8, ncol=1 + length(months)))
 colnames(AIC_df) = c('model', months)
 AIC_df$model = seq(1,8)
 
-ANOVA_list = vector("list", 12)
+ANOVA_list = vector("list", length(months))
 names(ANOVA_list) = months
 
 for (month in months) {
@@ -142,7 +145,7 @@ for (month in months) {
 
 write.csv(AIC_df, 'output/calibration/AIC_table.csv', row.names = FALSE)
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+months = MONTHS
 
 ctrl <- list(nthreads=8, maxit=500)
 
@@ -222,7 +225,7 @@ for (month in months) {
 
 }
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+months = MONTHS
 
 ctrl <- list(nthreads=8, maxit=500)
 

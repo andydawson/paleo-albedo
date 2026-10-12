@@ -12,7 +12,10 @@ alb_prod = "bluesky"
 
 dir.create('output/prediction', recursive = TRUE, showWarnings = FALSE)
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
+# (issue I02, 2026-10-12).
+source('R/calendar.R')
+months = MONTHS
 
 lct_interp_paleo = readRDS('data/lct_paleo_reveals_interp.RDS')
 colnames(lct_interp_paleo)[1] = 'year'

@@ -11,8 +11,10 @@ library(dplyr)
 
 alb_prod = "bluesky"
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
-months_number = seq(1, 12)
+# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
+# (issue I02, 2026-10-12).
+source('R/calendar.R')
+months = MONTHS
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
@@ -78,7 +80,7 @@ alb_diff$rk_cack = NA
 for (month in months){
 
   print(month)
-  month_number = months_number[which(months == month)]
+  month_number = month_to_number(month)  # CM: by name, not position in `months` (I02)
   print(month_number)
 
   idx_month = which(alb_diff$month == month)

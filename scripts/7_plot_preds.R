@@ -36,7 +36,10 @@ ages = c(50, 200, seq(500, 11500, by=500))
 N_times = length(ages)
 ages_sub = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
+# (issue I02, 2026-10-12).
+source('R/calendar.R')
+months = MONTHS
 
 ylim = c(12, 82)
 xlim = c(-166, -50)
@@ -168,8 +171,13 @@ alb_grid_sub$alb_mean_ice[which(is.na(alb_grid_sub$ice))] = alb_grid_sub$alb_mea
 
 alb_grid_sub$alb_mean[which(alb_grid_sub$ice == 'ICE')] = NA
 
-cell_id_drop = as.numeric(names(which(table(alb_grid_sub$cell_id)<8)))
-alb_grid_sub = alb_grid_sub[which(!(alb_grid_sub$cell_id %in% cell_id_drop)),]
+# CM: the two lines below are commented out (2026-10-12, issue I02). They look meant to drop
+# poorly covered cells, but table() counts rows per cell across ages AND months, and a cell
+# present at any age has 12 rows per age, so "< 8" dropped no cells at all (0 of 2,870).
+# With fewer months selected it would start dropping cells for the wrong reason. Outputs
+# are unchanged. What rule was intended is a question for Andria (scientific questions, D4).
+# cell_id_drop = as.numeric(names(which(table(alb_grid_sub$cell_id)<8)))
+# alb_grid_sub = alb_grid_sub[which(!(alb_grid_sub$cell_id %in% cell_id_drop)),]
 
 alb_grid_sub$alb_bin = cut(alb_grid_sub$alb_mean, breaks_alb, labels=FALSE)
 
@@ -197,6 +205,8 @@ alb_grid_sub = alb_grid_sub[which(alb_grid_sub$long < (-60)),]
 
 alb_grid_sub$month = factor(alb_grid_sub$month, levels = months)
 
+# CM: February-only map; skipped when February is not selected (issue I02).
+if ('feb' %in% months) {
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
   geom_tile(data=subset(alb_grid_sub, month=='feb'), aes(x=long,y=lat, fill=factor(alb_bin))) +
@@ -221,6 +231,7 @@ ggplot()+
   coord_fixed(xlim = xlim, ylim = ylim)
 ggsave(paste0('figures/alb_interp_preds_binned_tile_grid_', alb_prod, '.pdf'))#, width=12, height=14)
 ggsave(paste0('figures/alb_interp_preds_binned_tile_grid_', alb_prod, '.png'))#, width=12, height=14)
+} # CM: end of February-only map
 
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
@@ -247,7 +258,9 @@ ggplot()+
 ggsave(paste0('figures/alb_interp_preds_month_binned_tile_grid_', alb_prod, '.pdf'), width=14, height=12)
 ggsave(paste0('figures/alb_interp_preds_month_binned_tile_grid_', alb_prod, '.png'), width=14, height=12)
 
-months_sub = c('feb', 'may', 'aug', 'nov')
+# CM: the four-month panel shows whichever of its months are selected (issue I02).
+months_sub = intersect(c('feb', 'may', 'aug', 'nov'), months)
+if (length(months_sub)) {
 
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
@@ -273,7 +286,10 @@ ggplot()+
   coord_fixed(xlim = xlim, ylim = ylim)
 ggsave(paste0('figures/alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.pdf'), width=14, height=12)
 ggsave(paste0('figures/alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.png'), width=14, height=12)
+} # CM: end of four-month panel
 
+# CM: February-only map; skipped when February is not selected (issue I02).
+if ('feb' %in% months) {
 ggplot() +
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
   geom_tile(data=subset(alb_grid_sub, month=='feb'), aes(x=long,y=lat, fill=factor(alb_bin))) +
@@ -294,6 +310,7 @@ ggplot() +
   coord_fixed(xlim = xlim, ylim = ylim)
 ggsave(paste0('figures/alb_interp_preds_binned_tile_wrap_', alb_prod, '.pdf'), width=14, height=12)
 ggsave(paste0('figures/alb_interp_preds_binned_tile_wrap_', alb_prod, '.png'), width=14, height=12)
+} # CM: end of February-only map
 
 pdf(paste0('figures/alb_interp_preds_month_binned_tile_pages_', alb_prod, '.pdf'))
 for (year in ages_sub){
