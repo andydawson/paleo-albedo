@@ -14,7 +14,10 @@ alb_prod = "bluesky"
 dir.create('output/calibration', recursive = TRUE, showWarnings = FALSE)
 dir.create('figures', showWarnings = FALSE)
 
-months = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
+# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
+# (issue I02, 2026-10-12).
+source('R/calendar.R')
+months = MONTHS
 
 cal_interp_data =readRDS(paste0('data/calibration_modern_lct_interp_', alb_prod, '.RDS'))
 
@@ -87,7 +90,7 @@ cal_interp_sim_gam_all = data.frame(x = numeric(0),
                                     alb_model = numeric(0),
                                     month = character(0))
 
-cor_all = rep(NA, 12)
+cor_all = rep(NA, length(months))
 
 for (n in 1:length(months)){
 
@@ -303,6 +306,10 @@ p = ggplot(data=cal_sims) +
   facet_wrap(~model)
 print(p)
 
+# CM: November-only block (model comparison, re-save of the November selected model, and its
+# figures), to the end of the script. It runs only when November is among the selected
+# months; not re-indented, to keep the diff against Andria's lines small (issue I02).
+if ('nov' %in% months) {
 month = "nov"
 
 mod1_interp = readRDS(paste0('output/calibration/calibration_mod1_interp_', month, '_', alb_prod, '.RDS'))
@@ -384,3 +391,4 @@ ggplot(data=cal_interp_sim_gam_sum) +
   ylab('albedo (model)')
 ggsave(paste0('figures/cal_model_vs_data_gam_error_interp_', month, '.png'))
 ggsave(paste0('figures/cal_model_vs_data_gam_error_interp_', month, '.pdf'))
+} # CM: end of the November-only block
