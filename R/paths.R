@@ -181,15 +181,22 @@ path_figure = function(paths, ...) under_root(paths, file.path('figures', ...))
 # Where run manifests are written.
 path_runs = function(paths) under_root(paths, 'runs')
 
-# The script that writes `path` (NA for an original input). Stops if the path is not in
-# the catalogue. Accepts a path under any run root, with / or \ separators.
-producer = function(paths, path) {
+# A path as it is written in the catalogue ('data/x.RDS'): relative to the run's root,
+# with / separators. Lets paths given under a run directory, or with \ separators, be
+# matched to the catalogue and compared between runs (the run manifests, issue I05).
+root_relative = function(paths, path) {
   rel = gsub('\\\\', '/', path)
   if (!is.null(paths$root)) {
     root = sub('/$', '', gsub('\\\\', '/', paths$root))
     if (startsWith(rel, paste0(root, '/'))) rel = substring(rel, nchar(root) + 2)
   }
-  rel = sub('^\\./', '', rel)
+  sub('^\\./', '', rel)
+}
+
+# The script that writes `path` (NA for an original input). Stops if the path is not in
+# the catalogue. Accepts a path under any run root, with / or \ separators.
+producer = function(paths, path) {
+  rel = root_relative(paths, path)
   for (i in seq_len(nrow(PATH_CATALOGUE))) {
     if (grepl(template_regex(PATH_CATALOGUE$id[i], paths$tag), rel)) return(PATH_CATALOGUE$producer[i])
   }
