@@ -80,6 +80,12 @@ stopifnot(
   fails(seed_run_dir(base, "data/grid.RDS"))
 )
 
+# In a run directory, plots printed with no device open go to its own Rplots.pdf.
+local({
+  plot(1); dev.off()
+  stopifnot(file.exists(file.path(tmp, "Rplots.pdf")))
+})
+
 # seed_run_dir links or copies baseline products into a run directory, once.
 seeded <- seed_run_dir(alt, path_file(base, "calibration_stats"))
 stopifnot(identical(seeded, file.path(tmp, "output/calibration/calibration_model_stats.csv")),

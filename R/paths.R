@@ -113,6 +113,13 @@ redirected_paths = function(dir) list(profile = 'redirected', root = dir)
 pipeline_paths = function(cfg, profile = if (is.null(cfg$run$dir)) baseline_paths() else redirected_paths(cfg$run$dir)) {
   paths = c(profile, list(tag = ALBEDO_TAG))
   for (d in PRODUCT_DIRS) dir.create(under_root(paths, d), recursive = TRUE, showWarnings = FALSE)
+  # Plots printed with no device open go to Rplots.pdf in the working directory (scripts 3
+  # and 5 rely on this); in a run directory they go to its own Rplots.pdf instead, so a
+  # redirected run writes nothing into the repository.
+  if (!is.null(paths$root)) {
+    rplots = file.path(paths$root, 'Rplots.pdf')
+    options(device = function(...) grDevices::pdf(file = rplots, ...))
+  }
   message(if (is.null(paths$root)) 'paths: baseline; products are written to data/, output/, figures/ and runs/ in the repository'
           else sprintf('paths: run directory %s; every product of this run is written there', paths$root))
   paths
