@@ -23,7 +23,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I01 Regression contract | #2 | merged 2026-10-09 | 85e22bd |
 | I02 Month indexing | #3 | merged 2026-10-13 | d67587d |
 | I03 Validated config; script 9; map windows | #4 | merged 2026-10-13 | 80644fc |
-| I07 Paths; run directories; R-only tools | #5 | merged 2026-10-13 | (this merge) |
+| I07 Paths; run directories; R-only tools | #5 | merged 2026-10-13 | see git log |
 
 ---
 
