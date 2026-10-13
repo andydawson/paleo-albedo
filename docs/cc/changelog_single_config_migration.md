@@ -22,7 +22,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 |---|---|---|---|
 | I01 Regression contract | #2 | merged 2026-10-09 | 85e22bd |
 | I02 Month indexing | #3 | merged 2026-10-13 | d67587d |
-| I03 Validated config; script 9; map windows | #4 | in verification | |
+| I03 Validated config; script 9; map windows | #4 | merged 2026-10-13 | (this merge) |
 
 ---
 
@@ -144,9 +144,7 @@ exactly 12 months, or picked particular months by position.
 
 ---
 
-## I03: a validated configuration file; script 9 and the map windows migrated (#4)
-
-*In verification; this section is completed when the issue merges.*
+## I03: a validated configuration file; script 9 and the map windows migrated (#4), merged 2026-10-13
 
 **Purpose.** Create the configuration file and the machinery that reads and checks it, and
 move the first settings into it. Script 9 goes first because its assumptions were already
@@ -232,10 +230,18 @@ explicit. The map windows go too, because they were defined in five places.
 **Outputs changed.** None at the default settings. The run manifests of scripts 7 and 9
 now contain the configuration.
 
-**Verification** (pending). Planned:
-- script 9 from the frozen inputs: four tables byte-identical;
-- scripts 1 (diagnostic mode), 2 and 3: numeric outputs byte-identical, and figures
-  compared with the same scripts run on the pre-I03 code;
-- scripts 7, 7a, 8 and 9 run in sequence: every tail anchor byte-identical, and script 7's
-  maps compared with the I02 run;
-- the config and calendar tests, and the frozen inputs unchanged.
+**Verification.** Code at aef8d33, every run in its own run directory, 8 threads, frozen
+inputs locked and unchanged afterwards. Figures were compared byte for byte (PDFs with
+their creation dates removed) against the same scripts run on the pre-I03 code (d67587d)
+or, for the tail, against I02's run.
+
+| Run | Numeric outputs | Figures |
+|---|---|---|
+| script 9 from the frozen inputs | four tables byte-identical | 7 identical |
+| script 1, diagnostic mode | both land-cover tables byte-identical; diagnostic CSV identical | 28 identical |
+| scripts 2 and 3 | calibration table byte-identical; coarse table identical | 62 identical |
+| scripts 7 and 7a in parallel, then 8 and 9 | all six tail-anchor files and four forcing tables byte-identical | 23 identical |
+
+The map windows therefore changed nothing visible. The config and calendar tests pass. The
+manifests of scripts 7 and 9 record the configuration as JSON. Measured times with the
+machine otherwise fully loaded: script 7 took 114 minutes and script 7a 72.
