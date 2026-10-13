@@ -2,7 +2,7 @@
 #
 # Usage, in any script:
 #   source('R/config.R')
-#   cfg = load_config()
+#   cfg = load_config()          # config.R, or the file given with --config <file>
 #   cfg$analysis$forcing$variant
 #
 # config.R is one R list expression, but it is not run as R code. The loader reads it as
@@ -60,9 +60,24 @@ config_schema_errors = function(value, schema, path = 'cfg') {
   errs
 }
 
-# Read, check and return the configuration as a list with sections analysis and
-# presentation. Stops with every problem found.
-load_config = function(path = 'config.R') {
+# Which config file this run uses: config.R, unless the script was started with
+# `--config <file>` (or `--config=<file>`), e.g.
+#   Rscript scripts/6_prediction_model.R --config configs/median.R
+# An alternative run is then described completely by one file (its settings and its run
+# directory), which can be committed like config.R, and runs with different config files
+# can go side by side from one checkout (issue I07, 2026-10-13).
+config_path = function(args = commandArgs(trailingOnly = TRUE)) {
+  i = which(args == '--config' | startsWith(args, '--config='))
+  if (!length(i)) return('config.R')
+  if (length(i) > 1) stop('--config given more than once', call. = FALSE)
+  if (args[i] != '--config') return(sub('^--config=', '', args[i]))
+  if (i == length(args)) stop('--config needs a file name', call. = FALSE)
+  args[i + 1]
+}
+
+# Read, check and return the configuration as a list with sections analysis,
+# presentation and run. Stops with every problem found.
+load_config = function(path = config_path()) {
   if (!file.exists(path)) stop('config file not found: ', path, call. = FALSE)
   exprs = tryCatch(parse(path, keep.source = FALSE),
                    error = function(e) stop('config file ', path, ' does not parse: ', conditionMessage(e), call. = FALSE))

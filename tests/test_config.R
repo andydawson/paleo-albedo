@@ -96,4 +96,14 @@ stopifnot(
   identical(jn, '{"a":{"11500":[12000]},"b":["hadgem"],"c":[0.123456789012345],"d":[-172,-50]}'),
   identical(config_json(jsonlite::fromJSON(jn, simplifyVector = TRUE)), jn)
 )
+# Which config file: config.R by default, or the one named with --config.
+fails <- function(expr) inherits(try(expr, silent = TRUE), "try-error")
+stopifnot(
+  identical(config_path(character()), "config.R"),
+  identical(config_path(c("--config", "configs/median.R")), "configs/median.R"),
+  identical(config_path(c("--config=configs/median.R")), "configs/median.R"),
+  identical(config_path(c("other", "--config", "a.R", "x")), "a.R"),
+  fails(config_path(c("--config"))),
+  fails(config_path(c("--config", "a.R", "--config=b.R")))
+)
 cat("test_config: all tests passed\n")

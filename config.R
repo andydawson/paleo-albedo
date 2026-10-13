@@ -65,7 +65,9 @@ list(
     # repository. A run in its own directory reads the products of earlier steps only
     # from that directory: put there first the ones it should reuse, with
     # seed_run_dir() in R/paths.R. Recorded in each run manifest; changing it does not
-    # count as a change of analysis.
+    # count as a change of analysis. An alternative run is best described by its own
+    # copy of this file (e.g. configs/median.R, with its own dir), given to each script
+    # as `Rscript scripts/<script>.R --config configs/median.R`.
     dir = NULL
   )
 )
