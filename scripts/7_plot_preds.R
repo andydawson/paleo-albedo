@@ -318,6 +318,9 @@ ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_wrap_', alb_prod,
 } # CM: end of February-only map
 
 pdf(path_figure(paths, paste0('alb_interp_preds_month_binned_tile_pages_', alb_prod, '.pdf')))
+# CM: subset(alb_grid_sub, year==year) below compares the year column with itself, so
+# every page draws all ages' tiles; only the ice outline changes per page. Left as is
+# pending Andria (questions_for_andria_general.md, section 8).
 for (year in ages_sub){
 
   p = ggplot()+
@@ -369,6 +372,8 @@ ggplot()+
 ggsave(path_figure(paths, paste0('alb_interp_preds_month_sd_binned_tile_grid_', alb_prod, '.pdf')), width=14, height=12)
 ggsave(path_figure(paths, paste0('alb_interp_preds_month_sd_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
 
+# CM: the CV legend below uses labels_sd, not labels_cv, so it shows SD ranges. Left as
+# is pending Andria (questions_for_andria_general.md, section 8).
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
   geom_tile(data=alb_grid_sub, aes(x=long,y=lat, fill=alb_cv_bin)) +
@@ -449,6 +454,9 @@ for (i in 1:(length(ages_sub)-1)){
   idx_ice_match_young = which.min(abs(ages_sub[i] - ice_years))
   idx_ice_match_old = which.min(abs(ages_sub[i+1] - ice_years))
 
+  # CM: ice_fort$ages holds the requested ages (50, 500, ...) but is matched against
+  # the nearest ice year (1, 2, ... 21 ka), so 50 and 500 BP find no outline. Left as
+  # is pending Andria (questions_for_andria_general.md, section 8).
   ice_fort_age_young = ice_fort[which(ice_fort$ages == ice_years[idx_ice_match_young]),]
 
   ice_fort_age_old = ice_fort[which(ice_fort$ages == ice_years[idx_ice_match_old]),]
