@@ -7,6 +7,13 @@ library(dplyr)
 library(tidyr)
 library(elevatr)
 
+# Settings and file locations: config.R, and R/paths.R for every file read or written. The
+# directories products go to are created by pipeline_paths() (issue I07).
+source('R/config.R')
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)
+
 # Diagnostic mode. Off by default. Switch on with DIAGNOSTIC=TRUE in the environment
 # (e.g. `DIAGNOSTIC=TRUE Rscript scripts/1_veg_lct_prep.R`) or by setting it here.
 # In diagnostic mode the script additionally (1) reports on the ice flag it discards,
@@ -21,7 +28,7 @@ diagnostic = as.logical(Sys.getenv('DIAGNOSTIC', 'FALSE'))
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 
-lct_interp = readRDS('data/veg_posts_interp_ice.RDS')
+lct_interp = readRDS(path_file(paths, 'veg_posts'))
 
 if (diagnostic) {
   # Keep what the summarize step below discards, for the diagnostics at the end:
@@ -55,7 +62,7 @@ locations_interp = lct_interp_wide[,c('x', 'y')]
 # elev) and is committed, so a fresh clone needs no network for this step. Delete the
 # file to force a fresh lookup. The lookup is made once per cell rather than once per
 # cell-slice, which returns the same values as the original per-row query.
-elev_file = 'data/elev_interp_cells.RDS'
+elev_file = path_file(paths, 'elevation_cache')
 if (file.exists(elev_file)) {
   elev_lookup = readRDS(elev_file)
 } else {
@@ -79,18 +86,17 @@ lct_interp_modern = lct_interp_all[which(lct_interp_all$ages == 50), ]
 
 lct_interp_modern = lct_interp_modern[, which(!(colnames(lct_interp_modern) %in% c('ages')))]
 
-saveRDS(lct_interp_modern, 'data/lct_modern_reveals_interp.RDS')
+saveRDS(lct_interp_modern, path_file(paths, 'lct_modern'))
 
 lct_interp_paleo = lct_interp_all
 
-saveRDS(lct_interp_paleo, 'data/lct_paleo_reveals_interp.RDS')
+saveRDS(lct_interp_paleo, path_file(paths, 'lct_paleo'))
 
 ############################################################################################
 # Diagnostics (DIAGNOSTIC=TRUE only). Added 2026-09-25. Nothing below changes any output.
 ############################################################################################
 if (diagnostic) {
   library(ggplot2)
-  dir.create('figures/diagnostics', recursive = TRUE, showWarnings = FALSE)
 
   # ---- 1. The ice flag this script discards ----------------------------------------------
   # Shows that no cell is flagged at 50, 200 or 500 BP although 48 are at 1,000 BP: the flag
@@ -144,7 +150,7 @@ if (diagnostic) {
     cat('\nNo interior cell is missing any slice: every incomplete cell is outside 27-74 N and\n',
         'is removed by the trim in script 8 before any forcing is computed.\n')
   }
-  write.csv(as.data.frame(per_cell), 'figures/diagnostics/1_absent_cell_slices.csv', row.names = FALSE)
+  write.csv(as.data.frame(per_cell), path_figure(paths, 'diagnostics', '1_absent_cell_slices.csv'), row.names = FALSE)
   cat('\nPer-cell listing written to figures/diagnostics/1_absent_cell_slices.csv\n')
 
   # ---- 3. Ice extent at every time slice ---------------------------------------------------
@@ -163,8 +169,7 @@ if (diagnostic) {
   status$status = factor(status$status, levels = c('land', 'ice', 'absent'))
   status_cols = c(land = 'grey80', ice = 'steelblue', absent = 'firebrick')
   # The map window is the diagnostics window in config.R (issue I03).
-  source('R/config.R')
-  diag_window = load_config()$presentation$map_windows$diagnostics
+  diag_window = cfg$presentation$map_windows$diagnostics
   for (a in slices) {
     p = ggplot(status[status$ages == a, ]) +
       geom_tile(aes(x = x, y = y, fill = status)) +
@@ -175,7 +180,7 @@ if (diagnostic) {
                              sum(status$ages == a & status$status == 'absent'), ' cells absent'),
            x = NULL, y = NULL) +
       theme_bw(11)
-    ggsave(sprintf('figures/diagnostics/1_ice_flag_%05dBP.png', a), p, width = 9, height = 5, dpi = 120)
+    ggsave(path_figure(paths, 'diagnostics', sprintf('1_ice_flag_%05dBP.png', a)), p, width = 9, height = 5, dpi = 120)
   }
   p_all = ggplot(status) +
     geom_tile(aes(x = x, y = y, fill = status)) +
@@ -184,7 +189,7 @@ if (diagnostic) {
     facet_wrap(~ages, ncol = 5) +
     labs(title = 'Ice flag in the land-cover product, all 25 slices (years BP)', x = NULL, y = NULL) +
     theme_bw(9) + theme(axis.text = element_blank(), axis.ticks = element_blank())
-  ggsave('figures/diagnostics/1_ice_flag_all_slices.png', p_all, width = 14, height = 11, dpi = 120)
+  ggsave(path_figure(paths, 'diagnostics', '1_ice_flag_all_slices.png'), p_all, width = 14, height = 11, dpi = 120)
   cat('\nIce-extent maps written to figures/diagnostics/ (one per slice plus 1_ice_flag_all_slices.png)\n')
 
   # ---- 4. Mean or median of the 200 draws? ------------------------------------------------
@@ -224,7 +229,7 @@ if (diagnostic) {
     labs(title = 'Median versus mean of the 200 posterior draws, per cell-slice-class',
          subtitle = 'points on the red line: no difference', x = 'mean of draws', y = 'median of draws') +
     theme_bw(11)
-  ggsave('figures/diagnostics/1_mean_vs_median.png', p_mm, width = 12, height = 4.5, dpi = 120)
+  ggsave(path_figure(paths, 'diagnostics', '1_mean_vs_median.png'), p_mm, width = 12, height = 4.5, dpi = 120)
   p_md = ggplot(draw_stats, aes(x = mean, y = diff)) +
     geom_point(alpha = 0.05, size = 0.3) +
     geom_hline(yintercept = 0, colour = 'red') +
@@ -232,6 +237,6 @@ if (diagnostic) {
     labs(title = 'Median minus mean, against the mean, per cell-slice-class',
          subtitle = 'skew shows as a systematic offset; it concentrates near 0 and 1', x = 'mean of draws', y = 'median - mean') +
     theme_bw(11)
-  ggsave('figures/diagnostics/1_mean_vs_median_difference.png', p_md, width = 12, height = 4.5, dpi = 120)
+  ggsave(path_figure(paths, 'diagnostics', '1_mean_vs_median_difference.png'), p_md, width = 12, height = 4.5, dpi = 120)
   cat('\nPlots written: figures/diagnostics/1_mean_vs_median.png and 1_mean_vs_median_difference.png\n')
 }

@@ -10,18 +10,25 @@ library(terra)
 library(sf)
 library(ggplot2)
 
-alb_prod = "bluesky"
+# Settings and file locations: config.R, and R/paths.R for every file read or written. The
+# directories products go to are created by pipeline_paths() (issue I07).
+source('R/config.R')
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)
+alb_prod = paths$tag   # the albedo product in file names
 
 source('R/run_manifest.R')
 run_start('7a_alb_diff_full',
           note   = Sys.getenv('RUN_NOTE'),
+          runs_dir = path_runs(paths),
           inputs = Filter(file.exists, c(
-            paste0('output/prediction/paleo_interp_predict_gam_summary_', alb_prod, '.RDS'),
-            'data/Dalton_QSR_2020_Ice/dalton_interpolated_LC6k.tif',
-            'data/albedo_glacier_monthly.csv',
-            'data/grid.RDS',
-            'data/map-data/geographic/pbs_ll.RDS',
-            'data/map-data/geographic/pbs.RDS')),
+            path_prediction(paths, 'summary'),
+            path_file(paths, 'dalton_ice'),
+            path_file(paths, 'glacier_albedo'),
+            path_file(paths, 'grid'),
+            path_file(paths, 'boundaries_ll'),
+            path_file(paths, 'boundaries'))),
           config = list(alb_prod = alb_prod))
 
 ages = c(50, 200, seq(500, 11500, by=500))
@@ -38,11 +45,11 @@ breaks_alb = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
 proj_WGS84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'
 
-alb_interp_preds = readRDS(paste0('output/prediction/paleo_interp_predict_gam_summary_', alb_prod, '.RDS'))
+alb_interp_preds = readRDS(path_prediction(paths, 'summary'))
 
 alb_interp_preds$alb_bin = cut(alb_interp_preds$alb_mean, breaks_alb, labels=FALSE)
 
-ice_dalton_interp = rast('data/Dalton_QSR_2020_Ice/dalton_interpolated_LC6k.tif')
+ice_dalton_interp = rast(path_file(paths, 'dalton_ice'))
 ice_dalton_years = as.numeric(sapply(names(ice_dalton_interp), function(x) strsplit(x, 'yr|bp')[[1]][2]))
 
 alb_interp_preds$ice_frac = NA
@@ -75,8 +82,8 @@ alb_interp_preds = alb_interp_preds[which(alb_interp_preds$x > -170),]
 
 alb_interp_preds = alb_interp_preds[which(!is.na(alb_interp_preds$ice_frac)),]
 
-pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
-pbs = readRDS('data/map-data/geographic/pbs.RDS')
+pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
+pbs = readRDS(path_file(paths, 'boundaries'))
 
 labels = seq(1, length(breaks_alb)-1)
 
@@ -96,7 +103,7 @@ years = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
 breaks_alb = c(0, 5, 10, 20, 30, 40, 60, 80, 100)/100
 labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "60 - 80", "80 - 100")
 
-grid_NA <- readRDS("data/grid.RDS")
+grid_NA <- readRDS(path_file(paths, 'grid'))
 grid_df = as.data.frame(grid_NA, xy=TRUE)
 
 cell_id <- raster::extract(grid_NA, alb_interp_preds[,c('x', 'y')])
@@ -119,7 +126,7 @@ alb_grid = merge(alb_grid, grid_df, by = c('cell_id', 'lat', 'long'))
 
 alb_grid_full = alb_grid
 
-alb_glacier = read.csv('data/albedo_glacier_monthly.csv', header=TRUE)
+alb_glacier = read.csv(path_file(paths, 'glacier_albedo'), header=TRUE)
 
 alb_grid_full$ice_albedo_fixed = alb_glacier[match(alb_grid_full$month, alb_glacier$month), 'ice_albedo_fixed']
 alb_grid_full$ice_albedo_sc = alb_glacier[match(alb_grid_full$month, alb_glacier$month), 'ice_albedo_sc']
@@ -321,7 +328,7 @@ for (i in 1:N_cells){
 
 alb_diff_df =  alb_diff_df[which(!is.na(alb_diff_df$lat)),]
 
-saveRDS(alb_diff_df, paste0('data/ALB_diffs_', alb_prod, '.RDS'))
+saveRDS(alb_diff_df, path_file(paths, 'albedo_differences'))
 
 foo2 = alb_diff_df[which(alb_diff_df$ice_frac_young > alb_diff_df$ice_frac_old),]
 
@@ -331,4 +338,4 @@ ggplot(data=foo2) +
 ggplot(data=foo2) +
   geom_point(aes(x=ice_frac_old-ice_frac_young, y=year))
 
-run_end(outputs = Filter(file.exists, paste0('data/ALB_diffs_', alb_prod, '.RDS')))
+run_end(outputs = Filter(file.exists, path_file(paths, 'albedo_differences')))

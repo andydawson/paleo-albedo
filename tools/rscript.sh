@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Run an R script with the project environment set up the way every anchored run was.
+# OPTIONAL, Linux only: run an R script with the environment of the anchored runs.
+#
+# Not needed to run the pipeline, which needs only `Rscript` from the repository root on
+# any system. This helper matters only for the byte-for-byte regression checks of the
+# single-config migration, on this machine (micromamba environment paleo-rf).
 #
 # Why: calling the env's Rscript binary directly leaves PROJ_DATA/GDAL_DATA unset (they are
 # only set by `micromamba activate`), which breaks script 1's elevation lookup and the sf

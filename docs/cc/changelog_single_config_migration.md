@@ -22,7 +22,8 @@ for the coauthor change log. Living document, updated as each issue merges.
 |---|---|---|---|
 | I01 Regression contract | #2 | merged 2026-10-09 | 85e22bd |
 | I02 Month indexing | #3 | merged 2026-10-13 | d67587d |
-| I03 Validated config; script 9; map windows | #4 | merged 2026-10-13 | (this merge) |
+| I03 Validated config; script 9; map windows | #4 | merged 2026-10-13 | 80644fc |
+| I07 Paths; run directories; R-only tools | #5 | merged 2026-10-13 | (this merge) |
 
 ---
 
@@ -245,3 +246,102 @@ or, for the tail, against I02's run.
 The map windows therefore changed nothing visible. The config and calendar tests pass. The
 manifests of scripts 7 and 9 record the configuration as JSON. Measured times with the
 machine otherwise fully loaded: script 7 took 114 minutes and script 7a 72.
+
+---
+
+## I07: one catalogue of file paths; run directories; tools in plain R (#5), merged 2026-10-13
+
+**Purpose.** Name every file the pipeline reads or writes once, keeping every existing file
+name. Let an alternative run write all its products into a directory of its own, so it can
+never overwrite the baseline. Fix the path disagreement that stopped script 5.
+
+**Decisions taken while planning (Chris, 2026-10-13):**
+- Run options are a third section of `config.R`, `run`, tracked in git, rather than an
+  environment variable or an untracked file. The code ships with everything needed to run
+  it.
+- A run directory reads earlier products only from itself. Baseline products it should
+  reuse are put there explicitly; nothing falls back silently to the baseline.
+- A redirected run's figures are saved in its run directory.
+- The pipeline and its checks must be plain R and work on Linux, macOS and Windows. The
+  shell tools were Linux-only and not readable by an R user, so they are ported to R or
+  retired.
+- An alternative run is described by its own config file, given to each script with
+  `--config <file>`. Several config files can be committed.
+- Script 5's newly runnable section is to be run, measured and reported, and its `rbind`
+  loop fixed if it is slow.
+
+**New:**
+- **`R/paths.R`.**
+  - `PATH_CATALOGUE` lists every file of scripts 1–9 (about 45 families). For each it gives
+    whether it is an original input or a product and, for products, the script that writes
+    it. The outputs of the out-of-scope spatial-eval script are listed too.
+  - Names are exactly today's, oddities included.
+  - Accessors: `path_file()`, `path_calibration_model()`, `path_prediction()`,
+    `path_forcing()`, `path_figure()`, `path_runs()`. `producer()` says which script wrote
+    a path, which I05's manifests will need. `seed_run_dir()` puts baseline products into
+    a run directory, linking where the system allows and copying otherwise, and lists
+    them in its `SEEDED.txt`.
+  - In a run directory, plots printed with no device open go to its own `Rplots.pdf`.
+- **`config.R`.** A `run` section with `dir` (NULL means the baseline locations), checked
+  by the schema. `--config <file>` chooses another config file.
+- **`tools/frozen.R`** and **`tools/check_anchors.R`**, R replacements of the shell tools.
+  A seeded file is never reported as a match.
+- **Tests:** `tests/test_paths.R` and `tests/test_tools.R`. The path test checks the
+  expanded catalogue against the 331-file inventory of I01 and the anchors' path map.
+
+**Changed:**
+- **Scripts 1–9.** About 140 path expressions (data reads and writes, fits, predictions,
+  tail and forcing files, original inputs, figures) now come from the catalogue, and only
+  the path argument of each call changed.
+  - At the baseline every path is the string it was. This was checked by evaluating all 63
+    distinct old path expressions next to their replacements for every month, with no
+    differences.
+  - Each script loads the config and the paths at the top. The scripts' own `dir.create()`
+    calls are gone, and `alb_prod` comes from the path layer.
+- **Script 5 (deliberate).** It read its seven spatial-experiment models from
+  `output/calibration/spatial_experiment/`, a directory script 4 never writes, so it always
+  stopped there (the known failure at line 218). It now reads them from where script 4
+  writes them. `SP_ELEV_LC` is the selected model, not script 4's separate fit of the same
+  formula. The rest of script 5 (the spatial experiment and the November block) runs for
+  the first time.
+- **`R/run_manifest.R`** writes the manifest into the run's `runs/` directory.
+- **Retired:** `tools/rundir.sh`, `tools/frozen.sh`, `tools/check_anchors.sh`.
+  `tools/rscript.sh` stays as an optional Linux helper for the byte-for-byte checks. The
+  regression contract, CONTRIBUTING and the anchor READMEs are updated to match.
+
+**Outputs changed.** None at the default settings, apart from script 5, which now produces
+the outputs of its formerly unreachable sections.
+
+**Verification.** Code at fcc6540. Every run was made in its own run directory, chosen
+with `--config`, at 8 threads, with the upstream products seeded from the baseline. The
+redirected runs are themselves the fixture the issue asks for. Figures were compared byte
+for byte with the I03 runs of the pre-I07 code.
+
+| Run | Result | Time, peak memory |
+|---|---|---|
+| script 1, diagnostic mode | both land-cover tables byte-identical; 28 figures identical | 1 min, 3.7 GB |
+| scripts 2 and 3 | calibration table byte-identical; coarse table identical; 62 figures identical | 4 + 1 min |
+| script 4, AIC section through the new paths | AIC table byte-identical | under 1 min |
+| script 6 | point predictions byte-identical; summary within tolerance | 18 min, 3.4 GB |
+| script 5, run to the end for the first time | statistics within tolerance; all 12 selected models byte-identical, including November's re-save | 10 min, 5.6 GB |
+| scripts 7 and 7a in parallel, then 8 and 9 | all six tail-anchor files and four forcing tables byte-identical; 23 figures identical | 110, 100, <1, <1 min; 22 GB (script 7) |
+
+Further checks:
+- The repository's `figures/`, `runs/` and `Rplots.pdf`, and all 331 frozen files, were
+  unchanged after every run, so a redirected run writes nothing into the baseline.
+- `producer()` resolves every product in the tail's run directory.
+- The manifests sit in the run directory and record `run$dir`.
+- Seeded inputs are reported as seeded, not as matches.
+- All four test files pass.
+- Script 4's write paths were checked statically, since it cannot be refitted.
+
+**Script 5's new sections (validation, not anchoring).**
+- *Spatial experiment.* It runs and draws its six pages into the run's `Rplots.pdf`, and
+  the plots look sane. The three models without a spatial term (ELEV, ELEV_LC, LC) show
+  much wider credible intervals around the 1:1 line than the four spatial models, which is
+  worth showing Andria.
+- *Warnings.* The run's warnings come from `xlim` dropping points outside the axes and from
+  a deprecated ggplot2 notation, not from errors.
+- *Cost.* The whole script takes 10 minutes, so the `rbind` loop was left as it is.
+- *Randomness.* Nothing here is seeded until I04a.
+

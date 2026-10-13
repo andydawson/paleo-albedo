@@ -8,27 +8,31 @@ library(ggplot2)
 library(reshape2)
 library(tidyterra)
 
+# Settings and file locations: config.R, and R/paths.R for every file read or written. The
+# directories products go to are created by pipeline_paths() (issue I07).
+source('R/config.R')
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)
+
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
 # (issue I02, 2026-10-12).
 source('R/calendar.R')
 months = MONTHS
 
-pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
+pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
 
 # Boundaries for the maps, prepared by the shared helper (see R/map_helpers.R for why the
 # raw file cannot be drawn as-is: the "weirdness" noted on 2026-09-24). Fix added 2026-09-25.
 # The map window is the calibration window in config.R (issue I03).
-source('R/config.R')
-cfg = load_config()
 map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
 pbs_land = prepare_boundaries(pbs_ll, map_window)
 
-grid <- rast(readRDS("data/grid.RDS"))
+grid <- rast(readRDS(path_file(paths, 'grid')))
 
-dir.create('figures', showWarnings = FALSE)
 
-lct_interp_modern = readRDS('data/lct_modern_reveals_interp.RDS')
+lct_interp_modern = readRDS(path_file(paths, 'lct_modern'))
 
 longitude_interp = lct_interp_modern[,c('x')]
 latitude_interp = lct_interp_modern[,c('y')]
@@ -51,7 +55,7 @@ colnames(bs_interp_df_coarse) = MONTHS
 
 grid = rast(grid)
 
-blue_all_months = rast('data/blue_sky_monthly_2000-2009.tif')
+blue_all_months = rast(path_file(paths, 'bluesky_raster'))
 
 # coarsen albedo by averaging albedo cells within a grid cell
 # CM: this cell-averaged albedo is saved but not currently used downstream
@@ -73,8 +77,8 @@ ggplot() +
   theme_light() +
   theme(axis.text.x = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
   facet_wrap(~lyr)
-ggsave('figures/albedo_maps_monthly_bluesky_native.pdf')
-ggsave('figures/albedo_maps_monthly_bluesky_native.png')
+ggsave(path_figure(paths, 'albedo_maps_monthly_bluesky_native.pdf'))
+ggsave(path_figure(paths, 'albedo_maps_monthly_bluesky_native.png'))
 
 ggplot() +
   boundary_layers(pbs_land, map_window) +
@@ -83,8 +87,8 @@ ggplot() +
   theme_bw() +
   theme(axis.text.x = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
   facet_wrap(~lyr)
-ggsave('figures/albedo_maps_monthly_bluesky_coarse.pdf')
-ggsave('figures/albedo_maps_monthly_bluesky_coarse.png')
+ggsave(path_figure(paths, 'albedo_maps_monthly_bluesky_coarse.pdf'))
+ggsave(path_figure(paths, 'albedo_maps_monthly_bluesky_coarse.png'))
 
 cols_fill = scale_fill_gradientn(colours=terrain.colors(10),
                                  na.value='transparent',
@@ -110,8 +114,8 @@ for(i in 1:length(months)) {
     theme(axis.text.x= element_blank(), axis.ticks = element_blank(), axis.title = element_blank())#+
 
   print(p)
-  ggsave(paste0('figures/albedo_maps_', month, '_bluesky.pdf'))
-  ggsave(paste0('figures/albedo_maps_', month, '_bluesky.png'))
+  ggsave(path_figure(paths, paste0('albedo_maps_', month, '_bluesky.pdf')))
+  ggsave(path_figure(paths, paste0('albedo_maps_', month, '_bluesky.png')))
 
   blue_month_coarse = blue_all_months_coarse[[month]]
   vname = sprintf('bs%02d', i)
@@ -124,8 +128,8 @@ for(i in 1:length(months)) {
     theme(axis.text.x= element_blank(), axis.ticks = element_blank(), axis.title = element_blank())#+
 
   print(p_coarse)
-  ggsave(paste0('figures/albedo_maps_', month, '_bluesky_coarse.pdf'))
-  ggsave(paste0('figures/albedo_maps_', month, '_bluesky_coarse.png'))
+  ggsave(path_figure(paths, paste0('albedo_maps_', month, '_bluesky_coarse.pdf')))
+  ggsave(path_figure(paths, paste0('albedo_maps_', month, '_bluesky_coarse.png')))
 
   bs_interp_df_coarse[,month] <- terra::extract(blue_month_coarse, lct_interp_spat)[,month]
 
@@ -139,8 +143,8 @@ bs_interp_df_coarse[bs_interp_df_coarse==0] = 1e-4
 lct_interp_bs = data.frame(lct_interp_modern, bs_interp_df)
 lct_interp_bs_coarse = data.frame(lct_interp_modern, bs_interp_df_coarse)
 
-saveRDS(lct_interp_bs, 'data/calibration_modern_lct_interp_bluesky.RDS')
-saveRDS(lct_interp_bs_coarse, 'data/calibration_modern_lct_interp_bluesky_coarse.RDS')
+saveRDS(lct_interp_bs, path_file(paths, 'calibration_table'))
+saveRDS(lct_interp_bs_coarse, path_file(paths, 'calibration_table_coarse'))
 
 lct_interp_bs_melt = melt(lct_interp_bs, id.vars = c('x', 'y', 'elev', 'ET', 'OL', 'ST'))
 lct_interp_bs_coarse_melt = melt(lct_interp_bs_coarse, id.vars = c('x', 'y', 'elev', 'ET', 'OL', 'ST'))
@@ -156,7 +160,7 @@ ggplot(data = lct_interp_bs_merged) +
   coord_fixed() +
   xlim(c(0,0.8)) +
   ylim(c(0,0.8))
-ggsave('figures/albedo_native_vs_coarse_scatter_interp.pdf')
-ggsave('figures/albedo_native_vs_coarse_scatter_interp.png')
+ggsave(path_figure(paths, 'albedo_native_vs_coarse_scatter_interp.pdf'))
+ggsave(path_figure(paths, 'albedo_native_vs_coarse_scatter_interp.png'))
 
 cor(lct_interp_bs_merged$value.x, lct_interp_bs_merged$value.y, use = 'complete.obs')

@@ -19,18 +19,21 @@ library(reshape2)
 library(tricolore)
 library(scatterpie)
 
-dir.create('figures', showWarnings = FALSE)
+# Settings and file locations: config.R, and R/paths.R for every file read or written. The
+# directories products go to are created by pipeline_paths() (issue I07).
+source('R/config.R')
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)
 
 ###############################################################################################################
 ## maps data
 ###############################################################################################################
-pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
+pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
 
 # CM: boundaries prepared by the shared helper (see R/map_helpers.R for why the raw file
 # cannot be drawn as-is). The original drew pbs_ll with geom_polygon and coord_fixed.
 # The map window is the calibration window in config.R (issue I03).
-source('R/config.R')
-cfg = load_config()
 map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
 pbs_land = prepare_boundaries(pbs_ll, map_window)
@@ -39,7 +42,7 @@ pbs_land = prepare_boundaries(pbs_ll, map_window)
 ## calibration data
 ###############################################################################################################
 
-cal_data = readRDS('data/calibration_modern_lct_interp_bluesky.RDS')
+cal_data = readRDS(path_file(paths, 'calibration_table'))
 cal_long = melt(cal_data, id.vars=c('x', 'y', 'elev', 'ET', 'OL', 'ST'))
 colnames(cal_long) = c('x', 'y', 'elev', 'ET', 'OL', 'ST', 'month', 'albedo')
 # cal_long$month = as.numeric(substr(cal_long$month, 4, 5))
@@ -101,8 +104,8 @@ ggplot() +
   scale_fill_manual(values = color_values_three,
                     labels = c("Open land", "Summergreen", "Evergreen"),
                     guide = guide_legend(reverse = TRUE))
-ggsave('figures/LCT_cal_pie_map_ll_interp.png')
-ggsave('figures/LCT_cal_pie_map_ll_interp.pdf')
+ggsave(path_figure(paths, 'LCT_cal_pie_map_ll_interp.png'))
+ggsave(path_figure(paths, 'LCT_cal_pie_map_ll_interp.pdf'))
 
 tric_lct <- Tricolore(cal_data_pie,
                       p1 = 'ET', p2 = 'OL', p3 = 'ST', show_data = TRUE)
@@ -112,8 +115,8 @@ tric_lct$key +
   geom_point(data=cal_data_pie, aes(x=ET, y=OL, z=ST), size=1, alpha=0.2)
 # tric_lct$key + theme_bw(18) + geom_point(data=cal_data_pie_agg, size=1)
 
-ggsave('figures/LCT_tricolore_key_interp.png')
-ggsave('figures/LCT_tricolore_key_interp.pdf')
+ggsave(path_figure(paths, 'LCT_tricolore_key_interp.png'))
+ggsave(path_figure(paths, 'LCT_tricolore_key_interp.pdf'))
 
 # add the vector of colors to the `euro_example` data
 cal_data_pie$lct_rgb <- tric_lct$rgb
@@ -139,8 +142,8 @@ plot_lct <-
   scale_fill_identity()
 
 plot_lct
-ggsave('figures/LCT_tricolore_map_interp.png')
-ggsave('figures/LCT_tricolore_map_interp.pdf')
+ggsave(path_figure(paths, 'LCT_tricolore_map_interp.png'))
+ggsave(path_figure(paths, 'LCT_tricolore_map_interp.pdf'))
 
 ###############################################################################################################
 ## gridded land cover maps
@@ -171,8 +174,8 @@ ggplot() +
         panel.background = element_blank()) +
   labs(fill='Fractional \nland cover') +
   facet_grid(variable~.)
-ggsave('figures/LCT_gridded_maps_calibration_interp.pdf')
-ggsave('figures/LCT_gridded_maps_calibration_interp.png')
+ggsave(path_figure(paths, 'LCT_gridded_maps_calibration_interp.pdf'))
+ggsave(path_figure(paths, 'LCT_gridded_maps_calibration_interp.png'))
 
 ###############################################################################################################
 ## albedo versus other vars

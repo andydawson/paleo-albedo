@@ -1,4 +1,4 @@
-# Tests for R/config.R and R/config_schema.R. Run: tools/rscript.sh tests/test_config.R
+# Tests for R/config.R and R/config_schema.R. Run from the repository root: Rscript tests/test_config.R
 source("R/config.R")
 base_text <- readLines("config.R")
 
@@ -21,7 +21,9 @@ cfg <- load_config()
 
 stopifnot(
   # the shipped config loads and holds today's script settings
-  identical(names(cfg), c("analysis", "presentation")),
+  identical(names(cfg), c("analysis", "presentation", "run")),
+  is.null(cfg$run$dir),
+  "dir" %in% names(cfg$run),
   identical(cfg$analysis$coarse$ages, c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)),
   identical(cfg$analysis$forcing$earth_area_m2, 5.101e14),
   identical(cfg$presentation$map_windows$calibration, list(x = c(-172, -50), y = c(15, 80))),
@@ -67,6 +69,12 @@ stopifnot(
   rejects("tail\\$x must be strictly increasing", 'list(x = c(-166, -50)', 'list(x = c(-50, -166)'),
   rejects("tail\\$y must lie between -90 and 90", 'y = c(12, 82)', 'y = c(12, 95)'),
   rejects("calibration\\$x must have exactly 2 values", 'list(x = c(-172, -50), y = c(15, 80))', 'list(x = c(-172), y = c(15, 80))'),
+  # the run directory
+  identical(load_variant('dir = NULL', 'dir = ".rundirs/median_test"')$run$dir, ".rundirs/median_test"),
+  rejects("run\\$dir must not be inside the repository's output/", 'dir = NULL', 'dir = "output/alt"'),
+  rejects("run\\$dir must not contain '..'", 'dir = NULL', 'dir = "../elsewhere"'),
+  rejects("run\\$dir must be NULL or one directory path", 'dir = NULL', 'dir = c("a", "b")'),
+  rejects("run is missing key\\(s\\) dir", 'dir = NULL', ''),
   # unsupported combinations
   rejects("report_kernels must include hadgem", 'report_kernels = c("hadgem", "cam5", "cack")', 'report_kernels = c("cam5", "cack")'),
   # every problem is reported at once, not just the first
@@ -87,5 +95,15 @@ stopifnot(
   isTRUE(all.equal(back, cfg)),
   identical(jn, '{"a":{"11500":[12000]},"b":["hadgem"],"c":[0.123456789012345],"d":[-172,-50]}'),
   identical(config_json(jsonlite::fromJSON(jn, simplifyVector = TRUE)), jn)
+)
+# Which config file: config.R by default, or the one named with --config.
+fails <- function(expr) inherits(try(expr, silent = TRUE), "try-error")
+stopifnot(
+  identical(config_path(character()), "config.R"),
+  identical(config_path(c("--config", "configs/median.R")), "configs/median.R"),
+  identical(config_path(c("--config=configs/median.R")), "configs/median.R"),
+  identical(config_path(c("other", "--config", "a.R", "x")), "a.R"),
+  fails(config_path(c("--config"))),
+  fails(config_path(c("--config", "a.R", "--config=b.R")))
 )
 cat("test_config: all tests passed\n")

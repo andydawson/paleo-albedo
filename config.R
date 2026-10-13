@@ -5,9 +5,10 @@
 # variables, assignments or other functions) and checks every key against the schema in
 # R/config_schema.R. Each run manifest records the settings it ran with.
 #
-# Two sections:
+# Three sections:
 #   analysis      settings that change the numbers the pipeline produces
 #   presentation  settings that change only how figures look
+#   run           where this run writes its files (later also threads and a note)
 #
 # A key appears here only once a script reads it; the rest of the pipeline's settings
 # are still in the scripts and move here issue by issue (single-config migration,
@@ -53,5 +54,20 @@ list(
     map_windows = list(calibration = list(x = c(-172, -50), y = c(15, 80)),
                        tail        = list(x = c(-166, -50), y = c(12, 82)),
                        diagnostics = list(x = c(-172, -50), y = c(17, 79)))
+  ),
+
+  run = list(
+    # Where a run writes everything it produces: derived data, outputs, figures and its
+    # run manifest. NULL means the usual places in the repository (data/, output/,
+    # figures/, runs/). A directory, e.g. ".rundirs/median_test", keeps an alternative
+    # run's products apart from the baseline, which it can then never overwrite; the
+    # original inputs (albedo raster, kernels, boundaries ...) are still read from the
+    # repository. A run in its own directory reads the products of earlier steps only
+    # from that directory: put there first the ones it should reuse, with
+    # seed_run_dir() in R/paths.R. Recorded in each run manifest; changing it does not
+    # count as a change of analysis. An alternative run is best described by its own
+    # copy of this file (e.g. configs/median.R, with its own dir), given to each script
+    # as `Rscript scripts/<script>.R --config configs/median.R`.
+    dir = NULL
   )
 )

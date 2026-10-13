@@ -10,32 +10,37 @@ seen; a change to this document is a decision for Chris, recorded in its own com
 
 ## 1. How every verification run is made
 
-- **Environment.** Always through `tools/rscript.sh`, which sets `PROJ_DATA` and
-  `GDAL_DATA` (needed by script 1's elevation lookup and the sf map helpers) and pins the
-  BLAS/OpenMP thread count at **8**, the count of every anchored run. `predict.gam`
+- **Environment.** Through `tools/rscript.sh` (an optional Linux helper; the pipeline
+  itself needs only `Rscript`), which sets `PROJ_DATA` and `GDAL_DATA` (needed by script
+  1's elevation lookup and the sf map helpers) and pins the BLAS/OpenMP thread count at
+  **8**, the count of every anchored run. `predict.gam`
   reproduces byte for byte only at the same thread count; at 4 threads the predictions
   differ in the last bits. Thread count is run metadata, not an `analysis` setting, but
   comparison runs must hold it at 8.
-- **Isolation.** Never in the repo itself. `tools/rundir.sh <name> <exclude-glob>...`
-  builds `.rundirs/<name>/` whose `data/` and `output/` are trees of links to the repo's
-  files, minus the outputs of the scripts to be run there; the scripts use relative paths,
-  so every output lands in the run directory. From I07 onward a redirected path profile
-  does the same job inside the code.
-- **Frozen inputs are locked.** `tools/frozen.sh lock` makes every file under `data/` and
-  `output/` read-only for the duration of the migration, so any script that tries to
-  overwrite one fails with "Permission denied" instead of replacing it silently.
-  `tools/frozen.sh verify` checks them against `tests/frozen_inputs.md5` (331 files,
-  recorded 2026-10-08). `unlock` exists for the end of the migration.
+- **Isolation.** Never in the repo's own output locations. Until I07 `tools/rundir.sh`
+  built `.rundirs/<name>/` with links to the repo's files and a copy of the code. From
+  I07 (2026-10-13) the run directory is set in `config.R`, `run = list(dir = ...)`: every
+  product, figure and manifest of the run goes there, inputs are read from the
+  repository, and the baseline products a run reuses are put there by `seed_run_dir()`
+  in `R/paths.R`. `rundir.sh` was then retired, by Chris's decision that the pipeline and
+  its checks be plain R and work on any system. A run reads the scripts from the
+  checkout, so the checkout must not change (no edit, no branch switch) while it runs.
+- **Frozen inputs are locked.** `Rscript tools/frozen.R lock` makes every file under
+  `data/` and `output/` read-only for the duration of the migration, so any script that
+  tries to overwrite one fails with "Permission denied" instead of replacing it silently.
+  `Rscript tools/frozen.R verify` checks them against `tests/frozen_inputs.md5` (331
+  files, recorded 2026-10-08). `unlock` exists for the end of the migration. (R ports of
+  the shell tools, I07.)
 - **Never edit a script while `Rscript` is running it** (AGENTS.md).
 
 ## 2. Artefact classes
 
 | Class | Artefacts | Standard | Command |
 |---|---|---|---|
-| Deterministic | land-cover tables (script 1), calibration table (2), point predictions (6), ice and coarse-difference tables (7), consecutive differences (7a), forcing table (8), the four summary CSVs (9), AIC table (4) | **byte-identical** to the anchor, no tolerance | `tools/check_anchors.sh <anchor-dir> [run-dir]` |
+| Deterministic | land-cover tables (script 1), calibration table (2), point predictions (6), ice and coarse-difference tables (7), consecutive differences (7a), forcing table (8), the four summary CSVs (9), AIC table (4) | **byte-identical** to the anchor, no tolerance | `Rscript tools/check_anchors.R <anchor-dir> [run-dir]` |
 | Stochastic | script 5's statistics, script 6's simulation summary | within the **measured tolerances** in section 3, against the historical anchor | `tools/compare_tables.R <ref> <cand> tests/anchors/tolerances.tsv` |
 | Fitted models | the `bam` objects of script 4 | predictions on the calibration table within 1e-6 of the stored fit, and integer AIC equal to the anchored table; never whole-object identity (a `bam` object carries its call and environment) | `tools/check_calibration_month.R <month>` |
-| Seeded (after I04a) | scripts 5 and 6 run with a fixed configured seed | **byte-identical** between two runs, and between old and new code with the same seed | `tools/check_anchors.sh` against a seeded reference made in that issue |
+| Seeded (after I04a) | scripts 5 and 6 run with a fixed configured seed | **byte-identical** between two runs, and between old and new code with the same seed | `tools/check_anchors.R` against a seeded reference made in that issue |
 | Median path (I04a) | land-cover tables with `reduction = "median"` | the properties listed in I04a; no anchor exists and none is compared with the mean anchors | tests written in I04a |
 
 ## 3. Measured tolerances (approved by Chris, 2026-10-09)
@@ -76,7 +81,7 @@ absolute and bias). Identifier columns must be identical, and are, in every comp
 ## 4. Frozen inputs
 
 Everything under `data/` and `output/` on this workstation as of 2026-10-08, 331 files,
-with md5s in `tests/frozen_inputs.md5`; locked read-only with `tools/frozen.sh lock`. The
+with md5s in `tests/frozen_inputs.md5`; locked read-only with `Rscript tools/frozen.R lock`. The
 ones later issues verify from:
 
 | What | Path | md5 |
@@ -91,8 +96,8 @@ ones later issues verify from:
 
 Which scripts each issue may verify from frozen inputs: all of 5 to 9, always; script 4
 is covered by the one-month check (section 5) and refitted in full only once, in I13b.
-Until I07 merges, a parallel agent needs its own run directory (`tools/rundir.sh`),
-never its own copy of the fits.
+A parallel agent uses its own run directory (`run$dir` in `config.R`), never its own
+copy of the fits.
 
 ## 5. The one-month calibration check
 

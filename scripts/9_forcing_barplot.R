@@ -114,12 +114,14 @@ library(patchwork)
 source('R/run_manifest.R')
 source('R/calendar.R')
 source('R/config.R')
-cfg = load_config()
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)   # every file read or written (issue I07)
 
 # Albedo product tag; Earth's surface area for the global-equivalent normalisation (A8);
 # the forcing column to use per kernel, named by kernel (A1, A3); the variants to
 # compare (A2). All but the tag come from config.R.
-alb_prod   = "bluesky"
+alb_prod   = paths$tag
 EARTH_AREA = cfg$analysis$forcing$earth_area_m2          # m^2
 KERNELS    = setNames(paste0('rf_', cfg$analysis$forcing$report_kernels, '_', cfg$analysis$forcing$variant),
                       cfg$analysis$forcing$report_kernels)
@@ -129,23 +131,20 @@ VARIANTS   = cfg$analysis$forcing$sensitivity_variants
 ages_sub      = cfg$analysis$coarse$ages
 labels_period = period_labels(ages_sub)
 
-# Output directories.
-dir.create('figures',       showWarnings = FALSE)
-dir.create('output/forcing', recursive = TRUE, showWarnings = FALSE)
-
 # Provenance manifest: inputs with checksums and the whole configuration, as JSON.
 run_start('9_forcing_barplot',
           note   = Sys.getenv('RUN_NOTE'),
+          runs_dir = path_runs(paths),
           inputs = Filter(file.exists, c(
-            'output/forcing/RF_holocene_all_cases.RDS',
-            paste0('data/alb_interp_preds_diffs_', alb_prod, '.RDS'),
-            'data/ipcc-ar6/AR6_ERF_1750-2019.csv',
-            'data/ipcc-ar6/AR6_ERF_1750-2019_pc05.csv',
-            'data/ipcc-ar6/AR6_ERF_1750-2019_pc95.csv')),
+            path_forcing(paths),
+            path_file(paths, 'coarse_differences'),
+            path_file(paths, 'ipcc_erf'),
+            path_file(paths, 'ipcc_erf_pc05'),
+            path_file(paths, 'ipcc_erf_pc95'))),
           config = list(config = config_json(cfg)))
 
 # The per-cell forcing table from script 8.
-d = readRDS('output/forcing/RF_holocene_all_cases.RDS')
+d = readRDS(path_forcing(paths))
 
 # --- A4/A5: assign each slice-pair to a period -------------------------------
 # A row's `year` is the YOUNGER end of the pair; the pair spans year -> next age.
@@ -203,9 +202,9 @@ sens$period = factor(sens$period, levels = labels_period)
 
 # --- modern IPCC agents ------------------------------------------------------
 read_erf <- function(p) { x = read.csv(p); x[x$year == 2019, ] }
-erf    = read_erf('data/ipcc-ar6/AR6_ERF_1750-2019.csv')
-erf_lo = read_erf('data/ipcc-ar6/AR6_ERF_1750-2019_pc05.csv')
-erf_hi = read_erf('data/ipcc-ar6/AR6_ERF_1750-2019_pc95.csv')
+erf    = read_erf(path_file(paths, 'ipcc_erf'))
+erf_lo = read_erf(path_file(paths, 'ipcc_erf_pc05'))
+erf_hi = read_erf(path_file(paths, 'ipcc_erf_pc95'))
 
 # Agents and labels exactly as on slide 18: CO2, methane, water vapour,
 # albedo (land use), aerosols. 'water vapour' on the slide is ~0.05 W/m2, which
@@ -283,8 +282,8 @@ p_slide_lab = panel_plot(hol,  'time period (k years)', 'Holocene', FALSE) /
               panel_plot(ipcc, 'forcing agent',         'IPCC',     TRUE) +
               plot_layout(heights = c(nrow(hol), nrow(ipcc)))
 
-ggsave('figures/forcing_barplot_slide18.pdf', p_slide_lab, width = 8, height = 6)
-ggsave('figures/forcing_barplot_slide18.png', p_slide_lab, width = 8, height = 6, dpi = 150)
+ggsave(path_figure(paths, 'forcing_barplot_slide18.pdf'), p_slide_lab, width = 8, height = 6)
+ggsave(path_figure(paths, 'forcing_barplot_slide18.png'), p_slide_lab, width = 8, height = 6, dpi = 150)
 
 # kernel spread, same layout, Holocene panel only
 hol3 = main %>%
@@ -301,7 +300,7 @@ p_kern = ggplot(hol3, aes(x = label, y = value, fill = kernel)) +
        subtitle = 'see C3 and C4; CACK is the only all-sky kernel of the three',
        x = 'time period (k years)', y = expression('radiative forcing ('*W/m^2*')')) +
   theme_bw(base_size = 12) + theme(panel.grid.minor = element_blank())
-ggsave('figures/forcing_barplot_kernel_spread.pdf', p_kern, width = 8, height = 5)
+ggsave(path_figure(paths, 'forcing_barplot_kernel_spread.pdf'), p_kern, width = 8, height = 5)
 
 # The domain-mean version, kept separate because it is not comparable with the IPCC
 # global means (A8).
@@ -311,7 +310,7 @@ p_dom = ggplot(main %>% filter(kernel=='hadgem'), aes(x = period, y = domain_mea
        subtitle = 'NOT comparable with global-mean IPCC ERF; see assumption A8',
        x = NULL, y = expression('W'~m^-2)) +
   theme_bw(base_size = 11) + theme(axis.text.x = element_text(angle = 30, hjust = 1))
-ggsave('figures/forcing_barplot_domain_mean.pdf', p_dom, width = 9, height = 5)
+ggsave(path_figure(paths, 'forcing_barplot_domain_mean.pdf'), p_dom, width = 9, height = 5)
 
 # Sensitivity of the answer to the forcing variant (A1/A2).
 p_sens = ggplot(sens, aes(x = period, y = global_equiv, fill = variant)) +
@@ -321,7 +320,7 @@ p_sens = ggplot(sens, aes(x = period, y = global_equiv, fill = variant)) +
        subtitle = 'Assumption A1 picks veg_ice_thresh; these are the alternatives',
        x = NULL, y = expression('global-equivalent forcing ('*W~m^-2*')')) +
   theme_bw(base_size = 11) + theme(axis.text.x = element_text(angle = 30, hjust = 1))
-ggsave('figures/forcing_barplot_variant_sensitivity.pdf', p_sens, width = 10, height = 5)
+ggsave(path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'), p_sens, width = 10, height = 5)
 
 # --- the recovered EGU 2024 recipe --------------------------------------------
 # Andria's own slide 18 code, git 383002d:scripts/8_radiative.R lines 584-628
@@ -329,7 +328,7 @@ ggsave('figures/forcing_barplot_variant_sensitivity.pdf', p_sens, width = 10, he
 # script 7's 7 coarse slice-pairs (one per period, so nothing to sum); months
 # are feb/may/aug/nov only; binary-flagged ice cells are masked; and the bar is
 # the PLAIN UNWEIGHTED MEAN over cells x months, i.e. a domain mean. See C5.
-d7 = readRDS(paste0('data/alb_interp_preds_diffs_', alb_prod, '.RDS'))
+d7 = readRDS(path_file(paths, 'coarse_differences'))
 # Kernel and area per cell-month come from `d`, which has already been trimmed to 27-74 N
 # and to period-complete cells (A4, A10); the join therefore applies the same trim to the
 # recipe, which Andria's April-2024 code did not.
@@ -362,25 +361,25 @@ p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE) /
         plot_layout(heights = c(nrow(hol_egu), nrow(ipcc))) +
         plot_annotation(title = "Slide 18 recipe recovered from git 383002d, on today's data",
                         subtitle = 'domain mean, feb/may/aug/nov, ice masked, HadGEM3; NOT global-equivalent')
-ggsave('figures/forcing_barplot_slide18_egu2024recipe.pdf', p_egu, width = 8, height = 6.5)
-ggsave('figures/forcing_barplot_slide18_egu2024recipe.png', p_egu, width = 8, height = 6.5, dpi = 150)
-write.csv(egu, 'output/forcing/forcing_by_period_egu2024recipe_vs_slide.csv', row.names = FALSE)
+ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.pdf'), p_egu, width = 8, height = 6.5)
+ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.png'), p_egu, width = 8, height = 6.5, dpi = 150)
+write.csv(egu, path_file(paths, 'forcing_egu2024_recipe'), row.names = FALSE)
 } # CM: end of the EGU 2024 recipe
 
 # --- numbers out -------------------------------------------------------------
-write.csv(main, 'output/forcing/forcing_by_period.csv', row.names = FALSE)
-write.csv(sens, 'output/forcing/forcing_by_period_variant_sensitivity.csv', row.names = FALSE)
-write.csv(modern, 'output/forcing/modern_ipcc_ar6_erf.csv', row.names = FALSE)
+write.csv(main, path_file(paths, 'forcing_by_period'), row.names = FALSE)
+write.csv(sens, path_file(paths, 'forcing_variant_sensitivity'), row.names = FALSE)
+write.csv(modern, path_file(paths, 'modern_erf'), row.names = FALSE)
 
 # Close the provenance manifest.
 run_end(outputs = Filter(file.exists, c(
-  'figures/forcing_barplot_slide18.pdf',
-  'figures/forcing_barplot_slide18.png',
-  'figures/forcing_barplot_kernel_spread.pdf',
-  'figures/forcing_barplot_domain_mean.pdf',
-  'figures/forcing_barplot_variant_sensitivity.pdf',
-  'output/forcing/forcing_by_period.csv',
-  'output/forcing/forcing_by_period_variant_sensitivity.csv',
-  'output/forcing/modern_ipcc_ar6_erf.csv',
-  'figures/forcing_barplot_slide18_egu2024recipe.pdf',
-  'output/forcing/forcing_by_period_egu2024recipe_vs_slide.csv')))
+  path_figure(paths, 'forcing_barplot_slide18.pdf'),
+  path_figure(paths, 'forcing_barplot_slide18.png'),
+  path_figure(paths, 'forcing_barplot_kernel_spread.pdf'),
+  path_figure(paths, 'forcing_barplot_domain_mean.pdf'),
+  path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'),
+  path_file(paths, 'forcing_by_period'),
+  path_file(paths, 'forcing_variant_sensitivity'),
+  path_file(paths, 'modern_erf'),
+  path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.pdf'),
+  path_file(paths, 'forcing_egu2024_recipe'))))

@@ -1,4 +1,4 @@
-# Tests for R/calendar.R. Run: tools/rscript.sh tests/test_calendar.R
+# Tests for R/calendar.R. Run from the repository root: Rscript tests/test_calendar.R
 source("R/calendar.R")
 fails <- function(expr) inherits(try(expr, silent = TRUE), "try-error")
 
