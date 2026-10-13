@@ -151,6 +151,9 @@ lct_interp_bs_coarse_melt = melt(lct_interp_bs_coarse, id.vars = c('x', 'y', 'el
 
 lct_interp_bs_merged = merge(lct_interp_bs_melt, lct_interp_bs_coarse_melt, by = c('x', 'y', 'elev', 'ET', 'OL', 'ST', 'variable'))
 
+# CM: axis labels look swapped: after the merge value.x is the native albedo and value.y
+# the coarse one, but x is labelled coarse and y native. Left as is pending Andria
+# (questions_for_andria_general.md, section 8).
 ggplot(data = lct_interp_bs_merged) +
   geom_point(aes(x=value.x, y=value.y), alpha=0.6) +
   geom_abline(intercept=0, slope=1, colour='red', lwd=1, alpha=0.5) +
