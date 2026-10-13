@@ -26,7 +26,8 @@ run_start('7a_alb_diff_full',
 
 ages = c(50, 200, seq(500, 11500, by=500))
 N_times = length(ages)
-ages_sub = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
+# CM: the coarse ages (ages_sub) and the tail map window (xlim, ylim) were defined here but
+# never used in this script; removed so config.R holds their only definition (issue I03).
 
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
 # (issue I02, 2026-10-12).
@@ -34,9 +35,6 @@ source('R/calendar.R')
 months = MONTHS
 
 breaks_alb = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
-
-ylim = c(12, 82)
-xlim = c(-166, -50)
 
 proj_WGS84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'
 

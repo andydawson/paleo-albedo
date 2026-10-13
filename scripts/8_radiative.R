@@ -18,9 +18,6 @@ months = MONTHS
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
-ylim = c(12, 82)
-xlim = c(-166, -50)
-
 dir.create('output/forcing', recursive = TRUE, showWarnings = FALSE)
 
 source('R/run_manifest.R')
@@ -41,11 +38,11 @@ ice_fort = readRDS('data/ice_fort.RDS')
 ice_fort_diff_young = readRDS('data/ice_fort_diff_young.RDS')
 ice_fort_diff_old = readRDS('data/ice_fort_diff_old.RDS')
 
-labels_period = c('0.05 - 0.5 ka', '0.5 - 2 ka', '2 - 4 ka', '4 - 6 ka', '6 - 8 ka', '8 - 10 ka', '10 - 12 ka')
-
 ages = c(50, 200, seq(500, 11500, by=500))
 N_times = length(ages)
-ages_sub = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
+# CM: the period labels (labels_period), the coarse ages (ages_sub) and the tail map window
+# (xlim, ylim) were defined here but never used in this script; removed so config.R holds
+# their only definition (issue I03).
 
 ice_fill = 'gainsboro'
 ice_colour = 'gray60'
