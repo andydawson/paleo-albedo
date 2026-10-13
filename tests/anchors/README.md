@@ -20,7 +20,7 @@ check against these before and after each cleanup step.
 The interp flavour is the analysis; the point (non-interp) flavour was
 retired from the trunk on 2026-09-24. Every interp anchor directory has an
 `MD5SUMS.txt` for its deterministic files, checked with
-`tools/check_anchors.sh`; the stochastic ones (script 5's statistics,
+`tools/check_anchors.R`; the stochastic ones (script 5's statistics,
 script 6's summary) are compared with `tools/compare_tables.R` against the
 measured tolerances in `tolerances.tsv`. What counts as unchanged for each
 artefact is set out in

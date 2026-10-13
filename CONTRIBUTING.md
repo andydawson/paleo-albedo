@@ -46,8 +46,8 @@ repository is branched, committed, merged and backed up. Agent sessions read
   (helpers that are not pipeline), `tests/` (anchors and checks) and `runs/`
   (run manifests) and `output/` (results; a few small tables are tracked,
   the bulk is ignored). Not tracked, but present on a working machine:
-  `figures/`, `writing/` and `.rundirs/` (isolated verification runs,
-  `tools/rundir.sh`).
+  `figures/`, `writing/` and `.rundirs/` (run directories of alternative
+  and verification runs, set by `run$dir` in `config.R`).
 - `scripts/` is the R analysis pipeline and nothing else. Helper code that
   is not part of the pipeline (data download, diagram generators) lives in
   `tools/`.

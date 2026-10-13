@@ -218,9 +218,14 @@ catalogue_paths = function(paths, months = MONTHS, include_spatial_eval = FALSE)
 # example script 6 reading the selected models of the baseline run of script 5). `files`
 # are baseline paths, e.g. path_calibration_model(baseline, 'selected', 'jan'). Each is
 # linked where the system allows it, otherwise copied; a file already in the run
-# directory is left alone. Returns the run-directory paths.
+# directory is left alone. The seeded paths are listed in SEEDED.txt in the run
+# directory, so checks can tell a reused file from one the run produced. Returns the
+# run-directory paths.
 seed_run_dir = function(paths, files) {
   if (is.null(paths$root)) stop('seed_run_dir: the baseline profile has no run directory to seed')
+  record = file.path(paths$root, 'SEEDED.txt')
+  done = if (file.exists(record)) readLines(record) else character()
+  writeLines(sort(unique(c(done, files))), record)
   vapply(files, function(f) {
     if (!file.exists(f)) stop('seed_run_dir: no baseline file ', f)
     target = file.path(paths$root, f)

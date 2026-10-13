@@ -17,4 +17,4 @@ anchor byte for byte: manifests `runs/2026-10-08_1718_8_radiative.md` and
 | `forcing_by_period_egu2024recipe_vs_slide.csv` | the recovered EGU 2024 recipe against the slide | yes |
 | `modern_ipcc_ar6_erf.csv` | IPCC AR6 effective radiative forcing, 2019 | yes (copied from the input data) |
 
-Check with `tools/check_anchors.sh tests/anchors/interp-forcing-2026-10-08 [run-dir]`.
+Check with `Rscript tools/check_anchors.R tests/anchors/interp-forcing-2026-10-08 [run-dir]`.

@@ -1,4 +1,4 @@
-# Tests for R/paths.R. Run: tools/rscript.sh tests/test_paths.R  (or Rscript, any OS)
+# Tests for R/paths.R. Run from the repository root: Rscript tests/test_paths.R
 source("R/config.R")
 source("R/paths.R")
 fails <- function(expr) inherits(try(expr, silent = TRUE), "try-error")

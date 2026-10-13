@@ -1,4 +1,4 @@
-# Tests for R/config.R and R/config_schema.R. Run: tools/rscript.sh tests/test_config.R
+# Tests for R/config.R and R/config_schema.R. Run from the repository root: Rscript tests/test_config.R
 source("R/config.R")
 base_text <- readLines("config.R")
 
