@@ -87,10 +87,13 @@ centre or a bin edge?
 Found while designing the move to a single config file. None is urgent;
 answers let us delete code rather than carry it.
 
-- **Three map windows.** Scripts 7, 7a and 8 draw maps on -166..-50 E,
-  12..82 N; script 2 and the shared helper use -172..-50, 15..80; script 1's
-  diagnostics use -172..-50, 17..79. Inherited, not chosen. One window for
-  the paper, or keep the two?
+- **Three map windows.** Script 7 draws its maps on -166..-50 E, 12..82 N
+  (scripts 7a and 8 also set that window but never drew with it; the unused
+  copies were removed in migration issue I03, 2026-10-13); scripts 2 and 3
+  use -172..-50, 15..80; script 1's diagnostics use -172..-50, 17..79.
+  Inherited, not chosen; on the migration branch they are now the three
+  `presentation$map_windows` in config.R. One window for the paper, or keep
+  the two?
 - **Model 8 is fitted three times** in script 4 (lines 98, 154 and 234, the
   same formula each time, saved under three names). Can the second and
   third fits go, with the selected model read from one file everywhere?
