@@ -16,7 +16,9 @@ for the coauthor change log. Living document, updated as each issue merges.
   settings: byte-identical where the pipeline is deterministic, within measured tolerances
   where it is random (scripts 5 and 6). See `2026-10-08_single_config_regression_contract.md`.
 - **Order.** I01, I02, I03, I07, I05, I04a, I04b, I06, I10, I11, I12, I08, I13a, I09, I13b;
-  I14 (ensemble mode) is parked.
+  I14 (ensemble mode) is parked. I15 (#18, readability cleanup, added 2026-10-13) runs inside
+  I13b: after its reconciliation with chris-dev, before its final verification; the extraction
+  issues rename the code they move as they go.
 
 | Issue | GitHub | Status | Merge commit |
 |---|---|---|---|
@@ -24,6 +26,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I02 Month indexing | #3 | merged 2026-10-13 | d67587d |
 | I03 Validated config; script 9; map windows | #4 | merged 2026-10-13 | 80644fc |
 | I07 Paths; run directories; R-only tools | #5 | merged 2026-10-13 | 252c6b6 |
+| I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
 
