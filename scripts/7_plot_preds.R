@@ -7,31 +7,31 @@ library(ggplot2)
 library(fields)
 library(raster)
 
-alb_prod = "bluesky"
-
-dir.create('figures', showWarnings = FALSE)
-
 # Settings from config.R (issue I03): the coarse ages and the map window. Slice and
 # period labels are made from the ages (R/calendar.R).
 source('R/config.R')
-cfg = load_config()
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)   # every file read or written (issue I07)
+alb_prod = paths$tag          # the albedo product in file names
 
 source('R/run_manifest.R')
 run_start('7_plot_preds',
           note   = Sys.getenv('RUN_NOTE'),
+          runs_dir = path_runs(paths),
           inputs = Filter(file.exists, c(
-            paste0('output/prediction/paleo_interp_predict_gam_summary_', alb_prod, '.RDS'),
-            paste0('output/prediction/paleo_interp_predict_gam_', alb_prod, '.RDS'),
-            'data/grid.RDS',
-            'data/map-data/ice/glacier_shapefiles_21-1k.RDS',
-            'data/albedo_glacier_monthly.csv',
-            'data/map-data/geographic/pbs_ll.RDS',
-            'data/map-data/geographic/pbs.RDS')),
+            path_prediction(paths, 'summary'),
+            path_prediction(paths, 'point'),
+            path_file(paths, 'grid'),
+            path_file(paths, 'glacier_shapes'),
+            path_file(paths, 'glacier_albedo'),
+            path_file(paths, 'boundaries_ll'),
+            path_file(paths, 'boundaries'))),
           config = list(alb_prod = alb_prod, config = config_json(cfg)))
 
-pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
+pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
 
-pbs = readRDS('data/map-data/geographic/pbs.RDS')
+pbs = readRDS(path_file(paths, 'boundaries'))
 
 breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
@@ -51,7 +51,7 @@ ylim = cfg$presentation$map_windows$tail$y
 
 proj_WGS84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'
 
-ice = readRDS('data/map-data/ice/glacier_shapefiles_21-1k.RDS')
+ice = readRDS(path_file(paths, 'glacier_shapes'))
 ice_years = seq(1, 21)*1000
 
 ice_fort = data.frame(matrix(NA, nrow=0, ncol=9))
@@ -81,7 +81,7 @@ ice_sub$facets = factor(ice_sub$facets,
                         levels = ages_ka(ages_sub),
                         labels = paste(ages_ka(ages_sub), 'ka'))
 
-saveRDS(ice_fort, 'data/ice_fort.RDS')
+saveRDS(ice_fort, path_file(paths, 'ice_fort'))
 
 ice_fill = 'gainsboro'
 ice_colour = 'gray60'
@@ -89,11 +89,11 @@ ice_colour = 'gray60'
 ice_fill_dark = 'ivory3'
 ice_colour_dark = 'gray40'
 
-alb_interp_preds = readRDS(paste0('output/prediction/paleo_interp_predict_gam_summary_', alb_prod, '.RDS'))
+alb_interp_preds = readRDS(path_prediction(paths, 'summary'))
 alb_interp_preds$year[which(alb_interp_preds$year == 11500)] = 12000
 
-pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
-pbs = readRDS('data/map-data/geographic/pbs.RDS')
+pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
+pbs = readRDS(path_file(paths, 'boundaries'))
 
 breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
@@ -153,9 +153,9 @@ years = cfg$analysis$coarse$ages
 breaks_alb = c(0, 5, 10, 20, 30, 40, 60, 80, 100)/100
 labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "60 - 80", "80 - 100")
 
-grid_NA <- readRDS("data/grid.RDS")
+grid_NA <- readRDS(path_file(paths, 'grid'))
 
-paleo_interp_sim_gam = readRDS('output/prediction/paleo_interp_predict_gam_bluesky.RDS')
+paleo_interp_sim_gam = readRDS(path_prediction(paths, 'point'))
 
 cell_id <- raster::extract(grid_NA, alb_interp_preds[,c('x', 'y')])
 
@@ -168,7 +168,7 @@ alb_grid = cbind(coords,
 
 alb_grid_sub = subset(alb_grid, year %in% years)
 
-alb_glacier = read.csv('data/albedo_glacier_monthly.csv', header=TRUE)
+alb_glacier = read.csv(path_file(paths, 'glacier_albedo'), header=TRUE)
 
 alb_grid_sub$alb_mean_ice = alb_glacier[match(alb_grid_sub$month, alb_glacier$month), 'ice_albedo']
 
@@ -234,8 +234,8 @@ ggplot()+
         legend.text = element_text(size=12),
         legend.title = element_text(size=12)) +
   coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(paste0('figures/alb_interp_preds_binned_tile_grid_', alb_prod, '.pdf'))#, width=12, height=14)
-ggsave(paste0('figures/alb_interp_preds_binned_tile_grid_', alb_prod, '.png'))#, width=12, height=14)
+ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_grid_', alb_prod, '.pdf')))#, width=12, height=14)
+ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_grid_', alb_prod, '.png')))#, width=12, height=14)
 } # CM: end of February-only map
 
 ggplot()+
@@ -260,8 +260,8 @@ ggplot()+
         legend.text = element_text(size=12),
         legend.title = element_text(size=12)) +
   coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(paste0('figures/alb_interp_preds_month_binned_tile_grid_', alb_prod, '.pdf'), width=14, height=12)
-ggsave(paste0('figures/alb_interp_preds_month_binned_tile_grid_', alb_prod, '.png'), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_binned_tile_grid_', alb_prod, '.pdf')), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
 
 # CM: the four-month panel shows whichever of its months are selected (issue I02).
 months_sub = intersect(c('feb', 'may', 'aug', 'nov'), months)
@@ -289,8 +289,8 @@ ggplot()+
         legend.text = element_text(size=12),
         legend.title = element_text(size=12)) +
   coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(paste0('figures/alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.pdf'), width=14, height=12)
-ggsave(paste0('figures/alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.png'), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.pdf')), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
 } # CM: end of four-month panel
 
 # CM: February-only map; skipped when February is not selected (issue I02).
@@ -313,11 +313,11 @@ ggplot() +
         legend.text = element_text(size=12),
         legend.title = element_text(size=12)) +
   coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(paste0('figures/alb_interp_preds_binned_tile_wrap_', alb_prod, '.pdf'), width=14, height=12)
-ggsave(paste0('figures/alb_interp_preds_binned_tile_wrap_', alb_prod, '.png'), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_wrap_', alb_prod, '.pdf')), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_wrap_', alb_prod, '.png')), width=14, height=12)
 } # CM: end of February-only map
 
-pdf(paste0('figures/alb_interp_preds_month_binned_tile_pages_', alb_prod, '.pdf'))
+pdf(path_figure(paths, paste0('alb_interp_preds_month_binned_tile_pages_', alb_prod, '.pdf')))
 for (year in ages_sub){
 
   p = ggplot()+
@@ -366,8 +366,8 @@ ggplot()+
         legend.text = element_text(size=12),
         legend.title = element_text(size=12)) +
   coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(paste0('figures/alb_interp_preds_month_sd_binned_tile_grid_', alb_prod, '.pdf'), width=14, height=12)
-ggsave(paste0('figures/alb_interp_preds_month_sd_binned_tile_grid_', alb_prod, '.png'), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_sd_binned_tile_grid_', alb_prod, '.pdf')), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_sd_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
 
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
@@ -387,8 +387,8 @@ ggplot()+
         legend.text = element_text(size=12),
         legend.title = element_text(size=12)) +
   coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(paste0('figures/alb_interp_preds_month_cv_binned_tile_grid_', alb_prod, '.pdf'), width=14, height=12)
-ggsave(paste0('figures/alb_interp_preds_month_cv_binned_tile_grid_', alb_prod, '.png'), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_cv_binned_tile_grid_', alb_prod, '.pdf')), width=14, height=12)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_cv_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
 
 years_df = data.frame(year = ages_sub)
 
@@ -431,7 +431,7 @@ for (i in 1:N_cells){
 
 alb_diff_df =  alb_diff_df[which(!is.na(alb_diff_df$lat)),]
 
-saveRDS(alb_diff_df, paste0('data/alb_interp_preds_diffs_', alb_prod, '.RDS'))
+saveRDS(alb_diff_df, path_file(paths, 'coarse_differences'))
 
 labels = period_labels(years)
 
@@ -477,8 +477,8 @@ ice_fort_diff_young$facets = factor(ice_fort_diff_young$facets,
                                     levels = labels_period,
                                     labels = labels_period)
 
-saveRDS(ice_fort_diff_young, 'data/ice_fort_diff_young.RDS')
-saveRDS(ice_fort_diff_old, 'data/ice_fort_diff_old.RDS')
+saveRDS(ice_fort_diff_young, path_file(paths, 'ice_fort_diff_young'))
+saveRDS(ice_fort_diff_old, path_file(paths, 'ice_fort_diff_old'))
 
 diff_years = years[-length(years)]
 alb_diff_df$facets = labels[match(alb_diff_df$year, diff_years)]
@@ -537,12 +537,12 @@ ggplot()+
         legend.text = element_text(size=12),
         legend.title = element_text(size=12)) +
   coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(paste0('figures/alb_interp_preds_month_diff_tile_grid_', alb_prod, '.png'), width=12, height=14)
-ggsave(paste0('figures/alb_interp_preds_month_diff_tile_grid_', alb_prod, '.pdf'), width=12, height=14)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_diff_tile_grid_', alb_prod, '.png')), width=12, height=14)
+ggsave(path_figure(paths, paste0('alb_interp_preds_month_diff_tile_grid_', alb_prod, '.pdf')), width=12, height=14)
 
 facets = as.vector(unique(alb_diff_df$facets))
 
-pdf(paste0('figures/alb_interp_preds_month_diff_tile_pages_', alb_prod, '.pdf'))
+pdf(path_figure(paths, paste0('alb_interp_preds_month_diff_tile_pages_', alb_prod, '.pdf')))
 for (i in 1:length(facets)){
 
   facet = facets[i]
@@ -571,6 +571,6 @@ for (i in 1:length(facets)){
 dev.off()
 
 run_end(outputs = Filter(file.exists, c(
-  list.files('figures', pattern = 'alb_interp', full.names = TRUE),
-  'data/ice_fort.RDS', 'data/ice_fort_diff_young.RDS', 'data/ice_fort_diff_old.RDS',
-  paste0('data/alb_interp_preds_diffs_', alb_prod, '.RDS'))))
+  list.files(path_figure(paths), pattern = 'alb_interp', full.names = TRUE),
+  path_file(paths, 'ice_fort'), path_file(paths, 'ice_fort_diff_young'), path_file(paths, 'ice_fort_diff_old'),
+  path_file(paths, 'coarse_differences'))))

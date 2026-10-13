@@ -9,31 +9,35 @@ library(gratia)
 library(reshape2)
 library(dplyr)
 
-alb_prod = "bluesky"
+# Settings and file locations: config.R, and R/paths.R for every file read or written. The
+# directories products go to are created by pipeline_paths() (issue I07).
+source('R/config.R')
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)
+alb_prod = paths$tag   # the albedo product in file names
 
-dir.create('output/calibration', recursive = TRUE, showWarnings = FALSE)
-dir.create('figures', showWarnings = FALSE)
 
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
 # (issue I02, 2026-10-12).
 source('R/calendar.R')
 months = MONTHS
 
-cal_interp_data =readRDS(paste0('data/calibration_modern_lct_interp_', alb_prod, '.RDS'))
+cal_interp_data =readRDS(path_file(paths, 'calibration_table'))
 
-pdf(paste0('figures/cal_model_vs_data_gam_error_months.pdf'), width=10, height=10)
+pdf(path_figure(paths, paste0('cal_model_vs_data_gam_error_months.pdf')), width=10, height=10)
 for (n in 1:length(months)){
 
   month = months[n]
 
   print(month)
 
-  mod8_interp = readRDS(paste0('output/calibration/calibration_mod8_interp_', month, '_', alb_prod, '.RDS'))
+  mod8_interp = readRDS(path_calibration_model(paths, 'mod8', month))
   summary(mod8_interp)
 
   cal_interp_model = mod8_interp
 
-  saveRDS(cal_interp_model, paste0('output/calibration/calibration_mod_interp_selected_', month, '_', alb_prod, '.RDS'))
+  saveRDS(cal_interp_model, path_calibration_model(paths, 'selected', month))
 
   cal_interp_predict_gam = predict(cal_interp_model,
                                    newdata = cal_interp_data,
@@ -98,12 +102,12 @@ for (n in 1:length(months)){
 
   print(month)
 
-  mod8_interp = readRDS(paste0('output/calibration/calibration_mod8_interp_', month, '_', alb_prod, '.RDS'))
+  mod8_interp = readRDS(path_calibration_model(paths, 'mod8', month))
   summary(mod8_interp)
 
   cal_interp_model = mod8_interp
 
-  saveRDS(cal_interp_model, paste0('output/calibration/calibration_mod_interp_selected_', month, '_', alb_prod, '.RDS'))
+  saveRDS(cal_interp_model, path_calibration_model(paths, 'selected', month))
 
   cal_interp_predict_gam = predict(cal_interp_model,
                                    newdata = cal_interp_data,
@@ -165,8 +169,8 @@ p = p + geom_text(
   size = 4
 )
 print(p)
-ggsave('figures/cal_model_vs_data_gam_error_facet.pdf', width=12, height=10)
-ggsave('figures/cal_model_vs_data_gam_error_facet.png', width=12, height=10)
+ggsave(path_figure(paths, 'cal_model_vs_data_gam_error_facet.pdf'), width=12, height=10)
+ggsave(path_figure(paths, 'cal_model_vs_data_gam_error_facet.png'), width=12, height=10)
 
 cal_interp_sim_gam_quants = cal_interp_sim_gam_quants %>%
   mutate(in_credible=((alb_data>alb_lo)&(alb_data<alb_hi)))
@@ -178,8 +182,8 @@ p = ggplot(data=cal_interp_sim_gam_quants) +
   theme_light(15) +
   facet_wrap(~factor(month, levels = months), ncol=4)
 print(p)
-ggsave('figures/cal_model_data_diff_histogram_facet.pdf', width=12, height=10)
-ggsave('figures/cal_model_data_diff_histogram_facet.png', width=12, height=10)
+ggsave(path_figure(paths, 'cal_model_data_diff_histogram_facet.pdf'), width=12, height=10)
+ggsave(path_figure(paths, 'cal_model_data_diff_histogram_facet.png'), width=12, height=10)
 
 cal_interp_sim_gam_quants %>%
   group_by(month) %>%
@@ -197,7 +201,7 @@ cal_diff
 
 colnames(cal_diff) = c('month', 'correlation', 'data in credible interval', 'diff lower (model - data; 2.5%)', 'diff upper (model - data; 97.5%)')
 
-write.csv(cal_diff, 'output/calibration/calibration_model_stats.csv', row.names = FALSE)
+write.csv(cal_diff, path_file(paths, 'calibration_stats'), row.names = FALSE)
 
 cal_sim_SPE = data.frame(x = numeric(0),
                          y = numeric(0),
@@ -218,14 +222,19 @@ for (n in 1:length(months)){
 
   print(month)
 
-  model_SP_ELEV_LC = readRDS(paste0('output/calibration/spatial_experiment/calibration_mod_interp_selected_', month, '_', alb_prod, '.RDS'))
+  # CM: these seven were read from output/calibration/spatial_experiment/, a directory
+  # script 4 never writes, so the script always stopped here. They are now read from where
+  # script 4 writes them. SP_ELEV_LC is the selected model, saved by this script above;
+  # the separate fit of the same formula (spatial_elev_cover) is not used (issue I07; the
+  # repeated fits of model 8 are a question for Andria, general 7).
+  model_SP_ELEV_LC = readRDS(path_calibration_model(paths, 'selected', month))
 
-  model_ELEV_LC = readRDS(paste0('output/calibration/spatial_experiment/calibration_mod_cover_elev_', month, '.RDS'))
-  model_LC = readRDS(paste0('output/calibration/spatial_experiment/calibration_mod_cover_', month, '.RDS'))
-  model_SP_LC = readRDS(paste0('output/calibration/spatial_experiment/calibration_mod_spatial_cover_', month, '.RDS'))
-  model_SP = readRDS(paste0('output/calibration/spatial_experiment/calibration_mod_spatial_', month, '.RDS'))
-  model_SP_ELEV = readRDS(paste0('output/calibration/spatial_experiment/calibration_mod_spatial_elev_', month, '.RDS'))
-  model_ELEV = readRDS(paste0('output/calibration/spatial_experiment/calibration_mod_elev_', month, '.RDS'))
+  model_ELEV_LC = readRDS(path_calibration_model(paths, 'cover_elev', month))
+  model_LC = readRDS(path_calibration_model(paths, 'cover', month))
+  model_SP_LC = readRDS(path_calibration_model(paths, 'spatial_cover', month))
+  model_SP = readRDS(path_calibration_model(paths, 'spatial', month))
+  model_SP_ELEV = readRDS(path_calibration_model(paths, 'spatial_elev', month))
+  model_ELEV = readRDS(path_calibration_model(paths, 'elev', month))
 
   for (model in models){
 
@@ -312,14 +321,14 @@ print(p)
 if ('nov' %in% months) {
 month = "nov"
 
-mod1_interp = readRDS(paste0('output/calibration/calibration_mod1_interp_', month, '_', alb_prod, '.RDS'))
-mod2_interp = readRDS(paste0('output/calibration/calibration_mod2_interp_', month, '_', alb_prod, '.RDS'))
-mod3_interp = readRDS(paste0('output/calibration/calibration_mod3_interp_', month, '_', alb_prod, '.RDS'))
-mod4_interp = readRDS(paste0('output/calibration/calibration_mod4_interp_', month, '_', alb_prod, '.RDS'))
-mod5_interp = readRDS(paste0('output/calibration/calibration_mod5_interp_', month, '_', alb_prod, '.RDS'))
-mod6_interp = readRDS(paste0('output/calibration/calibration_mod6_interp_', month, '_', alb_prod, '.RDS'))
-mod7_interp = readRDS(paste0('output/calibration/calibration_mod7_interp_', month, '_', alb_prod, '.RDS'))
-mod8_interp = readRDS(paste0('output/calibration/calibration_mod8_interp_', month, '_', alb_prod, '.RDS'))
+mod1_interp = readRDS(path_calibration_model(paths, 'mod1', month))
+mod2_interp = readRDS(path_calibration_model(paths, 'mod2', month))
+mod3_interp = readRDS(path_calibration_model(paths, 'mod3', month))
+mod4_interp = readRDS(path_calibration_model(paths, 'mod4', month))
+mod5_interp = readRDS(path_calibration_model(paths, 'mod5', month))
+mod6_interp = readRDS(path_calibration_model(paths, 'mod6', month))
+mod7_interp = readRDS(path_calibration_model(paths, 'mod7', month))
+mod8_interp = readRDS(path_calibration_model(paths, 'mod8', month))
 
 AIC(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp,
     mod6_interp, mod7_interp, mod8_interp)
@@ -333,7 +342,7 @@ summary(mod8_interp)
 
 cal_interp_model = mod8_interp
 
-saveRDS(cal_interp_model, paste0('output/calibration/calibration_mod_interp_selected_', month, '_', alb_prod, '.RDS'))
+saveRDS(cal_interp_model, path_calibration_model(paths, 'selected', month))
 
 cal_interp_predict_gam = predict(cal_interp_model,
                                  newdata = cal_interp_data,
@@ -355,8 +364,8 @@ ggplot(data=cal_interp_eval_gam) +
         axis.text = element_text(size=14)) +
   xlab('albedo (data)') +
   ylab('albedo (model)')
-ggsave(paste0('figures/cal_model_vs_data_gam_interp_', month, '.png'))
-ggsave(paste0('figures/cal_model_vs_data_gam_interp_', month, '.pdf'))
+ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.png')))
+ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.pdf')))
 
 cal_interp_sim_gam = simulate(cal_interp_model,
                               nsim = 100,
@@ -389,6 +398,6 @@ ggplot(data=cal_interp_sim_gam_sum) +
         axis.text = element_text(size=14)) +
   xlab('albedo (data)') +
   ylab('albedo (model)')
-ggsave(paste0('figures/cal_model_vs_data_gam_error_interp_', month, '.png'))
-ggsave(paste0('figures/cal_model_vs_data_gam_error_interp_', month, '.pdf'))
+ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_error_interp_', month, '.png')))
+ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_error_interp_', month, '.pdf')))
 } # CM: end of the November-only block

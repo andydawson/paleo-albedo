@@ -9,7 +9,13 @@ library(raster)
 library(sf)
 library(dplyr)
 
-alb_prod = "bluesky"
+# Settings and file locations: config.R, and R/paths.R for every file read or written. The
+# directories products go to are created by pipeline_paths() (issue I07).
+source('R/config.R')
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)
+alb_prod = paths$tag   # the albedo product in file names
 
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
 # (issue I02, 2026-10-12).
@@ -18,25 +24,25 @@ months = MONTHS
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
-dir.create('output/forcing', recursive = TRUE, showWarnings = FALSE)
 
 source('R/run_manifest.R')
 run_start('8_radiative',
           note   = Sys.getenv('RUN_NOTE'),
+          runs_dir = path_runs(paths),
           inputs = Filter(file.exists, c(
-            paste0('data/ALB_diffs_', alb_prod, '.RDS'),
-            'data/radiative-kernels/HadGEM3-GA7.1_TOA_kernel_L19.nc',
-            'data/radiative-kernels/CAM5/alb.kernel.nc',
-            'data/radiative-kernels/CACKv1.0/CACKv1.0.nc',
-            'data/ice_fort.RDS', 'data/ice_fort_diff_young.RDS', 'data/ice_fort_diff_old.RDS',
-            'data/map-data/geographic/pbs_ll.RDS',
-            'data/map-data/geographic/pbs.RDS')),
+            path_file(paths, 'albedo_differences'),
+            path_file(paths, 'kernel_hadgem'),
+            path_file(paths, 'kernel_cam5'),
+            path_file(paths, 'kernel_cack'),
+            path_file(paths, 'ice_fort'), path_file(paths, 'ice_fort_diff_young'), path_file(paths, 'ice_fort_diff_old'),
+            path_file(paths, 'boundaries_ll'),
+            path_file(paths, 'boundaries'))),
           config = list(alb_prod = alb_prod, months = months,
                         cack_band = 3, cack_band_meaning = 'year 2003, see question C3'))
 
-ice_fort = readRDS('data/ice_fort.RDS')
-ice_fort_diff_young = readRDS('data/ice_fort_diff_young.RDS')
-ice_fort_diff_old = readRDS('data/ice_fort_diff_old.RDS')
+ice_fort = readRDS(path_file(paths, 'ice_fort'))
+ice_fort_diff_young = readRDS(path_file(paths, 'ice_fort_diff_young'))
+ice_fort_diff_old = readRDS(path_file(paths, 'ice_fort_diff_old'))
 
 ages = c(50, 200, seq(500, 11500, by=500))
 N_times = length(ages)
@@ -50,12 +56,12 @@ ice_colour = 'gray60'
 ice_fill_dark = 'ivory3'
 ice_colour_dark = 'gray40'
 
-pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
-pbs = readRDS('data/map-data/geographic/pbs.RDS')
+pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
+pbs = readRDS(path_file(paths, 'boundaries'))
 
-rk_hadgem = brick('data/radiative-kernels/HadGEM3-GA7.1_TOA_kernel_L19.nc', level=1, varname='albedo_sw_cs')
+rk_hadgem = brick(path_file(paths, 'kernel_hadgem'), level=1, varname='albedo_sw_cs')
 
-alb_interp_diff_full = readRDS(paste0('data/ALB_diffs_', alb_prod, '.RDS'))
+alb_interp_diff_full = readRDS(path_file(paths, 'albedo_differences'))
 
 alb_diff = alb_interp_diff_full
 
@@ -93,7 +99,7 @@ for (month in months){
     geom_point(data=data.frame(alb_diff_spatial), aes(x=long360, y=lat), shape=1, alpha=0.1) +
     scale_fill_gradientn(colours = terrain.colors(10))
 
-  rk_cam5 = raster('data/radiative-kernels/CAM5/alb.kernel.nc',
+  rk_cam5 = raster(path_file(paths, 'kernel_cam5'),
                    varname='FSNSC',
                    band=month_number)
 
@@ -103,7 +109,7 @@ for (month in months){
   rk_cam5_df = as.data.frame(rk_cam5, xy=TRUE)
   colnames(rk_cam5_df) = c('x', 'y', 'kernel')
 
-  rk_cack = raster('data/radiative-kernels/CACKv1.0/CACKv1.0.nc',
+  rk_cack = raster(path_file(paths, 'kernel_cack'),
                    varname='CACK',
                    level=month_number,
                    band=3)
@@ -191,6 +197,6 @@ ggplot(data=bar) +
 
 bar$alb_diff_ice_thresh
 
-saveRDS(alb_diff, paste0('output/forcing/RF_holocene_all_cases.RDS'))
+saveRDS(alb_diff, path_forcing(paths))
 
-run_end(outputs = Filter(file.exists, 'output/forcing/RF_holocene_all_cases.RDS'))
+run_end(outputs = Filter(file.exists, path_forcing(paths)))

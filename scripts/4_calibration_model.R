@@ -6,14 +6,18 @@
 library(gam)
 library(mgcv)
 
-alb_prod = "bluesky"
+# Settings and file locations: config.R, and R/paths.R for every file read or written. The
+# directories products go to are created by pipeline_paths() (issue I07).
+source('R/config.R')
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)
+alb_prod = paths$tag   # the albedo product in file names
 
-dir.create('output/calibration', recursive = TRUE, showWarnings = FALSE)
-dir.create('figures', showWarnings = FALSE)
 
 ctrl <- list(nthreads=8, maxit=500)
 
-cal_interp_data =readRDS(paste0('data/calibration_modern_lct_interp_', alb_prod, '.RDS'))
+cal_interp_data =readRDS(path_file(paths, 'calibration_table'))
 
 cal_data2 = data.frame(site=seq(1,nrow(cal_interp_data)), cal_interp_data)
 cal_data3 = cal_data2[,c('site', 'ET', 'OL', 'ST')]
@@ -35,7 +39,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod1_interp, paste0('output/calibration/calibration_mod1_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod1_interp, path_calibration_model(paths, 'mod1', month))
 
   print('Fitting model 2: (x,y) + elevation')
   mod2_interp = mgcv::bam(get(month) ~ s(x, y, bs="gp", k=500) + s(elev, k=50),
@@ -45,7 +49,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod2_interp, paste0('output/calibration/calibration_mod2_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod2_interp, path_calibration_model(paths, 'mod2', month))
 
   print('Fitting model 3: (x,y) + elevation + OL')
   mod3_interp = mgcv::bam(get(month) ~ s(x, y, bs='gp', k=500) + s(elev, k=50) + s(OL, k=50),
@@ -55,7 +59,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod3_interp, paste0('output/calibration/calibration_mod3_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod3_interp, path_calibration_model(paths, 'mod3', month))
 
   print('Fitting model 4: (x,y) + elevation + OL + ET')
   mod4_interp = mgcv::bam(get(month) ~ s(x, y, bs='gp', k=500) + s(elev, k=50) + s(OL, k=50) + s(ET, k=50),
@@ -65,7 +69,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod4_interp, paste0('output/calibration/calibration_mod4_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod4_interp, path_calibration_model(paths, 'mod4', month))
 
   print('Fitting model 5: (x,y) + elevation + OL + ET + ST')
   mod5_interp = mgcv::bam(get(month) ~ s(x, y, bs='gp', k=500) + s(elev, k=50) + s(OL, k=50) + s(ET, k=50) + s(ST, k=50),
@@ -75,7 +79,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod5_interp, paste0('output/calibration/calibration_mod5_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod5_interp, path_calibration_model(paths, 'mod5', month))
 
   print('Fitting model 6: (x,y) + elevation + s(OL, ET, ST)')
   mod6_interp = mgcv::bam(get(month) ~ s(x, y, bs='gp', k=500) + s(elev, k=50) + s(OL, ET, ST, k=75),
@@ -85,7 +89,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod6_interp, paste0('output/calibration/calibration_mod6_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod6_interp, path_calibration_model(paths, 'mod6', month))
 
   print('Fitting model 7: (x,y) + elevation + gp(OL, ET, ST)')
   mod7_interp = mgcv::bam(get(month) ~ s(x, y, bs='gp', k=500) + s(elev, k=50) + s(OL, ET, ST, bs='gp', k=200),
@@ -95,7 +99,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod7_interp, paste0('output/calibration/calibration_mod7_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod7_interp, path_calibration_model(paths, 'mod7', month))
 
   print('Fitting model 8: (x,y) + elevation + tp(OL, ET, ST)')
   mod8_interp = mgcv::bam(get(month) ~ s(x, y, bs='gp', k=500) + s(elev, k=50) + s(OL, ET, ST, bs='tp', k=200),
@@ -105,7 +109,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod8_interp, paste0('output/calibration/calibration_mod8_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod8_interp, path_calibration_model(paths, 'mod8', month))
 
 }
 
@@ -125,14 +129,14 @@ names(ANOVA_list) = months
 
 for (month in months) {
 
-  mod1_interp = readRDS(paste0('output/calibration/calibration_mod1_interp_', month, '_', alb_prod, '.RDS'))
-  mod2_interp = readRDS(paste0('output/calibration/calibration_mod2_interp_', month, '_', alb_prod, '.RDS'))
-  mod3_interp = readRDS(paste0('output/calibration/calibration_mod3_interp_', month, '_', alb_prod, '.RDS'))
-  mod4_interp = readRDS(paste0('output/calibration/calibration_mod4_interp_', month, '_', alb_prod, '.RDS'))
-  mod5_interp = readRDS(paste0('output/calibration/calibration_mod5_interp_', month, '_', alb_prod, '.RDS'))
-  mod6_interp = readRDS(paste0('output/calibration/calibration_mod6_interp_', month, '_', alb_prod, '.RDS'))
-  mod7_interp = readRDS(paste0('output/calibration/calibration_mod7_interp_', month, '_', alb_prod, '.RDS'))
-  mod8_interp = readRDS(paste0('output/calibration/calibration_mod8_interp_', month, '_', alb_prod, '.RDS'))
+  mod1_interp = readRDS(path_calibration_model(paths, 'mod1', month))
+  mod2_interp = readRDS(path_calibration_model(paths, 'mod2', month))
+  mod3_interp = readRDS(path_calibration_model(paths, 'mod3', month))
+  mod4_interp = readRDS(path_calibration_model(paths, 'mod4', month))
+  mod5_interp = readRDS(path_calibration_model(paths, 'mod5', month))
+  mod6_interp = readRDS(path_calibration_model(paths, 'mod6', month))
+  mod7_interp = readRDS(path_calibration_model(paths, 'mod7', month))
+  mod8_interp = readRDS(path_calibration_model(paths, 'mod8', month))
 
   this_AIC = AIC(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp, mod6_interp, mod7_interp, mod8_interp)
 
@@ -143,7 +147,7 @@ for (month in months) {
   ANOVA_list[[month]] = anova.gam(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp, mod6_interp, mod7_interp, mod8_interp, test = "Chisq")
 }
 
-write.csv(AIC_df, 'output/calibration/AIC_table.csv', row.names = FALSE)
+write.csv(AIC_df, path_file(paths, 'aic_table'), row.names = FALSE)
 
 months = MONTHS
 
@@ -161,7 +165,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod_spatial_elev_cover, paste0('output/calibration/calibration_mod_spatial_elev_cover', month, '.RDS'))
+  saveRDS(mod_spatial_elev_cover, path_calibration_model(paths, 'spatial_elev_cover', month))
 
   print('Fitting model: (x,y)')
   mod_spatial = mgcv::bam(get(month) ~ s(x, y, bs="gp", k=500),
@@ -171,7 +175,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod_spatial, paste0('output/calibration/calibration_mod_spatial_', month, '.RDS'))
+  saveRDS(mod_spatial, path_calibration_model(paths, 'spatial', month))
 
   print('Fitting model: elevation')
   mod_elev = mgcv::bam(get(month) ~s(elev, k=50),
@@ -181,7 +185,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod_elev, paste0('output/calibration/calibration_mod_elev_', month, '.RDS'))
+  saveRDS(mod_elev, path_calibration_model(paths, 'elev', month))
 
   print('Fitting model: (x,y) + elevation')
   mod_spatial_elev = mgcv::bam(get(month) ~ s(x, y, bs="gp", k=500) + s(elev, k=50),
@@ -191,7 +195,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod_spatial_elev, paste0('output/calibration/calibration_mod_spatial_elev_', month, '.RDS'))
+  saveRDS(mod_spatial_elev, path_calibration_model(paths, 'spatial_elev', month))
 
   print('Fitting model: (x,y) + tp(OL, ET, ST)')
   mod_spatial_cover = mgcv::bam(get(month) ~ s(x, y, bs="gp", k=500) +  s(OL, ET, ST, bs='tp', k=200),
@@ -201,7 +205,7 @@ for (month in months) {
                                na.action=na.omit,
                                control=ctrl)
 
-  saveRDS(mod_spatial_cover, paste0('output/calibration/calibration_mod_spatial_cover_', month, '.RDS'))
+  saveRDS(mod_spatial_cover, path_calibration_model(paths, 'spatial_cover', month))
 
   print('Fitting model: tp(OL, ET, ST)')
   mod_cover = mgcv::bam(get(month) ~ s(OL, ET, ST, bs='tp', k=200),
@@ -211,7 +215,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod_cover, paste0('output/calibration/calibration_mod_cover_', month, '.RDS'))
+  saveRDS(mod_cover, path_calibration_model(paths, 'cover', month))
 
   print('Fitting model: tp(OL, ET, ST) + elev')
   mod_cover_elev = mgcv::bam(get(month) ~ s(elev, k=50) + s(OL, ET, ST, bs='tp', k=200),
@@ -221,7 +225,7 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod_cover_elev, paste0('output/calibration/calibration_mod_cover_elev_', month, '.RDS'))
+  saveRDS(mod_cover_elev, path_calibration_model(paths, 'cover_elev', month))
 
 }
 
@@ -241,6 +245,6 @@ for (month in months) {
                           na.action=na.omit,
                           control=ctrl)
 
-  saveRDS(mod8_interp, paste0('output/calibration/calibration_mod8_interp_', month, '_', alb_prod, '.RDS'))
+  saveRDS(mod8_interp, path_calibration_model(paths, 'mod8', month))
 
 }

@@ -8,23 +8,28 @@ library(mgcv)
 library(gratia)
 library(reshape2)
 
-alb_prod = "bluesky"
+# Settings and file locations: config.R, and R/paths.R for every file read or written. The
+# directories products go to are created by pipeline_paths() (issue I07).
+source('R/config.R')
+source('R/paths.R')
+cfg   = load_config()
+paths = pipeline_paths(cfg)
+alb_prod = paths$tag   # the albedo product in file names
 
-dir.create('output/prediction', recursive = TRUE, showWarnings = FALSE)
 
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
 # (issue I02, 2026-10-12).
 source('R/calendar.R')
 months = MONTHS
 
-lct_interp_paleo = readRDS('data/lct_paleo_reveals_interp.RDS')
+lct_interp_paleo = readRDS(path_file(paths, 'lct_paleo'))
 colnames(lct_interp_paleo)[1] = 'year'
 
 for (month in months){
 
   print(month)
 
-  cal_interp_model = readRDS(paste0('output/calibration/calibration_mod_interp_selected_', month, '_', alb_prod, '.RDS'))
+  cal_interp_model = readRDS(path_calibration_model(paths, 'selected', month))
 
   print(">>Predict")
   paleo_interp_predict_gam_vec = predict.gam(cal_interp_model,
@@ -33,7 +38,7 @@ for (month in months){
   paleo_interp_predict_gam = data.frame(lct_interp_paleo,
                                         alb_mean = paleo_interp_predict_gam_vec)
 
-  saveRDS(paleo_interp_predict_gam, paste0('output/prediction/paleo_interp_predict_gam_', month, '_', alb_prod, '.RDS'))
+  saveRDS(paleo_interp_predict_gam, path_prediction(paths, 'point', month))
 
   print(">>Simulate")
   paleo_interp_sim_gam = simulate(cal_interp_model,
@@ -48,7 +53,7 @@ for (month in months){
 
   paleo_interp_sim_gam_melt$iter = as.numeric(substr(paleo_interp_sim_gam_melt$iter, 2, 4))
 
-  saveRDS(paleo_interp_sim_gam_melt, paste0('output/prediction/paleo_interp_predict_gam_samps_', month, '_', alb_prod, '.RDS'))
+  saveRDS(paleo_interp_sim_gam_melt, path_prediction(paths, 'samples', month))
 
   print(">>Summarize")
   paleo_interp_sim_gam_sum = paleo_interp_sim_gam_melt %>%
@@ -60,7 +65,7 @@ for (month in months){
               alb_hi = quantile(value, c(0.975)),
               .groups = 'keep')
 
-  saveRDS(paleo_interp_sim_gam_sum, paste0('output/prediction/paleo_interp_predict_gam_summary_', month, '_', alb_prod, '.RDS'))
+  saveRDS(paleo_interp_sim_gam_sum, path_prediction(paths, 'summary', month))
 
 }
 
@@ -76,14 +81,14 @@ for (month in months) {
 
   print(month)
 
-  alb_preds_month = readRDS(paste0('output/prediction/paleo_interp_predict_gam_', month, '_', alb_prod, '.RDS'))
+  alb_preds_month = readRDS(path_prediction(paths, 'point', month))
   alb_preds_months = rbind(alb_preds_months,
                            data.frame(alb_preds_month, month = rep(month)))
 
-  alb_preds_summary_month = readRDS(paste0('output/prediction/paleo_interp_predict_gam_summary_', month, '_', alb_prod, '.RDS'))
+  alb_preds_summary_month = readRDS(path_prediction(paths, 'summary', month))
   alb_preds_summary_months = rbind(alb_preds_summary_months,
                                    data.frame(alb_preds_summary_month, month = rep(month)))
 }
 
-saveRDS(alb_preds_months, paste0('output/prediction/paleo_interp_predict_gam_', alb_prod, '.RDS'))
-saveRDS(alb_preds_summary_months, paste0('output/prediction/paleo_interp_predict_gam_summary_', alb_prod, '.RDS'))
+saveRDS(alb_preds_months, path_prediction(paths, 'point'))
+saveRDS(alb_preds_summary_months, path_prediction(paths, 'summary'))
