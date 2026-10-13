@@ -68,6 +68,13 @@ list(
     # count as a change of analysis. An alternative run is best described by its own
     # copy of this file (e.g. configs/median.R, with its own dir), given to each script
     # as `Rscript scripts/<script>.R --config configs/median.R`.
-    dir = NULL
+    dir = NULL,
+
+    # Before a script reads a file made by an earlier script, it checks (R/run_manifest.R)
+    # that the file is the one that script's latest run wrote and that the run used the
+    # same analysis settings as this one; if not, it stops and says what differs. TRUE
+    # lets the run go on regardless, and every such file is listed in its run manifest.
+    # Meant for checks against products made before run manifests existed (issue I05).
+    allow_stale = FALSE
   )
 )
