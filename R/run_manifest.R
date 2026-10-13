@@ -73,11 +73,15 @@ run_begin = function(script, config_file = config_path()) {
 read_input = function(run, path, reader = readRDS, ...) {
   if (!file.exists(path)) stop('read_input: ', path, ' does not exist', call. = FALSE)
   md5 = unname(tools::md5sum(path))
-  made_by = producer(run$paths, path)
-  entry = list(path = path, md5 = md5)
-  if (!is.na(made_by)) entry$check = check_producer(run, path, md5, made_by)
-  run$record$inputs = c(run$record$inputs, list(entry))
-  write_manifest(run)
+  # A file read again unchanged (script 8 reads each kernel once per month) is recorded once.
+  already = Filter(function(e) e$path == path && e$md5 == md5, run$record$inputs)
+  if (!length(already)) {
+    made_by = producer(run$paths, path)
+    entry = list(path = path, md5 = md5)
+    if (!is.na(made_by)) entry$check = check_producer(run, path, md5, made_by)
+    run$record$inputs = c(run$record$inputs, list(entry))
+    write_manifest(run)
+  }
   reader(path, ...)
 }
 

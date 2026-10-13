@@ -76,6 +76,11 @@ r <- run_toy("8_radiative", consumer_body)
 m <- latest("8_radiative")
 check("consumer passes the check", r$status == 0 && m$status == "completed" && m$inputs[[1]]$check == "ok")
 
+r <- run_toy("8_radiative", c("run = run_begin('8_radiative'); paths = run$paths",
+                              "for (month in 1:3) d = read_input(run, path_file(paths, 'albedo_differences'))",
+                              "run_finish(run)"))
+check("a file read several times unchanged is recorded once", r$status == 0 && length(latest("8_radiative")$inputs) == 1)
+
 # --- the consistency check stops ... ---------------------------------------------------
 saveRDS(data.frame(diff = 4:6), product)
 r <- run_toy("8_radiative", consumer_body)
