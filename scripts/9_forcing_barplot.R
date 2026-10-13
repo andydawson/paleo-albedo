@@ -36,6 +36,9 @@
 #
 # ASSUMPTIONS
 #
+# The settings below (A1 variant, A2 variants, A3 kernels, A4 periods, A8 Earth's
+# area) are read from config.R, analysis$forcing and analysis$coarse (issue I03).
+#
 # A1. Forcing variant. Uses rf_<kernel>_veg_ice_thresh: the vegetation plus ice
 #     albedo change, threshold method. Chosen because it combines the vegetation
 #     and the ice contribution and, like the _parts family, has no missing values
@@ -46,9 +49,13 @@
 #     that mixes vegetation and ice albedo by area fraction rather than by
 #     threshold). A2 reports the alternatives, because the choice matters.
 #
-# A2. Variant sensitivity. All six variants with complete coverage are aggregated
-#     the same way and plotted side by side
-#     (figures/forcing_barplot_variant_sensitivity.pdf).
+# A2. Variant sensitivity. Six variants are aggregated the same way and plotted
+#     side by side (figures/forcing_barplot_variant_sensitivity.pdf). NB this note
+#     said until 2026-10-13 that the six were the ones with complete coverage; they
+#     are not. _veg_thresh is missing in 58,416 of the 764,640 rows and _ice_thresh
+#     in 706,188 (the cells with no ice), which the aggregation drops, while the
+#     complete _veg_part, _ice_part and _icesc_part are not among the six. The
+#     list is now analysis$forcing$sensitivity_variants in config.R.
 #
 # A3. Kernel. HadGEM3 is the headline, matching the talk. CAM5 and CACK are
 #     carried through as a spread. They are NOT interchangeable: see C3/C4 in
@@ -105,27 +112,28 @@ library(tidyr)
 library(patchwork)
 
 source('R/run_manifest.R')
+source('R/calendar.R')
+source('R/config.R')
+cfg = load_config()
 
-# Albedo product tag; Earth's surface area for the global-equivalent normalisation; the
-# forcing column to use per kernel (A1, A3); the variants to compare (A2).
+# Albedo product tag; Earth's surface area for the global-equivalent normalisation (A8);
+# the forcing column to use per kernel, named by kernel (A1, A3); the variants to
+# compare (A2). All but the tag come from config.R.
 alb_prod   = "bluesky"
-EARTH_AREA = 5.101e14          # m^2
-KERNELS    = c(hadgem = "rf_hadgem_veg_ice_thresh",
-               cam5   = "rf_cam5_veg_ice_thresh",
-               cack   = "rf_cack_veg_ice_thresh")
-VARIANTS   = c("veg_thresh", "ice_thresh", "veg_ice_thresh",
-               "veg_icesc_thresh", "veg_ice_parts", "veg_icesc_parts")
+EARTH_AREA = cfg$analysis$forcing$earth_area_m2          # m^2
+KERNELS    = setNames(paste0('rf_', cfg$analysis$forcing$report_kernels, '_', cfg$analysis$forcing$variant),
+                      cfg$analysis$forcing$report_kernels)
+VARIANTS   = cfg$analysis$forcing$sensitivity_variants
 
-# Period boundaries and labels, taken from script 8 (A4).
-ages_sub      = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
-labels_period = c('0.05 - 0.5 ka', '0.5 - 2 ka', '2 - 4 ka', '4 - 6 ka',
-                  '6 - 8 ka', '8 - 10 ka', '10 - 12 ka')
+# Period boundaries, the coarse ages in config.R, and labels made from them (A4).
+ages_sub      = cfg$analysis$coarse$ages
+labels_period = period_labels(ages_sub)
 
 # Output directories.
 dir.create('figures',       showWarnings = FALSE)
 dir.create('output/forcing', recursive = TRUE, showWarnings = FALSE)
 
-# Provenance manifest: inputs with checksums and the configuration above.
+# Provenance manifest: inputs with checksums and the whole configuration, as JSON.
 run_start('9_forcing_barplot',
           note   = Sys.getenv('RUN_NOTE'),
           inputs = Filter(file.exists, c(
@@ -134,8 +142,7 @@ run_start('9_forcing_barplot',
             'data/ipcc-ar6/AR6_ERF_1750-2019.csv',
             'data/ipcc-ar6/AR6_ERF_1750-2019_pc05.csv',
             'data/ipcc-ar6/AR6_ERF_1750-2019_pc95.csv')),
-          config = list(variant = 'veg_ice_thresh', kernels = names(KERNELS),
-                        periods = labels_period, earth_area_m2 = EARTH_AREA))
+          config = list(config = config_json(cfg)))
 
 # The per-cell forcing table from script 8.
 d = readRDS('output/forcing/RF_holocene_all_cases.RDS')
@@ -331,10 +338,14 @@ d7$facets = sub(' ka$', '', labels_period)[match(d7$year, sort(unique(d7$year)))
 d7$rf = d7$alb_diff * 100 * d7$rk_hadgem
 d7$rf[!is.na(d7$ice_young) | !is.na(d7$ice_old)] = NA
 # CM: the recipe needs all four of its months; it is skipped, never computed on a subset,
-# when any is missing (issue I02).
+# when any is missing (issue I02). It is compared with the slide's seven periods, so it is
+# skipped too when the coarse ages in config.R are not the slide's (issue I03).
 egu_months = c('feb','may','aug','nov')
+slide_ages = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)   # slide 18's periods, a fact of the slide
 if (!all(egu_months %in% unique(d7$month))) {
   message('EGU 2024 recipe skipped: needs ', paste(egu_months, collapse = '/'), ' in the data')
+} else if (!identical(ages_sub, slide_ages)) {
+  message('EGU 2024 recipe skipped: the coarse ages in config.R are not the periods of slide 18')
 } else {
 egu = d7 %>% filter(month %in% c('feb','may','aug','nov')) %>%
   group_by(facets) %>%

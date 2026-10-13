@@ -11,6 +11,11 @@ alb_prod = "bluesky"
 
 dir.create('figures', showWarnings = FALSE)
 
+# Settings from config.R (issue I03): the coarse ages and the map window. Slice and
+# period labels are made from the ages (R/calendar.R).
+source('R/config.R')
+cfg = load_config()
+
 source('R/run_manifest.R')
 run_start('7_plot_preds',
           note   = Sys.getenv('RUN_NOTE'),
@@ -22,7 +27,7 @@ run_start('7_plot_preds',
             'data/albedo_glacier_monthly.csv',
             'data/map-data/geographic/pbs_ll.RDS',
             'data/map-data/geographic/pbs.RDS')),
-          config = list(alb_prod = alb_prod))
+          config = list(alb_prod = alb_prod, config = config_json(cfg)))
 
 pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
 
@@ -34,15 +39,15 @@ labels = seq(1, length(breaks)-1)
 
 ages = c(50, 200, seq(500, 11500, by=500))
 N_times = length(ages)
-ages_sub = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
+ages_sub = cfg$analysis$coarse$ages
 
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
 # (issue I02, 2026-10-12).
 source('R/calendar.R')
 months = MONTHS
 
-ylim = c(12, 82)
-xlim = c(-166, -50)
+xlim = cfg$presentation$map_windows$tail$x
+ylim = cfg$presentation$map_windows$tail$y
 
 proj_WGS84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'
 
@@ -73,8 +78,8 @@ ice_sub = ice_fort[which(ice_fort$ages %in% ages_sub),]
 
 ice_sub$facets = as.character(ice_sub$ages/1000)
 ice_sub$facets = factor(ice_sub$facets,
-                        levels = c('0.05', '0.5', '2', '4', '6', '8', '10', '12'),
-                        labels = c('0.05 ka', '0.5 ka', '2 ka', '4 ka', '6 ka', '8 ka', '10 ka', '12 ka'))
+                        levels = ages_ka(ages_sub),
+                        labels = paste(ages_ka(ages_sub), 'ka'))
 
 saveRDS(ice_fort, 'data/ice_fort.RDS')
 
@@ -143,7 +148,7 @@ for (i in 1:length(alb_preds_ages)){
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
-years = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
+years = cfg$analysis$coarse$ages
 
 breaks_alb = c(0, 5, 10, 20, 30, 40, 60, 80, 100)/100
 labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "60 - 80", "80 - 100")
@@ -196,7 +201,7 @@ alb_grid_sub$alb_cv_bin = factor(alb_grid_sub$alb_cv_bin,
                                  levels=seq(1, length(labels_cv)),
                                  labels = labels_cv)
 
-labels_year = c('0.05 ka', '0.5 ka', '2 ka', '4 ka', '6 ka', '8 ka', '10 ka', '12 ka')
+labels_year = paste(ages_ka(years), 'ka')
 
 alb_grid_sub$facets = labels_year[match(alb_grid_sub$year, years)]
 alb_grid_sub$facets = factor(alb_grid_sub$facets, levels = labels_year)
@@ -428,7 +433,7 @@ alb_diff_df =  alb_diff_df[which(!is.na(alb_diff_df$lat)),]
 
 saveRDS(alb_diff_df, paste0('data/alb_interp_preds_diffs_', alb_prod, '.RDS'))
 
-labels = c('0.05 - 0.5 ka', '0.5 - 2 ka', '2 - 4 ka', '4 - 6 ka', '6 - 8 ka', '8 - 10 ka', '10 - 12 ka')
+labels = period_labels(years)
 
 ice_fort_diff_young = data.frame(matrix(NA, nrow=0, ncol=10))
 ice_fort_diff_old = data.frame(matrix(NA, nrow=0, ncol=10))
@@ -462,7 +467,7 @@ for (i in 1:(length(ages_sub)-1)){
 
 }
 
-labels_period = c('0.05 - 0.5 ka', '0.5 - 2 ka', '2 - 4 ka', '4 - 6 ka', '6 - 8 ka', '8 - 10 ka', '10 - 12 ka')
+labels_period = period_labels(years)
 
 ice_fort_diff_old$facets = factor(ice_fort_diff_old$facets,
                                   levels = labels_period,

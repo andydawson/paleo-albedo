@@ -11,7 +11,7 @@
 #
 # Usage: tools/rundir.sh <name> [exclude-glob ...]
 #   Globs are relative to the repo root, e.g. 'data/lct_*_reveals_interp.RDS' 'output/prediction/*'.
-#   Creates .rundirs/<name>/ (gitignored). scripts/ and R/ are COPIED from the working
+#   Creates .rundirs/<name>/ (gitignored). scripts/, R/ and config.R are COPIED from the working
 #   tree (tests/, the 265 MB of anchors, is linked: no script reads it), so the run is pinned to the code as it was at creation: a branch switch
 #   or edit in the repo during the run cannot reach it (git checkout rewrites files in
 #   place, and R reads a script progressively while running it; learned 2026-10-12).
@@ -23,9 +23,10 @@ DIR="$ROOT/.rundirs/$NAME"
 [[ -e "$DIR" ]] && { echo "rundir: $DIR already exists" >&2; exit 1; }
 mkdir -p "$DIR/figures" "$DIR/runs"
 for d in scripts R; do cp -r "$ROOT/$d" "$DIR/$d"; done
+[[ -e "$ROOT/config.R" ]] && cp "$ROOT/config.R" "$DIR/config.R"   # the settings, read by R/config.R
 ln -s "$ROOT/tests" "$DIR/tests"
 git -C "$ROOT" rev-parse --short HEAD > "$DIR/CODE_COMMIT"   # which commit the copies came from
-[[ -n "$(git -C "$ROOT" status --porcelain -- scripts R)" ]] && echo "dirty" >> "$DIR/CODE_COMMIT"
+[[ -n "$(git -C "$ROOT" status --porcelain -- scripts R config.R)" ]] && echo "dirty" >> "$DIR/CODE_COMMIT"
 linked=0; skipped=0
 while IFS= read -r -d '' f; do
   rel=${f#"$ROOT/"}

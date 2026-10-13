@@ -28,8 +28,12 @@ pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
 
 # CM: boundaries prepared by the shared helper (see R/map_helpers.R for why the raw file
 # cannot be drawn as-is). The original drew pbs_ll with geom_polygon and coord_fixed.
+# The map window is the calibration window in config.R (issue I03).
+source('R/config.R')
+cfg = load_config()
+map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
-pbs_land = prepare_boundaries(pbs_ll)
+pbs_land = prepare_boundaries(pbs_ll, map_window)
 
 ###############################################################################################################
 ## calibration data
@@ -74,7 +78,7 @@ color_values_four = c("#CC79A7", "#009E73", "#0072B2", "#D55E00")
 color_values_three = c("#009E73","#0072B2", "#D55E00")
 
 ggplot() +
-  boundary_layers(pbs_land, colour = "grey", fill = "grey") +
+  boundary_layers(pbs_land, map_window, colour = "grey", fill = "grey") +
   geom_scatterpie(data=cal_data_pie_agg,
                   aes(x=x, y=y),
                   cols=c('OL', 'ST', 'ET'),
@@ -117,7 +121,7 @@ cal_data_pie$lct_rgb <- tric_lct$rgb
 plot_lct <-
   # using data sf data `euro_example`...
   ggplot() +
-  boundary_layers(pbs_land, colour = "grey", fill = "grey") +
+  boundary_layers(pbs_land, map_window, colour = "grey", fill = "grey") +
   # ...draw a choropleth map
   geom_tile(data=cal_data_pie, aes(x, y, fill = lct_rgb)) +
   # ...and color each region according to the color-code
@@ -149,7 +153,7 @@ cal_lct_melt$variable = factor(cal_lct_melt$variable,
                                labels = c('ETS', 'STS', 'OVL'))
 
 ggplot() +
-  boundary_layers(pbs_land, colour = "grey", fill = "grey") +
+  boundary_layers(pbs_land, map_window, colour = "grey", fill = "grey") +
   geom_tile(data=cal_lct_melt, 
             aes(x=long, y=lat, fill=value),
             alpha=0.7) +

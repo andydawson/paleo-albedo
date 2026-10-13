@@ -27,3 +27,14 @@ check_months <- function(months) {
 # kernel files. Not called month_number(): script 8 has a loop variable of that name,
 # which would overwrite the function on the first iteration.
 month_to_number <- function(month) match(check_months(month), MONTHS)
+
+# Labels for the coarse time slices, built from their ages in years BP so a change of
+# ages cannot leave the labels behind (issue I03, 2026-10-13). Scripts 7, 8 and 9 had the
+# same seven period labels typed out five times.
+#   ages_ka(c(50, 500, 2000))        "0.05" "0.5" "2"
+#   period_labels(c(50, 500, 2000))  "0.05 - 0.5 ka" "0.5 - 2 ka"
+ages_ka <- function(ages) as.character(ages / 1000)
+period_labels <- function(ages) {
+  ka <- ages_ka(ages)
+  paste(head(ka, -1), "-", ka[-1], "ka")
+}
