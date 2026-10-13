@@ -17,8 +17,12 @@ pbs_ll = readRDS('data/map-data/geographic/pbs_ll.RDS')
 
 # Boundaries for the maps, prepared by the shared helper (see R/map_helpers.R for why the
 # raw file cannot be drawn as-is: the "weirdness" noted on 2026-09-24). Fix added 2026-09-25.
+# The map window is the calibration window in config.R (issue I03).
+source('R/config.R')
+cfg = load_config()
+map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
-pbs_land = prepare_boundaries(pbs_ll)
+pbs_land = prepare_boundaries(pbs_ll, map_window)
 
 grid <- rast(readRDS("data/grid.RDS"))
 
@@ -63,7 +67,7 @@ blue_all_months_coarse = crop(blue_all_months_coarse, ext(pbs_ll))
 # some weirdness going on with these figures
 
 ggplot() +
-  boundary_layers(pbs_land) +
+  boundary_layers(pbs_land, map_window) +
   geom_spatraster(data = blue_all_months, alpha=0.8) +
   scale_fill_gradientn(colours = terrain.colors(10), na.value='transparent', name = "Albedo") +
   theme_light() +
@@ -73,7 +77,7 @@ ggsave('figures/albedo_maps_monthly_bluesky_native.pdf')
 ggsave('figures/albedo_maps_monthly_bluesky_native.png')
 
 ggplot() +
-  boundary_layers(pbs_land) +
+  boundary_layers(pbs_land, map_window) +
   geom_spatraster(data = blue_all_months_coarse, alpha=0.8) +
   scale_fill_gradientn(colours = terrain.colors(10), na.value='transparent', name = "Albedo") +
   theme_bw() +
@@ -99,7 +103,7 @@ for(i in 1:length(months)) {
   vname = sprintf('bs%02d', i)
 
   p <- ggplot() +
-    boundary_layers(pbs_land) +
+    boundary_layers(pbs_land, map_window) +
     geom_spatraster(data=blue_month, alpha=0.8) +
     scale_fill_gradientn(colours=terrain.colors(10), na.value='transparent', name = "Albedo") +
     theme_bw() +
@@ -113,7 +117,7 @@ for(i in 1:length(months)) {
   vname = sprintf('bs%02d', i)
 
   p_coarse <- ggplot() +
-    boundary_layers(pbs_land) +
+    boundary_layers(pbs_land, map_window) +
     geom_spatraster(data=blue_month_coarse, alpha=0.8) +
     scale_fill_gradientn(colours=terrain.colors(10), na.value='transparent', name = "Albedo") +
     theme_bw() +

@@ -162,11 +162,14 @@ if (diagnostic) {
                   ifelse(paste(status$cell_id, status$ages) %in% key_ice, 'ice', 'land'))
   status$status = factor(status$status, levels = c('land', 'ice', 'absent'))
   status_cols = c(land = 'grey80', ice = 'steelblue', absent = 'firebrick')
+  # The map window is the diagnostics window in config.R (issue I03).
+  source('R/config.R')
+  diag_window = load_config()$presentation$map_windows$diagnostics
   for (a in slices) {
     p = ggplot(status[status$ages == a, ]) +
       geom_tile(aes(x = x, y = y, fill = status)) +
       scale_fill_manual(values = status_cols, drop = FALSE, name = NULL) +
-      coord_fixed(xlim = c(-172, -50), ylim = c(17, 79)) +
+      coord_fixed(xlim = diag_window$x, ylim = diag_window$y) +
       labs(title = paste0('Ice flag in the land-cover product, ', a, ' BP'),
            subtitle = paste0(sum(status$ages == a & status$status == 'ice'), ' cells flagged ice; ',
                              sum(status$ages == a & status$status == 'absent'), ' cells absent'),
@@ -177,7 +180,7 @@ if (diagnostic) {
   p_all = ggplot(status) +
     geom_tile(aes(x = x, y = y, fill = status)) +
     scale_fill_manual(values = status_cols, drop = FALSE, name = NULL) +
-    coord_fixed(xlim = c(-172, -50), ylim = c(17, 79)) +
+    coord_fixed(xlim = diag_window$x, ylim = diag_window$y) +
     facet_wrap(~ages, ncol = 5) +
     labs(title = 'Ice flag in the land-cover product, all 25 slices (years BP)', x = NULL, y = NULL) +
     theme_bw(9) + theme(axis.text = element_blank(), axis.ticks = element_blank())
