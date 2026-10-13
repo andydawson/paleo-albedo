@@ -100,7 +100,9 @@ feasible, checked against `tests/anchors/`; version control as above. Chris,
   open questions flagged by their id; one plain-text manifest per script
   invocation; a simple consistency check (whole `analysis` section of each
   input's manifest compared with the current config, stop on any difference,
-  `RUN_ALLOW_STALE=1` override recorded); output paths unchanged so the
+  `RUN_ALLOW_STALE=1` override recorded; on 2026-10-13 Chris made the
+  override the config setting `run$allow_stale`, with no run note); output
+  paths unchanged so the
   anchors keep working; stages become functions in `R/` with the numbered
   scripts as wrappers; the ensemble driver is parked. The work happens on
   one long-lived feature branch off `chris-dev`, topic branches per issue,
