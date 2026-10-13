@@ -808,6 +808,25 @@ extent, or clipped afterwards; the product does not say.
 Is the southern thinning intended (no pollen data), and what happened to
 the top three rows of the grid at 200, 4,500 and 6,000 BP?
 
+### D4. Script 7's coverage filter removes nothing
+*Added 2026-10-12, from issue I02 of the configuration migration.*
+**What the code does.** After choosing the eight coarse ages (0.05 to 12 ka),
+script 7 drops "cells with fewer than 8 rows" before mapping and computing
+the coarse differences. But it counts rows per cell across ages *and*
+months, and a cell present at any age has 12 rows per age, so the test
+never fires: it removed 0 of 2,870 cells. The line is now commented out,
+with an explanation, so that a run on fewer months cannot make it start
+removing cells for the wrong reason; the outputs are unchanged.
+**Why it matters.** The line looks meant to keep only cells present at all
+eight coarse ages. 211 of the 2,870 cells are missing at least one of them
+(10 are present at only one age, 74 at four), mostly the edge cells of D3.
+Those cells currently enter the maps, and any coarse difference for which
+both ages exist, as they are. If they should be removed, the coarse
+differences and the EGU 2024 recipe in script 9 change.
+**What we need from you.** What was the filter meant to do? Keep all cells
+(as now), keep only cells present at all eight coarse ages, or something
+else?
+
 
 ## E. Validation
 
