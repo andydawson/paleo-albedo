@@ -46,7 +46,7 @@ config_schema_errors = function(value, schema, path = 'cfg') {
     msg = schema(value)
     return(if (is.null(msg)) character() else sprintf('%s %s', path, msg))
   }
-  if (!is.list(value) || is.null(names(value)) || any(!nzchar(names(value))))
+  if (!is.list(value) || (length(value) && (is.null(names(value)) || any(!nzchar(names(value))))))
     return(sprintf('%s must be a list with a name on every entry', path))
   errs = character()
   dup = unique(names(value)[duplicated(names(value))])

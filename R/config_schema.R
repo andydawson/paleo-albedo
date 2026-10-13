@@ -47,6 +47,22 @@ check_choice = function(v, legal, single = FALSE) {
 MAP_WINDOW_SCHEMA = list(x = function(v) check_numbers(v, len = 2, increasing = TRUE, range = c(-180, 180)),
                          y = function(v) check_numbers(v, len = 2, increasing = TRUE, range = c(-90, 90)))
 
+# The run directory: NULL for the repository's own locations, or one relative or absolute
+# directory path that is not itself one of the baseline locations.
+check_run_dir = function(v) {
+  if (is.null(v)) return(NULL)
+  if (!is.character(v) || length(v) != 1 || is.na(v) || !nzchar(v)) return('must be NULL or one directory path')
+  if (!is.null(names(v))) return('must not have names')
+  top = strsplit(gsub('\\\\', '/', v), '/', fixed = TRUE)[[1]]
+  top = top[nzchar(top) & top != '.']
+  if (!length(top)) return('must not be the repository itself; use NULL for the baseline locations')
+  absolute = grepl('^(/|\\\\|[A-Za-z]:)', v)
+  if (!absolute && top[1] %in% c('data', 'output', 'figures', 'runs', 'scripts', 'R', 'tests'))
+    return(sprintf("must not be inside the repository's %s/ directory", top[1]))
+  if ('..' %in% top) return("must not contain '..'")
+  NULL
+}
+
 CONFIG_SCHEMA = list(
   analysis = list(
     coarse = list(
@@ -59,7 +75,9 @@ CONFIG_SCHEMA = list(
   presentation = list(
     map_windows = list(calibration = MAP_WINDOW_SCHEMA,
                        tail        = MAP_WINDOW_SCHEMA,
-                       diagnostics = MAP_WINDOW_SCHEMA)))
+                       diagnostics = MAP_WINDOW_SCHEMA)),
+  run = list(
+    dir = check_run_dir))
 
 # Rules across keys. Called only once every key has passed its own check.
 config_combination_errors = function(cfg) {
