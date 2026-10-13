@@ -27,8 +27,9 @@
 }
 
 run_start <- function(script, note = NULL, inputs = character(), config = list(),
-                      hash_inputs = TRUE) {
+                      hash_inputs = TRUE, runs_dir = "runs") {
   .run$script <- script
+  .run$runs_dir <- runs_dir   # path_runs(paths): runs/, or the run directory's own (I07)
   .run$t0     <- Sys.time()
   .run$note   <- if (is.null(note) || !nzchar(note)) "(none given)" else note
   .run$inputs <- inputs
@@ -46,8 +47,8 @@ run_start <- function(script, note = NULL, inputs = character(), config = list()
 run_end <- function(outputs = character(), status = "completed") {
   t1 <- Sys.time()
   stamp <- format(.run$t0, "%Y-%m-%d_%H%M")
-  path  <- file.path("runs", sprintf("%s_%s.md", stamp, .run$script))
-  dir.create("runs", showWarnings = FALSE)
+  path  <- file.path(.run$runs_dir, sprintf("%s_%s.md", stamp, .run$script))
+  dir.create(.run$runs_dir, recursive = TRUE, showWarnings = FALSE)
 
   pkgs <- c("mgcv", "terra", "raster", "sp", "dplyr", "gratia", "ggplot2")
   pkgv <- vapply(pkgs, function(p)
