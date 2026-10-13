@@ -78,9 +78,14 @@ centre or a bin edge?
   and download quota count against the repo owner's GitHub account (free
   tier: 1 GB each). Is that acceptable, or should large files live
   elsewhere (e.g. Zenodo / OSF with a download script)?
-- Are the archived scripts (`scripts/archive/`, the Thornthwaite,
-  ClimateNA and GCM snow work) safe to remove from the working tree and
-  keep only in git history?
+- **Scripts outside the pipeline.** `scripts/archive/`, `GCM_snow_prob.R`
+  and `thornthwaite.R` (the dropped snow / water-budget branch) and
+  `beta_veg_lct_modern.R` (an early modern-pollen script, out of the queue
+  since 2022) are not run by the pipeline and nothing reads their outputs.
+  Unless you want any of them kept, we will remove them from the working
+  tree in the readability cleanup (migration issue I15); every version stays
+  in git history and on the `legacy` branch. Any you keep will be tidied and
+  checked with the rest. (Default made explicit 2026-10-13, Chris.)
 
 ## 7. Small code questions raised by the configuration migration (2026-10-08)
 
@@ -102,4 +107,46 @@ answers let us delete code rather than carry it.
   are not installed, uses an undefined variable at line 278, and its tail
   from line 326 reads point-flavour files that no longer exist. Is this
   analysis still wanted for the paper? If yes we will rebuild it on the
-  shared functions; if no we will retire it.
+  shared functions; unless you tell us it is wanted, we will retire it in
+  the readability cleanup (I15), as for the scripts in section 6.
+
+## 8. Figure and code slips found in the readability review (2026-10-13)
+
+Found by the design review for the readability cleanup (migration issue
+I15, Codex `gpt-6-astra`), checked against the code by Claude Code. Each
+fix changes a figure or a printed number, so none is made silently: the
+first four are marked with a comment beside the figure code on the
+migration branch. Line numbers are for `chris-dev`. Shall we fix them?
+
+- **Script 7's per-age tile pages plot every age on every page**
+  (`7_plot_preds.R:303`). Inside the loop `for (year in ages_sub)`,
+  `subset(alb_grid_sub, year==year)` compares the `year` column with
+  itself, so every row is kept and each page of
+  `alb_interp_preds_month_binned_tile_pages_bluesky.pdf` overplots all
+  ages; only the ice outline changes from page to page.
+- **Script 2's native-vs-coarse scatter has its axis labels swapped**
+  (`2_calibration_lct_bluesky.R:145-147`). After the merge, `value.x` is the
+  native albedo and `value.y` the coarse one, but the x axis is labelled
+  "albedo resampled coarse" and the y axis "albedo native".
+- **Script 7's CV map uses the SD legend labels** (`7_plot_preds.R:355`):
+  the CV bins are cut with `breaks_cv` but labelled with `labels_sd`, so
+  the legend shows SD ranges.
+- **Script 7's difference maps miss the ice outline for the two youngest
+  ages** (`7_plot_preds.R:430-432`). The outlines are looked up by
+  `ice_fort$ages == ice_years[...]`, i.e. by the requested age against the
+  nearest ice year (1, 2, ... 21 ka); 50 and 500 BP have no exact match,
+  so the 0.05-0.5 ka and 0.5-2 ka panels draw no young (and for 0.05-0.5 ka
+  no old) outline. Probably minor at those ages, but not intended.
+- **Calibration coverage counts missing rows in the denominator**
+  (`5_calibration_eval.R:183`, `:188`): `sum(in_credible, na.rm=TRUE)/n()`
+  lowers `frac_in` in `calibration_model_stats.csv` if any cell has a
+  missing observation or interval. Should missing rows be excluded?
+- **Script 7a's complete-age filter is built but not used**
+  (`7a_alb_diff_full.R:167-172`, loop from `:217`): the table without
+  incomplete cells is computed and then ignored, and the loop skips only
+  cells with a single age. Script 1's diagnostic warning that "script 7a
+  will drop them" (`1_veg_lct_prep.R:140`) is therefore not accurate. Today
+  this changes nothing (every incomplete cell lies outside 27-74 N and is
+  trimmed in script 8, see the scientific file), but should 7a drop them,
+  or should the filter and the warning go?
+
