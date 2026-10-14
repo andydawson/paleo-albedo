@@ -26,7 +26,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I02 Month indexing | #3 | merged 2026-10-13 | d67587d |
 | I03 Validated config; script 9; map windows | #4 | merged 2026-10-13 | 80644fc |
 | I07 Paths; run directories; R-only tools | #5 | merged 2026-10-13 | 252c6b6 |
-| I05 Run manifests; consistency check | #6 | merged 2026-10-14 | (pending) |
+| I05 Run manifests; consistency check | #6 | merged 2026-10-14 | f867506 |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
