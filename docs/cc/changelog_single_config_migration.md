@@ -27,6 +27,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I03 Validated config; script 9; map windows | #4 | merged 2026-10-13 | 80644fc |
 | I07 Paths; run directories; R-only tools | #5 | merged 2026-10-13 | 252c6b6 |
 | I05 Run manifests; consistency check | #6 | merged 2026-10-14 | f867506 |
+| I04a Model, draw and reduction settings; seed | #7 | merged 2026-10-14 | (pending) |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -423,4 +424,88 @@ covered by the new test, not by a second two-hour run.
 **Left as found:** scripts 7 and 7a, when run side by side in one place, both print plots
 to the same `Rplots.pdf`, so that file is unreliable then. It is not a product of the
 pipeline; noted here, not fixed.
+
+---
+
+## I04a: the model, the draws, the land-cover summary and the random seed as settings (#7), merged 2026-10-14
+
+**Purpose.** Make the analysis choices of the upper pipeline visible and checked in
+`config.R`, keep the model formulas in one reviewed place, add the median as an
+alternative land-cover summary, and make the simulated draws of scripts 5 and 6
+repeatable.
+
+**Decisions taken while planning (Chris, 2026-10-14):**
+- Only the choice of model is a calibration setting (`calibration$model_id`). The issue's
+  `maxit` and three `k` values stay in R: a single "cover" k would have covered models 7, 8
+  and the experiments but not model 6 (k = 75) or the single-class terms of models 3-5
+  (k = 50).
+- Scripts 5 and 6 get their run manifests now rather than in I06, so the seed and the
+  selected model are recorded from the start.
+
+**New:**
+- **`config.R`**, analysis section: `land_cover$reduction` ("mean" | "median", A1),
+  `calibration$model_id` (mod1 ... mod8, B4), `draws$evaluation` and `draws$prediction`
+  (whole numbers >= 2, A2/A3) and `draws$seed` ("random" or a whole number). All checked by
+  the schema; the legal model ids come from the registry.
+- **`R/model_registry.R`**: the eight ladder models and seven spatial experiments, each
+  once, by id (label and formula terms, k included), with the shared controls (8 threads,
+  maxit 500) and `fit_calibration_model()`. The fitted response is the month's column
+  (`jan ~ ...`) instead of `get(month) ~ ...`, so a fit no longer depends on a global
+  `month`. `R/paths.R` takes its model ids from it.
+- **`R/preparation.R`**: `reduce_land_cover()` (the original mean, bit for bit and not
+  rescaled; or the median, rescaled by `close_fractions()` to sum to 1, stopping on a
+  missing, negative or all-zero cell-slice).
+- **`R/random.R`**: `base_seed()` (the configured number, or for "random" one made from
+  the clock and process id), `derive_seed()` (a base-R hash of base seed, script, month and
+  call, so each `simulate()` call has its own seed and a month's draws do not depend on the
+  other months), `draw_index()` (draw numbers past 999).
+- **`run_record()`** in `R/run_manifest.R`: a named fact in the manifest (`details`).
+- **Tests:** `tests/test_preparation.R`, `tests/test_random.R`, and new cases in
+  `test_config.R` and `test_run_manifest.R`.
+- **`tests/anchors/interp-seed1-2026-10-14/`**: checksums of the 26 draw-based outputs of
+  scripts 5 and 6 with seed 1, the byte-for-byte reference the contract asked for.
+
+**Changed:**
+- **Script 1** reduces the draws with `reduce_land_cover()` and the configured method.
+- **Script 4** fits the ladder, the experiments and the third fit of model 8 in loops over
+  the registry, in the original order; the AIC section keeps its explicit `AIC(mod1_interp,
+  ..., mod8_interp)` evaluated `with()` the loaded fits. The repeated fits of model 8 stay
+  until Andria answers general question 7.
+- **Script 5**: the selected model is `model_id` (was model 8, hard-wired three times);
+  its id, terms, family, method and controls are in the manifest. All four `simulate()`
+  calls use `draws$evaluation` and their own seed. The spatial comparison's SP_ELEV_LC is
+  script 4's `spatial_elev_cover` fit (same formula as model 8) rather than the selected
+  model, which another `model_id` would have mislabelled.
+- **Script 6**: `draws$prediction` and a seed per month; draw numbers by `draw_index()`
+  (`substr(iter, 2, 4)` read draw 1000 as 100).
+- **Scripts 5 and 6** read and write through the run manifest (`run_begin`, `read_input`,
+  `write_output`, `run_finish`), with the base seed recorded.
+
+**Outputs changed.** None at the default settings beyond the run-to-run variation of
+unseeded draws, which the default `seed = "random"` keeps. Script 5's spatial-comparison
+figures use script 4's own fit of model 8's formula for SP_ELEV_LC.
+
+**Verification.** Code at e612b69. Each run in its own run directory from the frozen
+inputs, 8 threads, upstream products seeded with `allow_stale = TRUE`. Machine load 50-60
+on 48 cores from another project.
+
+| Check | Result | Time, peak memory |
+|---|---|---|
+| registry formulas vs old script 4 | all 16 calls identical (parse trees) | - |
+| script 4 AIC section through the registry code, from the frozen fits | AIC table byte-identical | under 1 min |
+| one-month refit of model 8 (January) through `fit_calibration_model()` | predictions identical to the stored fit (max difference 0); AIC -6669 equal to the anchor | 14 min, 0.9 GB |
+| script 1, mean | both land-cover tables byte-identical | under 1 min, 3.1 GB |
+| script 1, median | same columns, rows and keys as the mean tables; every row sums to 1 (max error 2.2e-16); equal to medians grouped independently and rescaled (2.2e-16); mean and median differ by 0.012 on average, at most 0.16; before rescaling the medians sum to 0.80-1.02 | under 1 min |
+| script 2 on the median tables | runs (schema smoke test) | 4 min |
+| scripts 5 then 6, default (random) and a second random run | point predictions byte-identical; statistics and summary within tolerance of the unseeded anchor; the two random runs differ in all 13 draw files and the statistics, with different base seeds recorded | 12 + 20 min; 5.7 / 3.7 GB |
+| scripts 5 then 6, seed 1, twice | all 51 data files and 9 figures identical between the two; within tolerance of the unseeded anchor; selected models byte-identical to the frozen ones | 12 + 20 min |
+| scripts 5 then 6, `model_id = "mod7"`, seed 1 | the selected model predicts exactly as the ladder's model 7; manifest records mod7 and its terms; predictions differ from model 8's by 0.005 on average | 11 + 23 min |
+| manifests of all ten runs | completed; every output MD5 equals the file; script 6's 36 checks against script 5's selected models pass; stale inputs only the seeded baseline files | - |
+| unit tests | all seven test files pass | - |
+
+The repository's `figures/`, `runs/`, `output/` and `Rplots.pdf` were unchanged, and the
+331 frozen inputs matched, before and after. The issue's four-month seeded run needs the
+month selection setting of I04b; the property it tests (a month's draws do not depend on
+the other months) is tested in `test_random.R` instead, and the 1000-draw run by
+`draw_index()`'s test.
 
