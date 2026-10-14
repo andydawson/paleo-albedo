@@ -5,7 +5,7 @@
 #   cfg   = load_config()
 #   paths = pipeline_paths(cfg)
 #   readRDS(path_file(paths, 'lct_paleo'))
-#   saveRDS(x, path_prediction(paths, 'summary', month))
+#   saveRDS(x, path_file(paths, 'prediction_summary_month', month = month))
 #   ggsave(path_figure(paths, 'forcing_barplot_slide18.pdf'))
 #
 # Why: the scripts built their file names by pasting strings, separately in the script that
@@ -150,17 +150,11 @@ path_file = function(paths, id, month = NULL, model = NULL) {
   if (entry$kind == 'input') rel else under_root(paths, rel)
 }
 
-# Script 6's prediction files: the point predictions, the simulation draws and their
-# summary, per month, or (month = NULL) the all-month point and summary tables.
-path_prediction = function(paths, kind = c('point', 'samples', 'summary'), month = NULL) {
-  kind = match.arg(kind)
-  if (is.null(month) && kind == 'samples') stop('path_prediction: draws are stored per month only')
-  path_file(paths, paste0('prediction_', kind, if (!is.null(month)) '_month'), month = month)
-}
-
-# A calibration fit of script 4 (model_id 'mod1' ... 'mod8', or a spatial experiment:
-# 'spatial', 'elev', 'spatial_elev', 'spatial_cover', 'cover', 'cover_elev',
-# 'spatial_elev_cover'), or 'selected', the model script 5 selects.
+# A calibration fit of script 4, by model id: one of the ladder (mod1 ... mod8), a spatial
+# experiment, or 'selected', the model script 5 saves for prediction. For code that loops
+# over model ids; a fixed file is named with path_file() directly. It exists because the
+# fits are kept under three file-name patterns, one of them with an oddity
+# (calibration_mod_spatial_elev_cover{month}.RDS has no underscore before the month).
 path_calibration_model = function(paths, model_id, month) {
   if (identical(model_id, 'selected')) return(path_file(paths, 'calibration_selected', month = month))
   if (identical(model_id, 'spatial_elev_cover')) return(path_file(paths, 'calibration_spatial_elev_cover', month = month))
@@ -170,8 +164,6 @@ path_calibration_model = function(paths, model_id, month) {
        '; known: ', paste(c(LADDER_MODELS, SPATIAL_MODELS, 'selected'), collapse = ', '))
 }
 
-# Script 8's per-cell forcing table. Its name has no albedo tag.
-path_forcing = function(paths) path_file(paths, 'forcing')
 
 # A figure file, under figures/ in the run's root. Every figure path handed out is noted, so
 # a run manifest lists the figures this run wrote and not those another run (scripts 7 and
@@ -236,7 +228,7 @@ catalogue_paths = function(paths, months = MONTHS, include_spatial_eval = FALSE)
 
 # Make baseline products available in a run directory, for a run that reuses them (for
 # example script 6 reading the selected models of the baseline run of script 5). `files`
-# are baseline paths, e.g. path_calibration_model(baseline, 'selected', 'jan'). Each is
+# are baseline paths, e.g. path_file(baseline, 'calibration_selected', month = 'jan'). Each is
 # copied (never linked: a run writing to a linked file would write into the baseline), and
 # the copy is writable, as the run's own file; a file already in the run directory is
 # left alone. The seeded paths are listed in SEEDED.txt in the run directory once copied,

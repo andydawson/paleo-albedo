@@ -91,7 +91,7 @@ for (month in months) {
 
   print(paste('Fitting', CALIBRATION_MODELS[['mod8']]$label))
   write_output(run, fit_calibration_model('mod8', month, cal_interp_data),
-               path_calibration_model(paths, 'mod8', month))
+               path_file(paths, 'calibration_ladder', month = month, model = 'mod8'))
 
 }
 

@@ -38,20 +38,20 @@ stopifnot(
 
   # the accessors give today's names exactly
   identical(path_file(base, "lct_paleo"), "data/lct_paleo_reveals_interp.RDS"),
-  identical(path_prediction(base, "summary"), "output/prediction/paleo_interp_predict_gam_summary_bluesky.RDS"),
-  identical(path_prediction(base, "samples", "feb"), "output/prediction/paleo_interp_predict_gam_samps_feb_bluesky.RDS"),
+  identical(path_file(base, "prediction_summary"), "output/prediction/paleo_interp_predict_gam_summary_bluesky.RDS"),
+  identical(path_file(base, "prediction_samples_month", month = "feb"), "output/prediction/paleo_interp_predict_gam_samps_feb_bluesky.RDS"),
   identical(path_calibration_model(base, "mod8", "nov"), "output/calibration/calibration_mod8_interp_nov_bluesky.RDS"),
   identical(path_calibration_model(base, "selected", "jan"), "output/calibration/calibration_mod_interp_selected_jan_bluesky.RDS"),
   identical(path_calibration_model(base, "cover_elev", "jan"), "output/calibration/calibration_mod_cover_elev_jan.RDS"),
   identical(path_calibration_model(base, "spatial_elev_cover", "jan"), "output/calibration/calibration_mod_spatial_elev_coverjan.RDS"),
-  identical(path_forcing(base), "output/forcing/RF_holocene_all_cases.RDS"),
+  identical(path_file(base, "forcing"), "output/forcing/RF_holocene_all_cases.RDS"),
   identical(path_figure(base, "x.pdf"), "figures/x.pdf"),
   identical(path_figure(base, "diagnostics", "x.png"), "figures/diagnostics/x.png"),
   identical(path_runs(base), "runs"),
 
   # a run directory moves products, figures and manifests, never inputs
   identical(path_file(alt, "lct_paleo"), file.path(tmp, "data/lct_paleo_reveals_interp.RDS")),
-  identical(path_forcing(alt), file.path(tmp, "output/forcing/RF_holocene_all_cases.RDS")),
+  identical(path_file(alt, "forcing"), file.path(tmp, "output/forcing/RF_holocene_all_cases.RDS")),
   identical(path_figure(alt, "x.pdf"), file.path(tmp, "figures/x.pdf")),
   identical(path_runs(alt), file.path(tmp, "runs")),
   identical(path_file(alt, "kernel_cack"), "data/radiative-kernels/CACKv1.0/CACKv1.0.nc"),
@@ -73,8 +73,8 @@ stopifnot(
   # bad requests stop
   fails(path_file(base, "nonsense")),
   fails(path_file(base, "lct_paleo", month = "jan")),
-  fails(path_prediction(base, "summary", "January")),
-  fails(path_prediction(base, "samples")),
+  fails(path_file(base, "prediction_summary_month", month = "January")),
+  fails(path_file(base, "prediction_samples_month")),
   fails(path_calibration_model(base, "mod9", "jan")),
   fails(path_calibration_model(base, "mod8")),
   fails(seed_run_dir(base, "data/grid.RDS"))
