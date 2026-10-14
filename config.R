@@ -8,7 +8,7 @@
 # Three sections:
 #   analysis      settings that change the numbers the pipeline produces
 #   presentation  settings that change only how figures look
-#   run           where this run writes its files (later also threads and a note)
+#   run           where this run writes its files, and whether stale inputs are allowed
 #
 # A key appears here only once a script reads it; the rest of the pipeline's settings
 # are still in the scripts and move here issue by issue (single-config migration,
@@ -18,6 +18,26 @@
 
 list(
   analysis = list(
+
+    # Script 1: how the 200 posterior draws of land cover per cell, slice and class are
+    # summarised into one value. "mean" (the original choice) or "median"; the median is
+    # rescaled so that ET + OL + ST = 1 in every cell and slice. Andria's note in script 1
+    # ("not sure if should use median") is question A1.
+    land_cover = list(reduction = "mean"),
+
+    # Script 5: the model, by id, that is saved as the selected calibration model and used
+    # by script 6 for prediction. One of the ladder mod1 ... mod8; their formulas are in
+    # R/model_registry.R. Model 8 was chosen by hand (question B4).
+    calibration = list(model_id = "mod8"),
+
+    # Draws of simulated albedo from the calibration model (gratia's simulate()): per
+    # evaluation in script 5, and per prediction in script 6, where they become the
+    # posterior samples and the summaries' mean and intervals (questions A2, A3: 100 or
+    # 1,000). Whole numbers, at least 2. `seed` is "random" (a new base seed each run,
+    # recorded in the run manifest; copy it here to repeat a run exactly) or a whole
+    # number, which makes the draws of scripts 5 and 6 repeatable; each month and each
+    # simulate() call gets its own seed derived from it (R/random.R).
+    draws = list(evaluation = 100, prediction = 100, seed = "random"),
 
     # The coarse time slices, years BP. Consecutive pairs bound the seven periods of
     # the forcing summary (script 9) and of script 7's coarse differences; period
