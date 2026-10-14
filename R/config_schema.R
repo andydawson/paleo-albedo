@@ -120,7 +120,8 @@ CONFIG_SCHEMA = list(
       reduction = function(v) check_choice(v, c('mean', 'median'), single = TRUE)),
     calibration = list(
       model_id = function(v) check_choice(v, LADDER_MODELS, single = TRUE),
-      comparison_method = function(v) check_choice(v, c('ML', 'REML'), single = TRUE)),
+      comparison_method = function(v) check_choice(v, c('ML', 'REML'), single = TRUE),
+      ice_mask = function(v) check_choice(v, c('centre_in_1ka_polygon', 'none'), single = TRUE)),
     draws = list(
       evaluation = check_draws,
       prediction = check_draws,

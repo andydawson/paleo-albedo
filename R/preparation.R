@@ -47,3 +47,16 @@ close_fractions = function(wide, classes = c('ET', 'OL', 'ST')) {
   wide[, classes] = fractions / total
   wide
 }
+
+# Which points lie inside any of the polygons: TRUE or FALSE for each (x, y), in longitude and
+# latitude (WGS84). Used by script 2 to find the modern calibration cells whose centre is
+# under the 1 ka ice polygons: present-day ice caps, which the interpolation gave vegetation
+# fractions (question B8, issue I16). polygons is an sp or sf object, or a terra SpatVector;
+# the glacier shapes carry no coordinate system, so one without is taken to be WGS84.
+cells_in_polygons = function(x, y, polygons) {
+  if (!inherits(polygons, 'SpatVector')) polygons = terra::vect(polygons)
+  if (terra::crs(polygons) == '') terra::crs(polygons) = 'EPSG:4326'
+  points = terra::vect(cbind(x, y), crs = 'EPSG:4326')
+  inside = terra::relate(points, polygons, 'intersects')   # one row per point, one column per polygon
+  rowSums(inside) > 0
+}

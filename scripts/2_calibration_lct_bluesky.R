@@ -38,6 +38,21 @@ grid <- rast(read_input(run, path_file(paths, 'grid')))
 
 lct_interp_modern = read_input(run, path_file(paths, 'lct_modern'))
 
+# Present-day ice caps out of the calibration (config.R analysis$calibration$ice_mask,
+# question B8, issue I16): cells whose centre lies under the 1 ka ice polygons (the first of
+# the glacier shapes) carry interpolated vegetation fractions but the satellite's ice albedo.
+# They stay in the prediction domain; only the calibration table loses them. The cells left
+# out are recorded in the run manifest.
+if (cfg$analysis$calibration$ice_mask == 'centre_in_1ka_polygon') {
+  source('R/preparation.R')
+  ice_1ka   = read_input(run, path_file(paths, 'glacier_shapes'))[[1]]
+  under_ice = cells_in_polygons(lct_interp_modern$x, lct_interp_modern$y, ice_1ka)
+  run_record(run, 'calibration_ice_mask', list(method = 'centre_in_1ka_polygon',
+                                               cells_left_out = sum(under_ice),
+                                               cells = lct_interp_modern[under_ice, c('x', 'y')]))
+  lct_interp_modern = lct_interp_modern[!under_ice, ]
+}
+
 longitude_interp = lct_interp_modern[,c('x')]
 latitude_interp = lct_interp_modern[,c('y')]
 lonlat_interp = cbind(longitude_interp, latitude_interp)

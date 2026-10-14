@@ -10,6 +10,7 @@
 #   kernels$cack_variable     "CACK"   (the single year 2003)      config.R: "CACK CM"
 #   ice$difference_method     "legacy_components"                  config.R: "endpoint"
 #   calibration$comparison_method "REML"                           config.R: "ML"
+#   calibration$ice_mask      "none"                               config.R: "centre_in_1ka_polygon"
 #   draws$seed                1   (the original was unseeded; seed 1 reproduces the seeded
 #                                  anchor and meets the unseeded anchor's tolerances; Chris)
 #   run$dir                   ".rundirs/legacy"
@@ -39,7 +40,8 @@ list(
     # by script 6 for prediction. One of the ladder mod1 ... mod8; their formulas are in
     # R/model_registry.R. Model 8 was chosen by hand (question B4).
     calibration = list(model_id = "mod8",
-                       comparison_method = "REML"),
+                       comparison_method = "REML",
+                       ice_mask = "none"),
 
     # Draws of simulated albedo from the calibration model (gratia's simulate()): per
     # evaluation in script 5, and per prediction in script 6, where they become the

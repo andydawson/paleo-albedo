@@ -44,8 +44,13 @@ list(
     # comparison_method: how script 4 fits the ladder that scripts 4 and 5 compare by AIC.
     # "ML" (decided by Chris on 2026-10-14, question B4: REML likelihoods are not comparable
     # between models with different fixed terms) or "REML" (the original).
+    # ice_mask: script 2 leaves out of the calibration table the modern cells whose centre
+    # lies under the 1 ka ice polygons, present-day ice caps that the interpolation gave
+    # vegetation fractions (48 cells; question B8). "centre_in_1ka_polygon" (decided by Chris
+    # on 2026-10-14) or "none" (the original). The cells stay in the prediction domain.
     calibration = list(model_id = "mod8",
-                       comparison_method = "ML"),
+                       comparison_method = "ML",
+                       ice_mask = "centre_in_1ka_polygon"),
 
     # Draws of simulated albedo from the calibration model (gratia's simulate()): per
     # evaluation in script 5, and per prediction in script 6, where they become the
