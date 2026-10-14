@@ -1,6 +1,8 @@
 # 5_calibration_eval.R: how well do the calibration models fit the modern albedo?
 # Interp (spatially complete) path only: the point-based code and its guards are
-# removed. Every remaining line is unchanged from the original.
+# removed. Since issue I04a the selected model, the draw count and the random seed come
+# from config.R and files are read and written through the run manifest; the evaluation
+# itself is unchanged.
 
 
 library(ggplot2)
@@ -9,13 +11,29 @@ library(gratia)
 library(reshape2)
 library(dplyr)
 
-# Settings and file locations: config.R, and R/paths.R for every file read or written. The
-# directories products go to are created by pipeline_paths() (issue I07).
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# manifest; files are then read and written through it (issues I05, I04a).
+source('R/run_manifest.R')
+run   = run_begin('5_calibration_eval')
+cfg   = run$cfg
+paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
+
+# The model saved as the selected calibration model for script 6, by id (config.R
+# analysis$calibration$model_id, question B4; formulas in R/model_registry.R), recorded in
+# the manifest with its terms.
+model_id = cfg$analysis$calibration$model_id
+run_record(run, 'selected_model', list(id = model_id, terms = calibration_terms(model_id),
+                                       family = 'betar(link = "logit")', method = 'REML',
+                                       control = CALIBRATION_CONTROL))
+
+# Simulated draws per evaluation (config.R analysis$draws, questions A2, A3), and the base
+# random seed of this run, recorded in its manifest (R/random.R).
+source('R/random.R')
+n_draws   = cfg$analysis$draws$evaluation
+seed_base = run_record(run, 'random_seed', list(setting = cfg$analysis$draws$seed,
+                                                base = base_seed(cfg$analysis$draws$seed)))$base
 
 
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
@@ -23,7 +41,7 @@ alb_prod = paths$tag   # the albedo product in file names
 source('R/calendar.R')
 months = MONTHS
 
-cal_interp_data =readRDS(path_file(paths, 'calibration_table'))
+cal_interp_data = read_input(run, path_file(paths, 'calibration_table'))
 
 pdf(path_figure(paths, paste0('cal_model_vs_data_gam_error_months.pdf')), width=10, height=10)
 for (n in 1:length(months)){
@@ -32,12 +50,11 @@ for (n in 1:length(months)){
 
   print(month)
 
-  mod8_interp = readRDS(path_calibration_model(paths, 'mod8', month))
-  summary(mod8_interp)
+  # The selected model (model_id above), saved for script 6.
+  cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
+  summary(cal_interp_model)
 
-  cal_interp_model = mod8_interp
-
-  saveRDS(cal_interp_model, path_calibration_model(paths, 'selected', month))
+  write_output(run, cal_interp_model, path_calibration_model(paths, 'selected', month))
 
   cal_interp_predict_gam = predict(cal_interp_model,
                                    newdata = cal_interp_data,
@@ -51,7 +68,8 @@ for (n in 1:length(months)){
   cor_month
 
   cal_interp_sim_gam = simulate(cal_interp_model,
-                                nsim = 100,
+                                nsim = n_draws,
+                                seed = derive_seed(seed_base, '5_calibration_eval', month, 'model_vs_data'),
                                 data = cal_interp_data[,c('x', 'y', 'elev', 'ET', 'OL', 'ST', month)])
 
   cal_interp_sim_gam = data.frame(cal_interp_data[,c('x', 'y', month)],
@@ -102,12 +120,11 @@ for (n in 1:length(months)){
 
   print(month)
 
-  mod8_interp = readRDS(path_calibration_model(paths, 'mod8', month))
-  summary(mod8_interp)
+  # The selected model (model_id above), saved for script 6.
+  cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
+  summary(cal_interp_model)
 
-  cal_interp_model = mod8_interp
-
-  saveRDS(cal_interp_model, path_calibration_model(paths, 'selected', month))
+  write_output(run, cal_interp_model, path_calibration_model(paths, 'selected', month))
 
   cal_interp_predict_gam = predict(cal_interp_model,
                                    newdata = cal_interp_data,
@@ -121,7 +138,8 @@ for (n in 1:length(months)){
   cor_all[n] = cor_month
 
   cal_interp_sim_gam = simulate(cal_interp_model,
-                                nsim = 100,
+                                nsim = n_draws,
+                                seed = derive_seed(seed_base, '5_calibration_eval', month, 'statistics'),
                                 data = cal_interp_data[,c('x', 'y', 'elev', 'ET', 'OL', 'ST', month)])
 
   cal_interp_sim_gam = data.frame(cal_interp_data[,c('x', 'y', month)],
@@ -201,7 +219,7 @@ cal_diff
 
 colnames(cal_diff) = c('month', 'correlation', 'data in credible interval', 'diff lower (model - data; 2.5%)', 'diff upper (model - data; 97.5%)')
 
-write.csv(cal_diff, path_file(paths, 'calibration_stats'), row.names = FALSE)
+write_output(run, cal_diff, path_file(paths, 'calibration_stats'), write.csv, row.names = FALSE)
 
 cal_sim_SPE = data.frame(x = numeric(0),
                          y = numeric(0),
@@ -224,24 +242,26 @@ for (n in 1:length(months)){
 
   # CM: these seven were read from output/calibration/spatial_experiment/, a directory
   # script 4 never writes, so the script always stopped here. They are now read from where
-  # script 4 writes them. SP_ELEV_LC is the selected model, saved by this script above;
-  # the separate fit of the same formula (spatial_elev_cover) is not used (issue I07; the
-  # repeated fits of model 8 are a question for Andria, general 7).
-  model_SP_ELEV_LC = readRDS(path_calibration_model(paths, 'selected', month))
+  # script 4 writes them (issue I07). SP_ELEV_LC is script 4's spatial_elev_cover fit, the
+  # same formula as model 8; until issue I04a it was the selected model, which would be
+  # mislabelled once the selected model is a setting (the repeated fits of model 8 are a
+  # question for Andria, general 7).
+  model_SP_ELEV_LC = read_input(run, path_calibration_model(paths, 'spatial_elev_cover', month))
 
-  model_ELEV_LC = readRDS(path_calibration_model(paths, 'cover_elev', month))
-  model_LC = readRDS(path_calibration_model(paths, 'cover', month))
-  model_SP_LC = readRDS(path_calibration_model(paths, 'spatial_cover', month))
-  model_SP = readRDS(path_calibration_model(paths, 'spatial', month))
-  model_SP_ELEV = readRDS(path_calibration_model(paths, 'spatial_elev', month))
-  model_ELEV = readRDS(path_calibration_model(paths, 'elev', month))
+  model_ELEV_LC = read_input(run, path_calibration_model(paths, 'cover_elev', month))
+  model_LC = read_input(run, path_calibration_model(paths, 'cover', month))
+  model_SP_LC = read_input(run, path_calibration_model(paths, 'spatial_cover', month))
+  model_SP = read_input(run, path_calibration_model(paths, 'spatial', month))
+  model_SP_ELEV = read_input(run, path_calibration_model(paths, 'spatial_elev', month))
+  model_ELEV = read_input(run, path_calibration_model(paths, 'elev', month))
 
   for (model in models){
 
     model_name = eval(as.name(paste0('model_', model)))
 
     sim = simulate(model_name,
-                              nsim = 100,
+                              nsim = n_draws,
+                              seed = derive_seed(seed_base, '5_calibration_eval', month, paste0('experiment_', model)),
                               data = cal_interp_data[,c('x', 'y', 'elev', 'ET', 'OL', 'ST', month)])
     sim_df = data.frame(cal_interp_data[,c('x', 'y', month)],
                                    sim)
@@ -321,14 +341,14 @@ print(p)
 if ('nov' %in% months) {
 month = "nov"
 
-mod1_interp = readRDS(path_calibration_model(paths, 'mod1', month))
-mod2_interp = readRDS(path_calibration_model(paths, 'mod2', month))
-mod3_interp = readRDS(path_calibration_model(paths, 'mod3', month))
-mod4_interp = readRDS(path_calibration_model(paths, 'mod4', month))
-mod5_interp = readRDS(path_calibration_model(paths, 'mod5', month))
-mod6_interp = readRDS(path_calibration_model(paths, 'mod6', month))
-mod7_interp = readRDS(path_calibration_model(paths, 'mod7', month))
-mod8_interp = readRDS(path_calibration_model(paths, 'mod8', month))
+mod1_interp = read_input(run, path_calibration_model(paths, 'mod1', month))
+mod2_interp = read_input(run, path_calibration_model(paths, 'mod2', month))
+mod3_interp = read_input(run, path_calibration_model(paths, 'mod3', month))
+mod4_interp = read_input(run, path_calibration_model(paths, 'mod4', month))
+mod5_interp = read_input(run, path_calibration_model(paths, 'mod5', month))
+mod6_interp = read_input(run, path_calibration_model(paths, 'mod6', month))
+mod7_interp = read_input(run, path_calibration_model(paths, 'mod7', month))
+mod8_interp = read_input(run, path_calibration_model(paths, 'mod8', month))
 
 AIC(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp,
     mod6_interp, mod7_interp, mod8_interp)
@@ -338,11 +358,11 @@ anova_gam_interp = anova.gam(mod1_interp, mod2_interp, mod3_interp, mod4_interp,
                              test = "Chisq")
 anova_gam_interp
 
-summary(mod8_interp)
+# The selected model (model_id above), saved again for November.
+cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
+summary(cal_interp_model)
 
-cal_interp_model = mod8_interp
-
-saveRDS(cal_interp_model, path_calibration_model(paths, 'selected', month))
+write_output(run, cal_interp_model, path_calibration_model(paths, 'selected', month))
 
 cal_interp_predict_gam = predict(cal_interp_model,
                                  newdata = cal_interp_data,
@@ -368,7 +388,8 @@ ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.png')
 ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.pdf')))
 
 cal_interp_sim_gam = simulate(cal_interp_model,
-                              nsim = 100,
+                              nsim = n_draws,
+                              seed = derive_seed(seed_base, '5_calibration_eval', month, 'november'),
                               data = cal_interp_data)
 
 cal_interp_sim_gam = data.frame(cal_interp_data[,c('x', 'y', month)],
@@ -401,3 +422,5 @@ ggplot(data=cal_interp_sim_gam_sum) +
 ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_error_interp_', month, '.png')))
 ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_error_interp_', month, '.pdf')))
 } # CM: end of the November-only block
+
+run_finish(run)
