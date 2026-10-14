@@ -60,6 +60,10 @@ medians to sum to one per cell and slice, so it is a different estimator
 from the vector of marginal medians; the paper must say which was used.
 Script 1's diagnostic mode already reports how far the medians sit from
 the means, which tells you whether the run is worth making.
+Measured 2026-10-14 when the switch was built (issue I04a): before
+rescaling, the three medians of a cell and slice sum to between 0.80 and
+1.02; after rescaling, median and mean cover differ by 0.012 on average
+and by at most 0.16 in a fraction.
 
 ### A2. What the albedo "posterior samples" actually are
 **What the code does.** Script 6 (`6_prediction_model.R`, line 49) calls
