@@ -55,6 +55,11 @@ if (diagnostic) {
 source('R/preparation.R')
 lct_interp_wide = reduce_land_cover(lct_interp, cfg$analysis$land_cover$reduction)
 
+# The fractions must sum to one in every cell and slice: the calibration smooth of the
+# three is fitted on that sheet only (question B1, issue I16). Stops otherwise; the result
+# is recorded in the run manifest.
+run_record(run, 'land_cover_fractions', check_fractions(lct_interp_wide))
+
 locations_interp = lct_interp_wide[,c('x', 'y')]
 
 # Elevation at each cell centre, cached. The AWS terrain service is queried only when

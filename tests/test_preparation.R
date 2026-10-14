@@ -58,4 +58,12 @@ stopifnot(
   fails(close_fractions(data.frame(cell_id = 4, ages = 50, ET = -0.1, OL = 0.6, ST = 0.5))),
   fails(reduce_land_cover(posts, "trimmed"))
 )
+# check_fractions() (issue I16): passes compositions, stops on any row off the sheet,
+# negative or not finite.
+good <- data.frame(ET = c(0.2, 0.5), OL = c(0.3, 0.25), ST = c(0.5, 0.25))
+stopifnot(check_fractions(good)$rows == 2,
+          fails(check_fractions(transform(good, ST = c(0.4, 0.25)))),   # sums to 0.9
+          fails(check_fractions(transform(good, ET = c(-0.1, 0.5), OL = c(0.6, 0.25)))),
+          fails(check_fractions(transform(good, ET = c(NA, 0.5)))))
+
 cat("test_preparation: all tests passed\n")
