@@ -32,7 +32,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I06 Manifests in every script; plain config loader | #9 | merged 2026-10-14 | 3ea2624 |
 | I17 Path readability | #20 | merged 2026-10-14 | 7abb45c |
 | I11 (slim) Script 7a's per-pair arithmetic as a tested function | #12 | merged 2026-10-14 | d772ea3 |
-| I16a Kernel variables; ice-advance method; legacy config | #19 | verified 2026-10-14; merge awaits Chris (one unexpected effect, below) | |
+| I16a Kernel variables; ice-advance method; legacy config | #19 (first part) | merged 2026-10-14 | c1f2d73 |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -730,7 +730,7 @@ readvance adjustment goes inside the function (Chris).
 - **Scripts 8 and 9:** the forcing table and four CSVs byte-identical; figures identical.
 - **Manifests and inputs:** all completed; the frozen inputs matched.
 
-## I16a: kernel variables, the ice-advance method and a legacy configuration (#19, first part)
+## I16a: kernel variables, the ice-advance method and a legacy configuration (#19, first part), merged 2026-10-14
 
 **Purpose.** Make the method choices Chris took on 2026-10-14 (to be reviewed by Andria)
 switches in `config.R`, and keep the original analysis reproducible from
