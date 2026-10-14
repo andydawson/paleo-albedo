@@ -123,3 +123,42 @@ similarity was 0.95 or more.
 and a strict title rule, caught everything planted. The 0.95 rule is set on one test set of
 45 DOI entries: check it again on our own bibliography.
 
+## Pilot 2: claim support, on McWilliams et al. (2019), 2026-10-14
+
+**Test set** (Chris: open-access sources only). A two-page test manuscript of 28 claims
+with bracketed citations to 10 sources: 20 sentences of the BMJ Open paper citing a source
+whose full text is open (lightly shortened to stand alone, which changed the scope of two),
+and 8 planted errors: four reversed conclusions, a wrong number and setting (MIMIC-III as
+400,000 admissions in 200 hospitals), a wrong setting (a single UK hospital as 40 US
+hospitals), causation for an association, and a claim pinned on the wrong source. The full
+texts: 5 publisher or repository PDFs, 5 rendered from the Europe PMC open-access XML
+(publishers refused automated PDF downloads). Claim ids were blinded (C01-C28) for the
+challenger. Kept as a reusable test set in
+`~/.local/share/research-tools/testsets/bmjopen-2019-claims/` (answer key, sources,
+both tools' outputs, PaperTrace's evidence viewer).
+
+**Assessor:** PaperTrace (commit 4f1c3ac), `--model claude-opus-5-5`, sources provided,
+contact email Chris's Bristol address (Unpaywall). **Challenger:** Astra (Codex CLI,
+`gpt-6-astra`, reasoning `max`), blind to PaperTrace's verdicts and to which claims were
+planted, given the claims and the source texts with the adversarial prompt above.
+
+**Result.**
+- **Planted errors: both caught all 8, each with the expected verdict** (6 contradicted,
+  1 partial for the causation claim, 1 not established for the wrong source).
+- **Real claims:** PaperTrace 8 supported, 10 partial, 2 not addressed; Astra 6 supported,
+  13 partial, 1 unverifiable. They agree on 11 of 20.
+- **The 9 disagreements** are judgement calls, not misses: whether "recently" or "our
+  previous work" needs support from the source; whether a methods reference supports a
+  sentence about the citing paper's own analysis; one-instance versus trend. Astra marked
+  one "unverifiable" because the source supplied was the arXiv preprint, not the cited
+  journal version: a real identity point. Listed for Chris to adjudicate
+  (`disagreements.md` in the test set).
+- PaperTrace's evidence crops (page images with the matched text boxed) make checking a
+  verdict fast; Astra's table gives a suggested correction for each.
+
+**What this means.** On this small set, the combination works as designed: neither checker
+passed a planted error, and the disagreements point at the claims a person should look at.
+Limits: one paper, 28 claims, sources partly rendered from XML, and the "real" claims were
+shortened by me. PaperTrace reads only bracketed numeric citations; a Word manuscript with
+author-year citations needs a numbered PDF export first.
+
