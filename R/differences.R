@@ -56,9 +56,6 @@ pair_albedo_differences = function(alb_cell_filled, ice_threshold) {
   alb_diff_veg_ice_parts = rowSums(cbind(alb_diff_veg_part, alb_diff_ice_part))
   alb_diff_veg_icesc_parts =  rowSums(cbind(alb_diff_veg_part, alb_diff_icesc_part))
 
-  alb_diff_veg_ice_parts = rowSums(cbind(alb_diff_veg_part, alb_diff_ice_part))
-  alb_diff_veg_icesc_parts =  rowSums(cbind(alb_diff_veg_part, alb_diff_icesc_part))
-
   alb_diff_veg_thresh = -diff(alb_cell_filled$alb_veg)
   alb_diff_veg_thresh[is_ice_old | is_ice_young] = NA
 
