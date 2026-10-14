@@ -94,7 +94,7 @@ says "posterior samples", which readers will take to mean (ii).
 The manuscript says 1,000 posterior samples per cell and month; the
 scripts draw 100. Which is intended? (This interacts with A1 and A2.)
 
-**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** 1,000 draws in the final run (reduces Monte Carlo noise; does not by itself add model or land-cover uncertainty, which is A1/A2).
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** 100 draws for both scripts 5 and 6 while the pipeline is in development; 1,000 for both is possible for the very final results but not decided (more draws reduce Monte Carlo noise; they do not by themselves add model or land-cover uncertainty, which is A1/A2). Revised by Chris the same day.
 
 ## B. The calibration model
 
