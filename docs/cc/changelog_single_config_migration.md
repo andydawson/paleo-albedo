@@ -754,7 +754,8 @@ calibration choices (i16b) and land support (i16c, waits for the MOD44W data) fo
   and all-sky.
 - **`R/differences.R`:** `difference_method = "endpoint"` takes each slice's albedo, ice or
   vegetation by the threshold, and subtracts; `"legacy_components"` is the original
-  arithmetic. **`tests/test_differences.R`:** fourteen cases, including the advance.
+  arithmetic. **`tests/test_differences.R`:** sixteen cases, including the advance, the double count
+  (below) and a misspelt method, which now stops rather than using the original arithmetic.
 
 **Outputs changed (new configuration only; the legacy configuration reproduces the old
 outputs exactly).** Global-equivalent forcing, mW/m², 8-10 ka as the example:
@@ -772,7 +773,7 @@ outputs exactly).** Global-equivalent forcing, mW/m², 8-10 ka as the example:
 - **CAM5 at the top of the atmosphere** instead of the surface: about 7% smaller.
 - **CACK 2001-2016 mean** instead of 2003: within about 5%.
 
-**Unexpected effect, put to Chris before merging.** The endpoint method changed 9 pairs of
+**Unexpected effect, reviewed by Fable and Astra before merging (Chris's request).** The endpoint method changed 9 pairs of
 slices (108 cell-months), not only the 3 ice advances it was meant to fix. In the other 6
 (cells 3077, 3693, 3966, 7551, 7554, 9086), the readvance adjustment lowers a slice's ice
 fraction below the threshold, but script 7a chose the glacier albedo from the *unadjusted*
@@ -780,6 +781,14 @@ fraction. The original arithmetic therefore added a vegetation change and an ice
 for the same pair, about -0.6 in July albedo where the vegetation change alone is about
 -0.02. The endpoint method uses the adjusted fraction throughout and keeps only the
 vegetation change. Effect on forcing: within the 4.7 mW/m² above. Added to question C2.
+Both reviewers confirmed the diagnosis and agreed the double count should go with no
+separate switch (it describes an inconsistency, not a method). Fable's full cross-tabulation
+of the two classifications over all 806,172 rows: only the 3 advances and the 6 double
+counts differ; retreats, still-ice and missing pairs agree; 24 vegetation-component values
+become NA in two cells north of 74°N, which script 8 drops. On their advice the comments
+now describe both faults, the youngest-pair readvance fault is stated precisely (an error
+with two slices, wrong averages with more), and tests cover each (reviews:
+`2026-10-14_i16a_double_count_review_{fable,codex_gpt6astra}.md`).
 
 **Verification** (runs in `.rundirs/i16a_{legacy,new,clear}`, from the frozen predictions):
 - **Legacy configuration:** script 7a (67 min, 2.4 GB) `ALB_diffs_bluesky.RDS`,
