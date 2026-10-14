@@ -546,6 +546,17 @@ stop; it has not happened in the data so far.
 
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** The arithmetic error is fixed as a code correction (legacy switch kept): an ice advance across the threshold was recorded as zero change; changes are now computed from each slice's complete albedo state. Whether to keep readvances rather than smoothing them stays with you.
 
+**A third consequence, found 2026-10-14 when the fix was verified (issue I16, first part).**
+The readvance adjustment and the choice of glacier albedo disagree: the adjustment lowers
+a slice's ice fraction, but script 7a picks the glacier albedo from the *unadjusted*
+fraction. In 6 pairs of slices (cells 3077, 3693, 3966, 7551, 7554, 9086) the adjusted
+fraction is below 50 % while the unadjusted one is above, so the original arithmetic
+counted both a vegetation change and an ice change for the same pair: about -0.6 in July
+albedo, where the vegetation change alone is about -0.02. The corrected arithmetic uses
+the adjusted fraction throughout and keeps only the vegetation change. The effect on the
+forcing is small (with the 3 advances, at most 4.7 mW/m² global-equivalent in any period),
+but it is one more reason the readvance rule matters.
+
 ### C3. The three kernels are not like for like
 **Verified on 2026-09-19** for HadGEM3 and CAM5, and **on 2026-09-21**
 for CACK, by downloading the kernels and opening them (README.md records
