@@ -342,7 +342,7 @@ in water or ice pixels at coasts and lake margins, and have you tried
 fitting to the cell average instead? If the two calibrations differ, the
 cell average is the like-for-like match to the 1-degree predictors.
 
-**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Calibrate on the mean albedo over the land part of each 1-degree cell, with inland water (lakes, Hudson Bay) masked with MODIS MOD44W, instead of the centre pixel.
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Calibrate on the mean albedo over the land part of each 1-degree cell, with inland water (lakes, Hudson Bay) masked with MODIS MOD44W, instead of the centre pixel. **Still open:** the mask's version and year (v6.1, 2015 annual layer proposed), the DEM product and resolution for B9 (about 1 km via elevatr proposed), and whether a cell-month needs a minimum observed land coverage to enter the calibration (the original code has none; 50% was suggested, not decided).
 
 ### B6. Albedo values of exactly zero are set to 0.0001
 *Checked 2026-09-19: no cell-month in the interp calibration table hits
