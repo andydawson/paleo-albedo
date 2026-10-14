@@ -81,6 +81,14 @@ r <- run_toy("8_radiative", c("run = run_begin('8_radiative'); paths = run$paths
                               "run_finish(run)"))
 check("a file read several times unchanged is recorded once", r$status == 0 && length(latest("8_radiative")$inputs) == 1)
 
+r <- run_toy("toy_details", c("run = run_begin('toy_details')",
+                              "seed = run_record(run, 'random_seed', list(setting = 'random', base = 123L))$base",
+                              "stopifnot(identical(seed, 123L))", "run_finish(run)"))
+m <- latest("toy_details")
+check("run_record() keeps a fact in the record and the summary, and returns it",
+      r$status == 0 && identical(m$details$random_seed$base, 123L) &&
+      any(grepl('random_seed: {"setting":"random","base":123}', readLines(manifests("toy_details")[1]), fixed = TRUE)))
+
 # --- the consistency check stops ... ---------------------------------------------------
 saveRDS(data.frame(diff = 4:6), product)
 r <- run_toy("8_radiative", consumer_body)

@@ -42,8 +42,8 @@ run_begin = function(script, config_file = config_path()) {
                     config_file = config_file,
                     config_md5 = if (file.exists(config_file)) unname(tools::md5sum(config_file)) else NULL,
                     code = code_version(config_file),
-                    config = NULL, inputs = list(), outputs = list(), figures = list(),
-                    stale_inputs = list())
+                    config = NULL, details = list(), inputs = list(), outputs = list(),
+                    figures = list(), stale_inputs = list())
   cfg = tryCatch(load_config(config_file), error = function(e) e)
   if (inherits(cfg, 'error')) {
     run$file = manifest_file('runs', script, run$started)
@@ -103,6 +103,14 @@ write_output = function(run, object, path, writer = saveRDS, ...) {
                          list(list(path = path, md5 = unname(tools::md5sum(path)))))
   write_manifest(run)
   invisible(path)
+}
+
+# Record a fact about the run in its manifest under `details`, e.g. the base random seed
+# or the selected model's formula. Returns the value.
+run_record = function(run, name, value) {
+  run$record$details[[name]] = value
+  write_manifest(run)
+  invisible(value)
 }
 
 # Finish a run: close the plot devices (so figure files are complete), record every figure
@@ -220,6 +228,8 @@ write_manifest = function(run) {
               if (is.na(code$dirty)) 'uncommitted changes unknown'
               else if (code$dirty) '**with uncommitted changes** (see the record)' else 'no uncommitted changes')),
     if (!is.null(r$error)) c('', '**Error.**', '', '```', r$error, '```'),
+    if (length(r$details)) vapply(names(r$details), function(k)
+      sprintf('- %s: %s', k, jsonlite::toJSON(r$details[[k]], auto_unbox = TRUE, digits = NA)), ''),
     if (length(r$stale_inputs)) c('', sprintf('**%d stale input(s) allowed by run$allow_stale** (see the record).',
                                               length(r$stale_inputs))),
     '', '## Inputs', '', file_lines(r$inputs, 'inputs'),
