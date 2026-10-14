@@ -23,7 +23,7 @@
 #   alb_diff = read_input(run, path_file(paths, 'albedo_differences'))       # readRDS by default
 #   rk_cam5  = read_input(run, path_file(paths, 'kernel_cam5'), raster, varname = 'FSNS')
 #   ...
-#   write_output(run, alb_diff, path_forcing(paths))                          # saveRDS by default
+#   write_output(run, alb_diff, path_file(paths, 'forcing'))                          # saveRDS by default
 #   write_output(run, main, path_file(paths, 'forcing_by_period'), write.csv, row.names = FALSE)
 #   run_finish(run)                      # closes plot devices, lists the figures, 'completed'
 
@@ -37,7 +37,7 @@ source('R/paths.R')
 # interactive session (RStudio) errors are left to the session as usual, and a run that
 # is not finished stays 'started'. `run` is an environment: the functions below update it
 # in place, so the script never has to reassign it.
-run_begin = function(script, config_file = config_path()) {
+run_begin = function(script, config_file = config_path(), interactive_session = interactive()) {
   run = new.env(parent = emptyenv())
   run$started = Sys.time()
   # What the session had before the run, restored when it ends: the error handler, the
@@ -64,23 +64,27 @@ run_begin = function(script, config_file = config_path()) {
   if (isTRUE(run$record$code$dirty))
     warning('config.R, scripts/ or R/ have uncommitted changes; this run cannot be ',
             'reproduced from a commit', call. = FALSE, immediate. = TRUE)
+  # In an interactive session (stepping through a script in RStudio) the manifest is first
+  # written when the run writes an output or finishes, so trying out a few lines leaves no
+  # stray 'started' manifest behind. A batch run (Rscript) writes it at once.
+  run$deferred = interactive_session
   write_manifest(run)
   FIGURES_REQUESTED$paths = character()
   # Plots printed with no device open go to Rplots.pdf. Note whether this run did that, so
   # the file is claimed only by a run that wrote to it. (Not in an interactive session,
   # whose screen device must stay as it is.)
-  if (!interactive()) {
+  if (!interactive_session) {
     device = getOption('device')
     if (is.character(device)) device = get(device, mode = 'function')
     options(device = function(...) { run$used_default_device = TRUE; device(...) })
   }
-  if (!interactive()) {
+  if (!interactive_session) {
     options(error = function() {
       run_failed(run, geterrmessage())
       quit(save = 'no', status = 1)
     })
   }
-  message('run manifest: ', run$file)
+  if (!run$deferred) message('run manifest: ', run$file)
   run
 }
 
@@ -92,6 +96,7 @@ read_input = function(run, path, reader = readRDS, ...) {
   md5 = unname(tools::md5sum(path))
   # A file read again unchanged (script 8 reads each kernel once per month) is recorded once.
   already = Filter(function(e) e$path == path && e$md5 == md5, run$record$inputs)
+  message('reading ', path)
   if (!length(already)) {
     made_by = producer(run$paths, path)
     entry = list(path = path, md5 = md5)
@@ -107,6 +112,8 @@ read_input = function(run, path, reader = readRDS, ...) {
 write_output = function(run, object, path, writer = saveRDS, ...) {
   writer(object, path, ...)
   if (!file.exists(path)) stop('write_output: nothing was written to ', path, call. = FALSE)
+  message('wrote ', path)
+  run$deferred = FALSE
   run$record$outputs = c(run$record$outputs,
                          list(list(path = path, md5 = unname(tools::md5sum(path)))))
   write_manifest(run)
@@ -127,6 +134,7 @@ run_record = function(run, name, value) {
 run_finish = function(run) {
   for (device in setdiff(grDevices::dev.list(), run$devices_before)) grDevices::dev.off(device)
   run$record$figures = new_figures(run)
+  run$deferred = FALSE
   run$record$status = 'completed'
   run$record$finished = utc_time(Sys.time())
   write_manifest(run)
@@ -218,6 +226,7 @@ manifest_file = function(runs_dir, script, started) {
 # Write the manifest: a short readable summary, then the full record as JSON. Written to a
 # temporary file and renamed, so a reader never sees a half-written manifest.
 write_manifest = function(run) {
+  if (isTRUE(run$deferred)) return(invisible(NULL))
   r = run$record
   r$session = session_info()
   json = jsonlite::prettify(jsonlite::toJSON(r, auto_unbox = TRUE, json_verbatim = TRUE,

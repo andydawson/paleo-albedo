@@ -4,6 +4,9 @@
 # runs it and checks every key against the schema in R/config_schema.R. Each run manifest
 # records the settings it ran with.
 #
+# To add a setting, add it here and in R/config_schema.R: a key the schema does not know
+# stops every script, so that a misspelt setting can never be silently ignored.
+#
 # Three sections:
 #   analysis      settings that change the numbers the pipeline produces
 #   presentation  settings that change only how figures look

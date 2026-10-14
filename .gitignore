@@ -63,3 +63,8 @@ data/paleo_predict_gam_summary_may_bluesky.RDS
 
 # 2026-10-08: isolated run directories for verification runs (tools/rundir.sh).
 .rundirs/
+
+# 2026-10-14 (issue I17, Chris): run manifests are not committed in general. The manifests
+# of the official runs (the I13b legacy run and the final run) are added deliberately with
+# `git add -f`, as the paper's provenance; the historical manifests already tracked stay.
+runs/

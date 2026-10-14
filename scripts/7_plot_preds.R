@@ -80,7 +80,7 @@ ice_colour = 'gray60'
 ice_fill_dark = 'ivory3'
 ice_colour_dark = 'gray40'
 
-alb_interp_preds = read_input(run, path_prediction(paths, 'summary'))
+alb_interp_preds = read_input(run, path_file(paths, 'prediction_summary'))
 # CM: the slice alias, config.R analysis$coarse$slice_alias (question C7; issue I04b): the
 # 11,500 BP slice is treated as 12,000 BP, which also gives it the 12 ka ice polygon below.
 slice_alias = cfg$analysis$coarse$slice_alias
@@ -149,7 +149,7 @@ labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "6
 
 grid_NA <- read_input(run, path_file(paths, 'grid'))
 
-paleo_interp_sim_gam = read_input(run, path_prediction(paths, 'point'))
+paleo_interp_sim_gam = read_input(run, path_file(paths, 'prediction_point'))
 
 cell_id <- raster::extract(grid_NA, alb_interp_preds[,c('x', 'y')])
 

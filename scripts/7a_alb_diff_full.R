@@ -38,7 +38,7 @@ breaks_alb = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
 proj_WGS84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'
 
-alb_interp_preds = read_input(run, path_prediction(paths, 'summary'))
+alb_interp_preds = read_input(run, path_file(paths, 'prediction_summary'))
 
 alb_interp_preds$alb_bin = cut(alb_interp_preds$alb_mean, breaks_alb, labels=FALSE)
 

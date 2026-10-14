@@ -40,7 +40,7 @@ for (month in months){
 
   print(month)
 
-  cal_interp_model = read_input(run, path_calibration_model(paths, 'selected', month))
+  cal_interp_model = read_input(run, path_file(paths, 'calibration_selected', month = month))
 
   print(">>Predict")
   paleo_interp_predict_gam_vec = predict.gam(cal_interp_model,
@@ -49,7 +49,7 @@ for (month in months){
   paleo_interp_predict_gam = data.frame(lct_interp_paleo,
                                         alb_mean = paleo_interp_predict_gam_vec)
 
-  write_output(run, paleo_interp_predict_gam, path_prediction(paths, 'point', month))
+  write_output(run, paleo_interp_predict_gam, path_file(paths, 'prediction_point_month', month = month))
 
   print(">>Simulate")
   paleo_interp_sim_gam = simulate(cal_interp_model,
@@ -65,7 +65,7 @@ for (month in months){
 
   paleo_interp_sim_gam_melt$iter = draw_index(paleo_interp_sim_gam_melt$iter)
 
-  write_output(run, paleo_interp_sim_gam_melt, path_prediction(paths, 'samples', month))
+  write_output(run, paleo_interp_sim_gam_melt, path_file(paths, 'prediction_samples_month', month = month))
 
   print(">>Summarize")
   paleo_interp_sim_gam_sum = paleo_interp_sim_gam_melt %>%
@@ -77,7 +77,7 @@ for (month in months){
               alb_hi = quantile(value, c(0.975)),
               .groups = 'keep')
 
-  write_output(run, paleo_interp_sim_gam_sum, path_prediction(paths, 'summary', month))
+  write_output(run, paleo_interp_sim_gam_sum, path_file(paths, 'prediction_summary_month', month = month))
 
 }
 
@@ -93,16 +93,16 @@ for (month in months) {
 
   print(month)
 
-  alb_preds_month = read_input(run, path_prediction(paths, 'point', month))
+  alb_preds_month = read_input(run, path_file(paths, 'prediction_point_month', month = month))
   alb_preds_months = rbind(alb_preds_months,
                            data.frame(alb_preds_month, month = rep(month)))
 
-  alb_preds_summary_month = read_input(run, path_prediction(paths, 'summary', month))
+  alb_preds_summary_month = read_input(run, path_file(paths, 'prediction_summary_month', month = month))
   alb_preds_summary_months = rbind(alb_preds_summary_months,
                                    data.frame(alb_preds_summary_month, month = rep(month)))
 }
 
-write_output(run, alb_preds_months, path_prediction(paths, 'point'))
-write_output(run, alb_preds_summary_months, path_prediction(paths, 'summary'))
+write_output(run, alb_preds_months, path_file(paths, 'prediction_point'))
+write_output(run, alb_preds_summary_months, path_file(paths, 'prediction_summary'))
 
 run_finish(run)

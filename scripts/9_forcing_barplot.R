@@ -137,7 +137,7 @@ ages_sub      = cfg$analysis$coarse$ages
 labels_period = period_labels(ages_sub)
 
 # The per-cell forcing table from script 8.
-d = read_input(run, path_forcing(paths))
+d = read_input(run, path_file(paths, 'forcing'))
 
 # --- A4/A5: assign each slice-pair to a period -------------------------------
 # A row's `year` is the YOUNGER end of the pair; the pair spans year -> next age.

@@ -56,7 +56,7 @@ for (n in 1:length(months)){
   cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
   summary(cal_interp_model)
 
-  write_output(run, cal_interp_model, path_calibration_model(paths, 'selected', month))
+  write_output(run, cal_interp_model, path_file(paths, 'calibration_selected', month = month))
 
   cal_interp_predict_gam = predict(cal_interp_model,
                                    newdata = cal_interp_data,
@@ -126,7 +126,7 @@ for (n in 1:length(months)){
   cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
   summary(cal_interp_model)
 
-  write_output(run, cal_interp_model, path_calibration_model(paths, 'selected', month))
+  write_output(run, cal_interp_model, path_file(paths, 'calibration_selected', month = month))
 
   cal_interp_predict_gam = predict(cal_interp_model,
                                    newdata = cal_interp_data,
@@ -248,14 +248,14 @@ for (n in 1:length(months)){
   # same formula as model 8; until issue I04a it was the selected model, which would be
   # mislabelled once the selected model is a setting (the repeated fits of model 8 are a
   # question for Andria, general 7).
-  model_SP_ELEV_LC = read_input(run, path_calibration_model(paths, 'spatial_elev_cover', month))
+  model_SP_ELEV_LC = read_input(run, path_file(paths, 'calibration_spatial_elev_cover', month = month))
 
-  model_ELEV_LC = read_input(run, path_calibration_model(paths, 'cover_elev', month))
-  model_LC = read_input(run, path_calibration_model(paths, 'cover', month))
-  model_SP_LC = read_input(run, path_calibration_model(paths, 'spatial_cover', month))
-  model_SP = read_input(run, path_calibration_model(paths, 'spatial', month))
-  model_SP_ELEV = read_input(run, path_calibration_model(paths, 'spatial_elev', month))
-  model_ELEV = read_input(run, path_calibration_model(paths, 'elev', month))
+  model_ELEV_LC = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'cover_elev'))
+  model_LC = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'cover'))
+  model_SP_LC = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial_cover'))
+  model_SP = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial'))
+  model_SP_ELEV = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial_elev'))
+  model_ELEV = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'elev'))
 
   for (model in models){
 
@@ -343,14 +343,14 @@ print(p)
 if ('nov' %in% months) {
 month = "nov"
 
-mod1_interp = read_input(run, path_calibration_model(paths, 'mod1', month))
-mod2_interp = read_input(run, path_calibration_model(paths, 'mod2', month))
-mod3_interp = read_input(run, path_calibration_model(paths, 'mod3', month))
-mod4_interp = read_input(run, path_calibration_model(paths, 'mod4', month))
-mod5_interp = read_input(run, path_calibration_model(paths, 'mod5', month))
-mod6_interp = read_input(run, path_calibration_model(paths, 'mod6', month))
-mod7_interp = read_input(run, path_calibration_model(paths, 'mod7', month))
-mod8_interp = read_input(run, path_calibration_model(paths, 'mod8', month))
+mod1_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod1'))
+mod2_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod2'))
+mod3_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod3'))
+mod4_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod4'))
+mod5_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod5'))
+mod6_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod6'))
+mod7_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod7'))
+mod8_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod8'))
 
 AIC(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp,
     mod6_interp, mod7_interp, mod8_interp)
@@ -364,7 +364,7 @@ anova_gam_interp
 cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
 summary(cal_interp_model)
 
-write_output(run, cal_interp_model, path_calibration_model(paths, 'selected', month))
+write_output(run, cal_interp_model, path_file(paths, 'calibration_selected', month = month))
 
 cal_interp_predict_gam = predict(cal_interp_model,
                                  newdata = cal_interp_data,
