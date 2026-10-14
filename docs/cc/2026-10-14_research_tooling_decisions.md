@@ -51,3 +51,61 @@ Rules that go with decisions 1 and 2 (from Astra's survey):
 Paths and versions actually installed are recorded below as they happen.
 
 ## Installed
+
+- **RefChecker** (`academic-refchecker` 3.1.6, with its `webui` extra for the retraction
+  check) and **refaudit** 0.4.9: in `~/.local/share/research-tools/citecheck-venv`.
+  refaudit needs a contact email for Crossref and OpenAlex; not yet run (asked Chris which
+  address to use).
+- **Not installed, refused by Claude Code's auto-mode safety check; Chris to install by
+  hand:** PaperTrace (a small beta repository cloned from GitHub), and the
+  `claude-md-management` plugin. Commands below.
+- **`tidy-instructions-and-memory`** skill: `~/.claude/skills/tidy-instructions-and-memory/SKILL.md`.
+- **Identity test set**, reusable for any reference checker:
+  `~/.local/share/research-tools/testsets/bmjopen-2019-identity/` (`pilot.bib`,
+  `answer_key.tsv`, the Crossref record).
+
+To install by hand (Chris):
+```bash
+cd ~/.local/share/research-tools && git clone https://github.com/defraction0/PaperTrace
+cd PaperTrace && uv venv .venv --python 3.12 && VIRTUAL_ENV=$PWD/.venv uv pip install -e '.[full]'
+claude plugin install claude-md-management@claude-plugins-official
+```
+
+## Pilot 1: reference identity, on McWilliams et al. (2019), 2026-10-14
+
+**Test set.** The 49 references of the BMJ Open paper (doi:10.1136/bmjopen-2018-025925),
+44 with DOIs, as BibTeX from each DOI's publisher record, the other 5 typed from the
+reference list; plus 3 added entries. 11 errors planted, with an answer key:
+two wrong DOIs (real DOIs of other papers), a wrong year (3 years), a year off by one, wrong
+authors, an altered title, a wrong journal, two fabricated references (one with a DOI that
+does not exist), a retracted paper; and one correct entry with its DOI removed.
+
+**RefChecker result** (`academic-refchecker --paper pilot.bib`, then
+`refchecker-webui check --paper pilot.bib --no-llm --check-retractions`):
+
+| Planted | Caught? |
+|---|---|
+| Wrong DOI (MIMIC-III given the eICU paper's DOI) | Yes: error (authors and year differ); it does not say "wrong DOI" |
+| Wrong DOI (research article given an editorial's DOI) | Yes: error (no matching authors) |
+| Wrong authors | Yes: error |
+| Wrong year (3 years) | Yes, but it matched the wrong paper (a textbook) and reported wrong authors |
+| Two fabricated references | Yes: "could not verify"; the bad DOI also an error |
+| Wrong journal | Warning only |
+| Year off by one | Warning only |
+| **Altered title** ("scoping review of discharge" to "systematic review of readmission") | **Missed**: verified, because it matched on the DOI and did not compare titles |
+| Retracted paper | Missed by the main check; **caught** by the retraction check |
+| Correct entry without DOI | Correctly passed (found the paper) |
+
+False alarms: warnings on 5 of the 41 clean entries (online-first versus print year, journal
+name forms). Acceptable as warnings.
+
+**A real error found in passing.** Reference 30 of the published paper, as deposited with
+Crossref by the publisher, carries the DOI of a dental-research paper ("Indian Hedgehog: a
+mechanotransduction mediator in condylar cartilage", J Dent Res 2004). Either the paper's
+reference or the publisher's DOI matching is wrong; Chris to check.
+
+**What this means.** RefChecker alone is not enough: it can pass a reference whose title is
+wrong when the DOI is right. That is the gap refaudit is meant to cover (it compares the
+title against the DOI record, threshold 0.75). Run both, plus the retraction check, and
+read warnings. To repeat after refaudit is run.
+
