@@ -782,6 +782,17 @@ Script 7 relabels age 11,500 as 12,000 for plotting (line 100); script 7a
 does not. Is 12 ka the intended label, and is it the same slice? (The
 broader time-slice question is in the general file.)
 
+### C8. Forcing area for coastal and lake cells
+*Added 2026-10-14, from the methodology decisions (issue I16).* Forcing is the albedo
+change of each cell times the kernel times the cell's area, using the whole 1-degree cell
+as if it were all land (`7a:119-124`), and the Dalton ice fraction is likewise per whole
+cell. The calibration will now use land-only albedo (decision B5). Water's albedo does not
+change with vegetation, so a cell that is part lake or sea contributes more forcing than its
+land can produce, by its water share. Weighting by land area would be more exact, but the
+ice covered places that are water today (Hudson Bay, the Great Lakes), which needs an
+explicit treatment of ice-to-water transitions. For now the whole-cell weighting is kept
+(Chris, 2026-10-14). **Should coastal and lake cells count only their land area?**
+
 ## D. Land cover
 
 ### D1. Taxon-to-class mapping in the north
