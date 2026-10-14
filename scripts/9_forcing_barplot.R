@@ -104,12 +104,6 @@
 # github.com/IPCC-WG1/Chapter-7, 1750-2019 effective radiative forcing with
 # 5-95% bounds. Downloaded 2026-09-21.
 
-# ggplot2 and patchwork draw the charts (patchwork stacks two panels with their own
-# y-axis titles); dplyr and tidyr do the aggregation; run_manifest logs provenance.
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(patchwork)
 
 source('R/calendar.R')
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
@@ -120,6 +114,14 @@ source('R/run_manifest.R')
 run   = run_begin('9_forcing_barplot')
 cfg   = run$cfg
 paths = run$paths   # every file read or written (issue I07)
+
+# ggplot2 and patchwork draw the charts (patchwork stacks two panels with their own
+# y-axis titles); dplyr and tidyr do the aggregation; run_manifest logs provenance.
+# Loaded after run_begin() so that a missing package is recorded as a failed run (I06).
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
 
 # Albedo product tag; Earth's surface area for the global-equivalent normalisation (A8);
 # the forcing column to use per kernel, named by kernel (A1, A3); the variants to

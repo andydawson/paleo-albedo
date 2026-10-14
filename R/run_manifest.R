@@ -32,11 +32,18 @@ source('R/paths.R')
 
 # Start a run: read and check the configuration, set up the paths and write the manifest
 # with status 'started'. A configuration that cannot be read is recorded (in runs/ of the
-# repository, as no run directory is known) and stops the run. Until run_finish(), an
-# error marks the manifest 'failed'; under Rscript it then ends the run with exit status 1.
+# repository, as no run directory is known) and stops the run. In a batch run (Rscript),
+# an error marks the manifest 'failed' and ends the run with exit status 1; in an
+# interactive session (RStudio) errors are left to the session as usual, and a run that
+# is not finished stays 'started'. `run` is an environment: the functions below update it
+# in place, so the script never has to reassign it.
 run_begin = function(script, config_file = config_path()) {
   run = new.env(parent = emptyenv())
   run$started = Sys.time()
+  # What the session had before the run, restored when it ends: the error handler, the
+  # default plot device, and the plot devices already open (which the run leaves alone).
+  run$saved_options = list(error = getOption('error'), device = getOption('device'))
+  run$devices_before = grDevices::dev.list()
   run$record = list(script = script, status = 'started',
                     started = utc_time(run$started), finished = NULL, error = NULL,
                     config_file = config_file,
@@ -67,11 +74,12 @@ run_begin = function(script, config_file = config_path()) {
     if (is.character(device)) device = get(device, mode = 'function')
     options(device = function(...) { run$used_default_device = TRUE; device(...) })
   }
-  run$previous_error_handler = getOption('error')
-  options(error = function() {
-    run_failed(run, geterrmessage())
-    if (!interactive()) quit(save = 'no', status = 1)
-  })
+  if (!interactive()) {
+    options(error = function() {
+      run_failed(run, geterrmessage())
+      quit(save = 'no', status = 1)
+    })
+  }
   message('run manifest: ', run$file)
   run
 }
@@ -113,15 +121,16 @@ run_record = function(run, name, value) {
   invisible(value)
 }
 
-# Finish a run: close the plot devices (so figure files are complete), record every figure
-# written since the run started, and mark the manifest 'completed'.
+# Finish a run: close the plot devices the run opened (so figure files are complete),
+# record every figure it wrote, mark the manifest 'completed', and give the session back
+# its error handler and default plot device.
 run_finish = function(run) {
-  while (!is.null(grDevices::dev.list())) grDevices::dev.off()
+  for (device in setdiff(grDevices::dev.list(), run$devices_before)) grDevices::dev.off(device)
   run$record$figures = new_figures(run)
   run$record$status = 'completed'
   run$record$finished = utc_time(Sys.time())
   write_manifest(run)
-  options(error = run$previous_error_handler)
+  options(run$saved_options)
   message('run completed; manifest: ', run$file)
   invisible(run$file)
 }
@@ -145,7 +154,7 @@ check_producer = function(run, path, md5, made_by) {
   dir = file.path(path_runs(run$paths), made_by)
   manifests = sort(list.files(dir, pattern = '\\.md$', full.names = TRUE))
   problems = if (!length(manifests)) {
-    sprintf('no run of %s is recorded in %s', made_by, dir)
+    sprintf('no run of %s is recorded in %s (files made before run manifests existed, October 2026, have none)', made_by, dir)
   } else {
     latest = read_manifest(manifests[length(manifests)])
     rel = root_relative(run$paths, path)
@@ -284,7 +293,7 @@ session_info = function() {
        host = unname(Sys.info()['nodename']),
        packages = as.list(setNames(vapply(pkgs, function(p) as.character(utils::packageVersion(p)), ''), pkgs)),
        rng_kind = RNGkind(),
-       threads = as.list(Sys.getenv(c('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'RUN_CORES'))))
+       threads = as.list(Sys.getenv(c('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS'))))
 }
 
 # The figures this run wrote: the figure paths it asked path_figure() for (and Rplots.pdf if

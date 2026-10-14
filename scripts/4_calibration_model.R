@@ -4,20 +4,23 @@
 # models, their order and the files written are unchanged.
 
 
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# manifest; files are then read and written through it (issues I05, I06).
+source('R/run_manifest.R')
+run   = run_begin('4_calibration_model')
+cfg   = run$cfg
+paths = run$paths
+alb_prod = paths$tag   # the albedo product in file names
+
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
 library(gam)
 library(mgcv)
-
-# Settings and file locations: config.R, and R/paths.R for every file read or written. The
-# directories products go to are created by pipeline_paths() (issue I07).
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)
-alb_prod = paths$tag   # the albedo product in file names
 # The model formulas and fitting controls (LADDER_MODELS, SPATIAL_MODELS,
 # fit_calibration_model) come with R/paths.R from R/model_registry.R (issue I04a).
 
-cal_interp_data =readRDS(path_file(paths, 'calibration_table'))
+cal_interp_data = read_input(run, path_file(paths, 'calibration_table'))
 
 cal_data2 = data.frame(site=seq(1,nrow(cal_interp_data)), cal_interp_data)
 cal_data3 = cal_data2[,c('site', 'ET', 'OL', 'ST')]
@@ -33,8 +36,8 @@ for (month in months) {
 
   for (model_id in LADDER_MODELS) {
     print(paste('Fitting', CALIBRATION_MODELS[[model_id]]$label))
-    saveRDS(fit_calibration_model(model_id, month, cal_interp_data),
-            path_calibration_model(paths, model_id, month))
+    write_output(run, fit_calibration_model(model_id, month, cal_interp_data),
+                 path_calibration_model(paths, model_id, month))
   }
 
 }
@@ -52,7 +55,7 @@ names(ANOVA_list) = months
 for (month in months) {
 
   # The ladder's fits for this month, named mod1_interp ... mod8_interp as before.
-  ladder_fits = setNames(lapply(LADDER_MODELS, function(model_id) readRDS(path_calibration_model(paths, model_id, month))),
+  ladder_fits = setNames(lapply(LADDER_MODELS, function(model_id) read_input(run, path_calibration_model(paths, model_id, month))),
                          paste0(LADDER_MODELS, '_interp'))
 
   this_AIC = with(ladder_fits, AIC(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp, mod6_interp, mod7_interp, mod8_interp))
@@ -64,7 +67,7 @@ for (month in months) {
   ANOVA_list[[month]] = with(ladder_fits, anova.gam(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp, mod6_interp, mod7_interp, mod8_interp, test = "Chisq"))
 }
 
-write.csv(AIC_df, path_file(paths, 'aic_table'), row.names = FALSE)
+write_output(run, AIC_df, path_file(paths, 'aic_table'), write.csv, row.names = FALSE)
 
 # The spatial experiments (R/model_registry.R), compared by script 5.
 for (month in months) {
@@ -73,8 +76,8 @@ for (month in months) {
 
   for (model_id in SPATIAL_MODELS) {
     print(paste('Fitting', CALIBRATION_MODELS[[model_id]]$label))
-    saveRDS(fit_calibration_model(model_id, month, cal_interp_data),
-            path_calibration_model(paths, model_id, month))
+    write_output(run, fit_calibration_model(model_id, month, cal_interp_data),
+                 path_calibration_model(paths, model_id, month))
   }
 
 }
@@ -87,7 +90,9 @@ for (month in months) {
   print(paste0('Fitting calibration model for: ', month))
 
   print(paste('Fitting', CALIBRATION_MODELS[['mod8']]$label))
-  saveRDS(fit_calibration_model('mod8', month, cal_interp_data),
-          path_calibration_model(paths, 'mod8', month))
+  write_output(run, fit_calibration_model('mod8', month, cal_interp_data),
+               path_calibration_model(paths, 'mod8', month))
 
 }
+
+run_finish(run)

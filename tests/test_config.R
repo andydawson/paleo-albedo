@@ -30,16 +30,15 @@ stopifnot(
   identical(cfg$presentation$map_windows$tail,        list(x = c(-166, -50), y = c(12, 82))),
   identical(cfg$presentation$map_windows$diagnostics, list(x = c(-172, -50), y = c(17, 79))),
 
-  # the language: one list expression of allowed functions and literals only
-  rejects("exactly one expression", text = c("x <- 1", base_text)),
-  rejects("`<-` is not allowed",    text = c("x <- list()")),
-  rejects("`Sys.getenv` is not allowed", 'earth_area_m2 = 5.101e14', 'earth_area_m2 = Sys.getenv("A")'),
-  rejects("`readRDS` is not allowed",    'variant = "veg_ice_thresh"', 'variant = readRDS("v.RDS")'),
-  rejects("`base::c` is not allowed",    'report_kernels = c(', 'report_kernels = base::c('),
-  rejects("`pi` is not allowed: config.R may not refer to variables", 'earth_area_m2 = 5.101e14', 'earth_area_m2 = pi'),
-  rejects("`T` is not allowed",          'earth_area_m2 = 5.101e14', 'earth_area_m2 = T'),
-  rejects("`\\(function\\(\\) 1\\)` is not allowed",   'earth_area_m2 = 5.101e14', 'earth_area_m2 = (function() 1)()'),
-  rejects("does not parse",              'earth_area_m2 = 5.101e14', 'earth_area_m2 = 5.101e14 +'),
+  # the file is ordinary R (plain source() since issue I06): parse errors, a value that is
+  # not a list, and anything the schema refuses are reported; the file cannot see the caller
+  rejects("could not be read",            'earth_area_m2 = 5.101e14', 'earth_area_m2 = 5.101e14 +'),
+  rejects("cfg must be a list",           text = c("x <- 1")),
+  rejects("must be finite numbers",       'earth_area_m2 = 5.101e14', 'earth_area_m2 = "big"'),
+  identical(load_variant('months = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")',
+                         'months = tolower(month.abb)')$analysis$months, MONTHS),
+  { secret_variable_of_the_caller <- 1
+    rejects("could not be read", 'earth_area_m2 = 5.101e14', 'earth_area_m2 = secret_variable_of_the_caller') },
   # allowed constructors and arithmetic evaluate as R would
   identical(load_variant('ages = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000),',
                          'ages = c(50, seq(500, 2000, by = 1500), 2 * 2000, 6000, 8000, 10000, 12000),')$analysis$coarse$ages,
@@ -116,6 +115,10 @@ stopifnot(
   rejects("cack_year must be a whole number", 'cack_year = 2003', 'cack_year = 2003.5'),
   # the stale-input override (issue I05): off by default, TRUE or FALSE only
   identical(cfg$run$allow_stale, FALSE),
+  # script 1's diagnostic switch (issue I06)
+  identical(cfg$run$diagnostic, FALSE),
+  isTRUE(load_variant('diagnostic = FALSE', 'diagnostic = TRUE')$run$diagnostic),
+  rejects("run\\$diagnostic must be TRUE or FALSE", 'diagnostic = FALSE', 'diagnostic = "yes"'),
   isTRUE(load_variant('allow_stale = FALSE', 'allow_stale = TRUE')$run$allow_stale),
   rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = 1'),
   rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = c(TRUE, FALSE)'),

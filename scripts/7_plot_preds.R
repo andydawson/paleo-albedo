@@ -3,10 +3,6 @@
 # removed. Every remaining line is unchanged from the original.
 
 
-library(ggplot2)
-library(fields)
-library(raster)
-
 # Settings from config.R (issue I03): the coarse ages and the map window. Slice and
 # period labels are made from the ages (R/calendar.R).
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
@@ -17,6 +13,12 @@ run   = run_begin('7_plot_preds')
 cfg   = run$cfg
 paths = run$paths   # every file read or written (issue I07)
 alb_prod = paths$tag   # the albedo product in file names
+
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
+library(ggplot2)
+library(fields)
+library(raster)
 
 pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 

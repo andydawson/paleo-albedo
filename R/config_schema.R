@@ -146,7 +146,8 @@ CONFIG_SCHEMA = list(
                        diagnostics = MAP_WINDOW_SCHEMA)),
   run = list(
     dir         = check_run_dir,
-    allow_stale = check_flag))
+    allow_stale = check_flag,
+    diagnostic  = check_flag))
 
 # Rules across keys. Called only once every key has passed its own check.
 config_combination_errors = function(cfg) {

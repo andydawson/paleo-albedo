@@ -3,17 +3,20 @@
 # removed. Every remaining line is unchanged from the original.
 
 
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# manifest; files are then read and written through it (issues I05, I06).
+source('R/run_manifest.R')
+run   = run_begin('2_calibration_lct_bluesky')
+cfg   = run$cfg
+paths = run$paths
+
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
 library(terra)
 library(ggplot2)
 library(reshape2)
 library(tidyterra)
-
-# Settings and file locations: config.R, and R/paths.R for every file read or written. The
-# directories products go to are created by pipeline_paths() (issue I07).
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)
 
 # All twelve months from the shared calendar (R/calendar.R; issue I02). Deliberately not
 # config.R's month selection: the calibration table keeps every month, so scripts 4 onward
@@ -21,7 +24,7 @@ paths = pipeline_paths(cfg)
 source('R/calendar.R')
 months = MONTHS
 
-pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
+pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
 # Boundaries for the maps, prepared by the shared helper (see R/map_helpers.R for why the
 # raw file cannot be drawn as-is: the "weirdness" noted on 2026-09-24). Fix added 2026-09-25.
@@ -30,10 +33,10 @@ map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
 pbs_land = prepare_boundaries(pbs_ll, map_window)
 
-grid <- rast(readRDS(path_file(paths, 'grid')))
+grid <- rast(read_input(run, path_file(paths, 'grid')))
 
 
-lct_interp_modern = readRDS(path_file(paths, 'lct_modern'))
+lct_interp_modern = read_input(run, path_file(paths, 'lct_modern'))
 
 longitude_interp = lct_interp_modern[,c('x')]
 latitude_interp = lct_interp_modern[,c('y')]
@@ -56,7 +59,7 @@ colnames(bs_interp_df_coarse) = MONTHS
 
 grid = rast(grid)
 
-blue_all_months = rast(path_file(paths, 'bluesky_raster'))
+blue_all_months = read_input(run, path_file(paths, 'bluesky_raster'), rast)
 
 # coarsen albedo by averaging albedo cells within a grid cell
 # CM: this cell-averaged albedo is saved but not currently used downstream
@@ -144,8 +147,8 @@ bs_interp_df_coarse[bs_interp_df_coarse==0] = 1e-4
 lct_interp_bs = data.frame(lct_interp_modern, bs_interp_df)
 lct_interp_bs_coarse = data.frame(lct_interp_modern, bs_interp_df_coarse)
 
-saveRDS(lct_interp_bs, path_file(paths, 'calibration_table'))
-saveRDS(lct_interp_bs_coarse, path_file(paths, 'calibration_table_coarse'))
+write_output(run, lct_interp_bs, path_file(paths, 'calibration_table'))
+write_output(run, lct_interp_bs_coarse, path_file(paths, 'calibration_table_coarse'))
 
 lct_interp_bs_melt = melt(lct_interp_bs, id.vars = c('x', 'y', 'elev', 'ET', 'OL', 'ST'))
 lct_interp_bs_coarse_melt = melt(lct_interp_bs_coarse, id.vars = c('x', 'y', 'elev', 'ET', 'OL', 'ST'))
@@ -168,3 +171,5 @@ ggsave(path_figure(paths, 'albedo_native_vs_coarse_scatter_interp.pdf'))
 ggsave(path_figure(paths, 'albedo_native_vs_coarse_scatter_interp.png'))
 
 cor(lct_interp_bs_merged$value.x, lct_interp_bs_merged$value.y, use = 'complete.obs')
+
+run_finish(run)

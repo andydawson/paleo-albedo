@@ -149,7 +149,7 @@ writeLines("list(analysis = ", "broken_config.R")
 r <- run_toy("toy_bad_config", c("run = run_begin('toy_bad_config')"), c("--config", "broken_config.R"))
 m <- latest("toy_bad_config")
 check("an unreadable config is recorded as failed, with the error",
-      r$status == 1 && m$status == "failed" && grepl("does not parse", m$error))
+      r$status == 1 && m$status == "failed" && grepl("could not be read", m$error))
 
 r <- run_toy("toy_error_before", c("run = run_begin('toy_error_before')", "stop('broke before writing')",
                                    "write_output(run, 1, 'data/never.RDS')"))
@@ -173,6 +173,19 @@ writeLines(c("source('R/run_manifest.R')", "run = run_begin('toy_sourced')", "st
 out <- suppressWarnings(system2(rscript, c("-e", shQuote("source('scripts/toy_sourced.R')")), stdout = TRUE, stderr = TRUE))
 check("a script run with source() fails the same way",
       identical(attr(out, "status"), 1L) && latest("toy_sourced")$status == "failed")
+
+# --- the session is given back as it was ----------------------------------------------------
+r <- run_toy("toy_session", c(
+  "pdf(file.path(tempdir(), 'already_open.pdf'))   # a device the caller had open",
+  "options(error = NULL); before = list(error = getOption('error'), device = getOption('device'), devices = dev.list())",
+  "run = run_begin('toy_session')",
+  "png(path_figure(run$paths, 's.png')); plot(1)   # left open: run_finish() closes it",
+  "run_finish(run)",
+  "stopifnot(identical(getOption('error'), before$error), identical(getOption('device'), before$device),",
+  "          identical(dev.list(), before$devices))",
+  "cat('SESSION OK')"))
+check("run_finish() restores the error handler and default device and closes only the run's devices",
+      r$status == 0 && any(grepl("SESSION OK", r$out)) && latest("toy_session")$status == "completed")
 
 # --- figures: only this run's ------------------------------------------------------------
 writeLines(c("source('R/run_manifest.R')", "run = run_begin('toy_fig_a')",

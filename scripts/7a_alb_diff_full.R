@@ -3,13 +3,6 @@
 # removed. Every remaining line is unchanged from the original.
 
 
-library(sp)
-library(raster)
-library(dplyr)
-library(terra)
-library(sf)
-library(ggplot2)
-
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
 # given with --config), sets up the paths of R/paths.R (issue I07; it creates the product
 # directories) and starts the run's manifest; files are then read and written through it
@@ -19,6 +12,15 @@ run   = run_begin('7a_alb_diff_full')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
+
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
+library(sp)
+library(raster)
+library(dplyr)
+library(terra)
+library(sf)
+library(ggplot2)
 
 # The time slices to pair, from config.R (analysis$ages, issue I04b); they must be slices
 # of the prediction table, which is checked once it is read.

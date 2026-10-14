@@ -5,12 +5,6 @@
 # itself is unchanged.
 
 
-library(ggplot2)
-library(mgcv)
-library(gratia)
-library(reshape2)
-library(dplyr)
-
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
 # given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
 # manifest; files are then read and written through it (issues I05, I04a).
@@ -19,6 +13,14 @@ run   = run_begin('5_calibration_eval')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
+
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
+library(ggplot2)
+library(mgcv)
+library(gratia)
+library(reshape2)
+library(dplyr)
 
 # The model saved as the selected calibration model for script 6, by id (config.R
 # analysis$calibration$model_id, question B4; formulas in R/model_registry.R), recorded in

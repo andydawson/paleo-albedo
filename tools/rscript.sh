@@ -17,7 +17,6 @@ ENV=${PALEO_RF_ENV:-/home/expert/micromamba/envs/paleo-rf}
 THREADS=${THREADS:-8}
 export PROJ_DATA="$ENV/share/proj" GDAL_DATA="$ENV/share/gdal"
 export OPENBLAS_NUM_THREADS=$THREADS OMP_NUM_THREADS=$THREADS MKL_NUM_THREADS=$THREADS
-export RUN_CORES=${CORES:-"(unpinned)"}
 if [[ -n "${CORES:-}" ]]; then
   exec taskset -c "$CORES" "$ENV/bin/Rscript" "$@"
 else

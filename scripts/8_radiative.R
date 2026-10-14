@@ -3,12 +3,6 @@
 # removed. Every remaining line is unchanged from the original.
 
 
-library(sp)
-library(ggplot2)
-library(raster)
-library(sf)
-library(dplyr)
-
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
 # given with --config), sets up the paths of R/paths.R (issue I07; it creates the product
 # directories) and starts the run's manifest; files are then read and written through it
@@ -19,6 +13,14 @@ cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
+library(sp)
+library(ggplot2)
+library(raster)
+library(sf)
+library(dplyr)
+
 # The months analysed, from config.R (analysis$months, issue I04b); month names and
 # numbers come from the shared calendar, R/calendar.R (issue I02).
 source('R/calendar.R')
@@ -27,9 +29,9 @@ months = cfg$analysis$months
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 
-ice_fort = read_input(run, path_file(paths, 'ice_fort'))
-ice_fort_diff_young = read_input(run, path_file(paths, 'ice_fort_diff_young'))
-ice_fort_diff_old = read_input(run, path_file(paths, 'ice_fort_diff_old'))
+# CM: script 7's three ice-outline tables (ice_fort, ice_fort_diff_young, ice_fort_diff_old)
+# were read here but never used, which made script 8 depend on script 7 for nothing;
+# removed (issue I06). Script 8 needs only script 7a's differences.
 
 # CM: the period labels (labels_period), the coarse ages (ages_sub) and the tail map window
 # (xlim, ylim) were defined here but never used in this script; removed so config.R holds

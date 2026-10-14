@@ -2,34 +2,38 @@
 # Interp (spatially complete) path only: the point-based code and its guards are
 # removed. The pipeline lines are unchanged from the original except the reduction of the
 # draws, now reduce_land_cover() (issue I04a); the elevation lookup is cached on disk, and
-# a DIAGNOSTIC switch adds checks and plots at the end.
+# a diagnostic switch (config.R run$diagnostic) adds checks and plots at the end.
 
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# manifest; files are then read and written through it (issues I05, I06).
+source('R/run_manifest.R')
+run   = run_begin('1_veg_lct_prep')
+cfg   = run$cfg
+paths = run$paths
+
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
 library(dplyr)
 library(tidyr)
 library(elevatr)
 
-# Settings and file locations: config.R, and R/paths.R for every file read or written. The
-# directories products go to are created by pipeline_paths() (issue I07).
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)
-
-# Diagnostic mode. Off by default. Switch on with DIAGNOSTIC=TRUE in the environment
-# (e.g. `DIAGNOSTIC=TRUE Rscript scripts/1_veg_lct_prep.R`) or by setting it here.
+# Diagnostic mode. Off by default. Switch on with `diagnostic = TRUE` in the run section of
+# config.R (or of the file given with --config; issue I06, replacing the DIAGNOSTIC
+# environment variable).
 # In diagnostic mode the script additionally (1) reports on the ice flag it discards,
 # (2) characterises the cell-slices absent from the input, (3) draws the ice extent at
 # every time slice into figures/diagnostics/, and (4) compares the mean and the median of
 # the 200 posterior draws as summaries of land cover: how far apart they are, where the
 # difference concentrates, and whether the medians still sum to one across the three
 # classes (the pipeline uses the mean). Nothing in diagnostic mode changes the outputs.
-diagnostic = as.logical(Sys.getenv('DIAGNOSTIC', 'FALSE'))
+diagnostic = cfg$run$diagnostic
 
 # standard lat long projection
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 
-lct_interp = readRDS(path_file(paths, 'veg_posts'))
+lct_interp = read_input(run, path_file(paths, 'veg_posts'))
 
 if (diagnostic) {
   # Keep what the summarize step below discards, for the diagnostics at the end:
@@ -60,14 +64,17 @@ locations_interp = lct_interp_wide[,c('x', 'y')]
 # cell-slice, which returns the same values as the original per-row query.
 elev_file = path_file(paths, 'elevation_cache')
 if (file.exists(elev_file)) {
-  elev_lookup = readRDS(elev_file)
+  elev_lookup = read_input(run, elev_file)
 } else {
   cells_unique = unique(locations_interp)
   ele_get_cells = get_elev_point(cells_unique, 
                                  prj = ll_proj, 
                                  src = "aws")
   elev_lookup = data.frame(cells_unique, elev = ele_get_cells$elevation)
-  saveRDS(elev_lookup, elev_file)
+  # The lookup used the network, so record it (issue I06).
+  run_record(run, 'elevation_lookup', list(source = 'AWS terrain tiles, elevatr::get_elev_point(src = "aws")',
+                                           cells = nrow(cells_unique), when = utc_time(Sys.time())))
+  write_output(run, elev_lookup, elev_file)
 }
 elev_interp = elev_lookup$elev[match(paste(locations_interp$x, locations_interp$y),
                                      paste(elev_lookup$x, elev_lookup$y))]
@@ -82,14 +89,14 @@ lct_interp_modern = lct_interp_all[which(lct_interp_all$ages == 50), ]
 
 lct_interp_modern = lct_interp_modern[, which(!(colnames(lct_interp_modern) %in% c('ages')))]
 
-saveRDS(lct_interp_modern, path_file(paths, 'lct_modern'))
+write_output(run, lct_interp_modern, path_file(paths, 'lct_modern'))
 
 lct_interp_paleo = lct_interp_all
 
-saveRDS(lct_interp_paleo, path_file(paths, 'lct_paleo'))
+write_output(run, lct_interp_paleo, path_file(paths, 'lct_paleo'))
 
 ############################################################################################
-# Diagnostics (DIAGNOSTIC=TRUE only). Added 2026-09-25. Nothing below changes any output.
+# Diagnostics (config.R run$diagnostic = TRUE only). Added 2026-09-25. Nothing below changes any output.
 ############################################################################################
 if (diagnostic) {
   library(ggplot2)
@@ -239,3 +246,5 @@ if (diagnostic) {
   ggsave(path_figure(paths, 'diagnostics', '1_mean_vs_median_difference.png'), p_md, width = 12, height = 4.5, dpi = 120)
   cat('\nPlots written: figures/diagnostics/1_mean_vs_median.png and 1_mean_vs_median_difference.png\n')
 }
+
+run_finish(run)
