@@ -36,10 +36,10 @@ seed_base = run_record(run, 'random_seed', list(setting = cfg$analysis$draws$see
                                                 base = base_seed(cfg$analysis$draws$seed)))$base
 
 
-# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
-# (issue I02, 2026-10-12).
+# The months analysed, from config.R (analysis$months, issue I04b); month names and
+# numbers come from the shared calendar, R/calendar.R (issue I02).
 source('R/calendar.R')
-months = MONTHS
+months = cfg$analysis$months
 
 cal_interp_data = read_input(run, path_file(paths, 'calibration_table'))
 

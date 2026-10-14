@@ -22,10 +22,10 @@ cal_interp_data =readRDS(path_file(paths, 'calibration_table'))
 cal_data2 = data.frame(site=seq(1,nrow(cal_interp_data)), cal_interp_data)
 cal_data3 = cal_data2[,c('site', 'ET', 'OL', 'ST')]
 
-# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
-# (issue I02, 2026-10-12).
+# The months analysed, from config.R (analysis$months, issue I04b); month names and
+# numbers come from the shared calendar, R/calendar.R (issue I02).
 source('R/calendar.R')
-months = MONTHS
+months = cfg$analysis$months
 
 # The eight-model ladder for every month. The formulas are in R/model_registry.R
 # (issue I04a); each was written out here in full before.
@@ -38,8 +38,6 @@ for (month in months) {
   }
 
 }
-
-months = MONTHS
 
 AIC_list =  vector("list", length(months))
 names(AIC_list) = months
@@ -68,8 +66,6 @@ for (month in months) {
 
 write.csv(AIC_df, path_file(paths, 'aic_table'), row.names = FALSE)
 
-months = MONTHS
-
 # The spatial experiments (R/model_registry.R), compared by script 5.
 for (month in months) {
 
@@ -82,8 +78,6 @@ for (month in months) {
   }
 
 }
-
-months = MONTHS
 
 # Model 8 fitted a third time and saved over the ladder's fit, as in the original script
 # (whether this and the spatial_elev_cover fit of the same formula can go is general

@@ -120,9 +120,12 @@ if (diagnostic) {
   full_grid = merge(cells, data.frame(ages = slices))
   present = paste(lct_interp_all$x, lct_interp_all$y, lct_interp_all$ages)
   full_grid$absent = !(paste(full_grid$x, full_grid$y, full_grid$ages) %in% present)
-  full_grid$zone = ifelse(full_grid$y < 27, 'south of 27N',
-                   ifelse(full_grid$y > 74, 'north of 74N',
-                   ifelse(full_grid$x < -170, 'west of 170W', 'interior (used by the pipeline)')))
+  # Zones from config.R analysis$domain (issue I04b); at the defaults the labels read
+  # 'south of 27N', 'north of 74N' and 'west of 170W'.
+  dom = cfg$analysis$domain
+  full_grid$zone = ifelse(full_grid$y < dom$lat_min, paste0('south of ', dom$lat_min, 'N'),
+                   ifelse(full_grid$y > dom$lat_max, paste0('north of ', dom$lat_max, 'N'),
+                   ifelse(full_grid$x < dom$lon_min, paste0('west of ', -dom$lon_min, 'W'), 'interior (used by the pipeline)')))
   absent = full_grid[full_grid$absent, ]
   cat('\n==== Cell-slices absent from the input ====\n')
   cat('Cells:', nrow(cells), '| slices:', length(slices), '| possible cell-slices:', nrow(full_grid),
@@ -143,7 +146,7 @@ if (diagnostic) {
         'forcing will lose coverage. Cells:\n')
     print(as.data.frame(per_cell[per_cell$zone == 'interior (used by the pipeline)', ]), row.names = FALSE)
   } else {
-    cat('\nNo interior cell is missing any slice: every incomplete cell is outside 27-74 N and\n',
+    cat(sprintf('\nNo interior cell is missing any slice: every incomplete cell is outside %s-%s N and\n', dom$lat_min, dom$lat_max),
         'is removed by the trim in script 8 before any forcing is computed.\n')
   }
   write.csv(as.data.frame(per_cell), path_figure(paths, 'diagnostics', '1_absent_cell_slices.csv'), row.names = FALSE)
