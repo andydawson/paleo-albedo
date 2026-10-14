@@ -29,7 +29,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I05 Run manifests; consistency check | #6 | merged 2026-10-14 | f867506 |
 | I04a Model, draw and reduction settings; seed | #7 | merged 2026-10-14 | 520b6e6 |
 | I04b Months, ages, alias, domain, ice, CACK year | #8 | merged 2026-10-14 | 9210d04 |
-| I06 Manifests in every script; plain config loader | #9 | merged 2026-10-14 | (pending) |
+| I06 Manifests in every script; plain config loader | #9 | merged 2026-10-14 | 3ea2624 |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
