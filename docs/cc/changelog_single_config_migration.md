@@ -26,6 +26,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I02 Month indexing | #3 | merged 2026-10-13 | d67587d |
 | I03 Validated config; script 9; map windows | #4 | merged 2026-10-13 | 80644fc |
 | I07 Paths; run directories; R-only tools | #5 | merged 2026-10-13 | 252c6b6 |
+| I05 Run manifests; consistency check | #6 | merged 2026-10-14 | (pending) |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -347,4 +348,79 @@ Further checks:
   a deprecated ggplot2 notation, not from errors.
 - *Cost.* The whole script takes 10 minutes, so the `rbind` loop was left as it is.
 - *Randomness.* Nothing here is seeded until I04a.
+
+---
+
+## I05: one manifest per run, written from the start; the consistency check (#6), merged 2026-10-14
+
+**Purpose.** Know, for every product, which code, settings and inputs made it, including
+for runs that fail or are killed; and stop a script from silently reading a product made
+under different analysis settings.
+
+**Decisions taken while planning (Chris, 2026-10-13):**
+- Scripts stay flat: one call at the top and one at the bottom, not the issue's design of
+  wrapping each script in a function, so Andria can still run a script line by line.
+- The override is one config setting, `run$allow_stale` (FALSE by default), not the
+  `RUN_ALLOW_STALE` environment variable, and there is no per-run note (`RUN_NOTE` is
+  gone): the config file and the commit say what a run was.
+
+**New:**
+- **`R/run_manifest.R`**, rewritten. `run_begin(script)` reads the config (or `--config`),
+  sets up the paths and writes `runs/<script>/<UTC time to the ms>_<pid>.md` at once, status
+  `started`. `read_input(run, path, reader = readRDS, ...)` hashes each input just before it
+  is read; `write_output(run, object, path, writer = saveRDS, ...)` hashes each output just
+  after it is written; both rewrite the manifest (temporary file, then rename).
+  `run_finish(run)` closes the plot devices, lists the figures and sets `completed`. An error
+  sets `failed` with the message; a killed run stays `started`; a config that cannot be read
+  is recorded too. The manifest is a readable summary with the full record as JSON at the
+  end: whole config, full commit, uncommitted changes to `config.R`, the config file used,
+  `scripts/` and `R/` (untracked files included; "unknown" without git), inputs, outputs and
+  figures with MD5s, R and package versions, RNG kind, thread settings.
+- **The consistency check.** Reading a product of an earlier script consults that script's
+  newest manifest only: it must have written this file with this MD5, and its `analysis`
+  section must equal the current one. Otherwise the script stops and lists each differing
+  setting (`forcing.earth_area_m2: [510100000000000] -> [520000000000000]`). Presentation
+  and run settings may differ. With `run$allow_stale = TRUE` it goes on and the manifest
+  lists the file under `stale_inputs`. Original inputs are hashed, not checked.
+- **Figures** are the paths this run asked `path_figure()` for, modified since it started,
+  plus `Rplots.pdf` only if the run plotted to the default device. (The first version took
+  every file modified since the start; the verification below showed why that is wrong.)
+- **`run$allow_stale`** in `config.R` and the schema; `root_relative()` in `R/paths.R`,
+  split out of `producer()` for reuse.
+- **`tests/test_run_manifest.R`**: 31 cases, each a real `Rscript` process in a scratch copy
+  of `R/` and `config.R`, covering every behaviour above, including two runs started
+  together, two runs writing figures side by side, `source()`, SIGKILL and a 2.1 GB file.
+
+**Changed:**
+- **Scripts 7, 7a, 8 and 9**, the four that used the old `run_start()`/`run_end()`, use the
+  new calls; every read and write of a catalogued file goes through `read_input()` /
+  `write_output()` with the same reader or writer and arguments, so the bytes are
+  unchanged. Scripts 1-6 follow in I06.
+- **Dropped:** script 8's hand-written note that CACK band 3 is the year 2003 (question C3);
+  the band becomes a config setting in I04b and is then in every manifest. The hand-kept
+  output lists, which missed script 9's EGU PNG and claimed stale files in script 7.
+- **Behaviour worth knowing:** once an error handler is installed, `Rscript` carries on
+  after an error and exits 0 (tested), so the handler ends a non-interactive run with
+  status 1 itself.
+- README (provenance section, launch example) and CONTRIBUTING (decisions on record).
+
+**Outputs changed.** None.
+
+**Verification.** Code at 4e8fef2, then the figure fix. Machine load about 48 on 48 cores
+from another project throughout; this run used 16 cores.
+
+| Run | Result | Time, peak memory |
+|---|---|---|
+| script 7 with `allow_stale = FALSE`, from the seeded baseline predictions | stopped at the predictions summary ("no run of 6_prediction_model is recorded"); manifest `failed` with the error and what it had read and written | 3 s |
+| scripts 7 and 7a in parallel, then 8 and 9 (`allow_stale = TRUE`) | all six tail-anchor files and four forcing tables byte-identical; 23 figures identical to I07's; every recorded MD5 equals the file on disk; 8's four checks against 7 and 7a and 9's two against 8 and 7 pass; stale inputs only the two seeded predictions | 121 min, 23.3 GB (7); 80 min, 2.3 GB (7a); <1 min each (8, 9) |
+| the same run's manifests | 7a had claimed 13 of script 7's figures and both claimed `Rplots.pdf`: fixed as above | - |
+| scripts 8 and 9 rerun with the fix | anchors and figures still match; 9 lists exactly its seven figures; 8 lists only `Rplots.pdf`; checks pass against the new run of 8 | <1 min each |
+
+The repository's `figures/`, `runs/` and `Rplots.pdf` were unchanged and the 331 frozen
+inputs matched before and after. The figure attribution for 7 and 7a side by side is
+covered by the new test, not by a second two-hour run.
+
+**Left as found:** scripts 7 and 7a, when run side by side in one place, both print plots
+to the same `Rplots.pdf`, so that file is unreliable then. It is not a product of the
+pipeline; noted here, not fixed.
 

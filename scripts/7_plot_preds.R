@@ -9,29 +9,18 @@ library(raster)
 
 # Settings from config.R (issue I03): the coarse ages and the map window. Slice and
 # period labels are made from the ages (R/calendar.R).
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)   # every file read or written (issue I07)
-alb_prod = paths$tag          # the albedo product in file names
-
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# manifest; files are then read and written through it (issue I05).
 source('R/run_manifest.R')
-run_start('7_plot_preds',
-          note   = Sys.getenv('RUN_NOTE'),
-          runs_dir = path_runs(paths),
-          inputs = Filter(file.exists, c(
-            path_prediction(paths, 'summary'),
-            path_prediction(paths, 'point'),
-            path_file(paths, 'grid'),
-            path_file(paths, 'glacier_shapes'),
-            path_file(paths, 'glacier_albedo'),
-            path_file(paths, 'boundaries_ll'),
-            path_file(paths, 'boundaries'))),
-          config = list(alb_prod = alb_prod, config = config_json(cfg)))
+run   = run_begin('7_plot_preds')
+cfg   = run$cfg
+paths = run$paths   # every file read or written (issue I07)
+alb_prod = paths$tag   # the albedo product in file names
 
-pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
+pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
-pbs = readRDS(path_file(paths, 'boundaries'))
+pbs = read_input(run, path_file(paths, 'boundaries'))
 
 breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
@@ -51,7 +40,7 @@ ylim = cfg$presentation$map_windows$tail$y
 
 proj_WGS84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'
 
-ice = readRDS(path_file(paths, 'glacier_shapes'))
+ice = read_input(run, path_file(paths, 'glacier_shapes'))
 ice_years = seq(1, 21)*1000
 
 ice_fort = data.frame(matrix(NA, nrow=0, ncol=9))
@@ -81,7 +70,7 @@ ice_sub$facets = factor(ice_sub$facets,
                         levels = ages_ka(ages_sub),
                         labels = paste(ages_ka(ages_sub), 'ka'))
 
-saveRDS(ice_fort, path_file(paths, 'ice_fort'))
+write_output(run, ice_fort, path_file(paths, 'ice_fort'))
 
 ice_fill = 'gainsboro'
 ice_colour = 'gray60'
@@ -89,11 +78,11 @@ ice_colour = 'gray60'
 ice_fill_dark = 'ivory3'
 ice_colour_dark = 'gray40'
 
-alb_interp_preds = readRDS(path_prediction(paths, 'summary'))
+alb_interp_preds = read_input(run, path_prediction(paths, 'summary'))
 alb_interp_preds$year[which(alb_interp_preds$year == 11500)] = 12000
 
-pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
-pbs = readRDS(path_file(paths, 'boundaries'))
+pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
+pbs = read_input(run, path_file(paths, 'boundaries'))
 
 breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
@@ -153,9 +142,9 @@ years = cfg$analysis$coarse$ages
 breaks_alb = c(0, 5, 10, 20, 30, 40, 60, 80, 100)/100
 labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "60 - 80", "80 - 100")
 
-grid_NA <- readRDS(path_file(paths, 'grid'))
+grid_NA <- read_input(run, path_file(paths, 'grid'))
 
-paleo_interp_sim_gam = readRDS(path_prediction(paths, 'point'))
+paleo_interp_sim_gam = read_input(run, path_prediction(paths, 'point'))
 
 cell_id <- raster::extract(grid_NA, alb_interp_preds[,c('x', 'y')])
 
@@ -168,7 +157,7 @@ alb_grid = cbind(coords,
 
 alb_grid_sub = subset(alb_grid, year %in% years)
 
-alb_glacier = read.csv(path_file(paths, 'glacier_albedo'), header=TRUE)
+alb_glacier = read_input(run, path_file(paths, 'glacier_albedo'), read.csv, header=TRUE)
 
 alb_grid_sub$alb_mean_ice = alb_glacier[match(alb_grid_sub$month, alb_glacier$month), 'ice_albedo']
 
@@ -436,7 +425,7 @@ for (i in 1:N_cells){
 
 alb_diff_df =  alb_diff_df[which(!is.na(alb_diff_df$lat)),]
 
-saveRDS(alb_diff_df, path_file(paths, 'coarse_differences'))
+write_output(run, alb_diff_df, path_file(paths, 'coarse_differences'))
 
 labels = period_labels(years)
 
@@ -485,8 +474,8 @@ ice_fort_diff_young$facets = factor(ice_fort_diff_young$facets,
                                     levels = labels_period,
                                     labels = labels_period)
 
-saveRDS(ice_fort_diff_young, path_file(paths, 'ice_fort_diff_young'))
-saveRDS(ice_fort_diff_old, path_file(paths, 'ice_fort_diff_old'))
+write_output(run, ice_fort_diff_young, path_file(paths, 'ice_fort_diff_young'))
+write_output(run, ice_fort_diff_old, path_file(paths, 'ice_fort_diff_old'))
 
 diff_years = years[-length(years)]
 alb_diff_df$facets = labels[match(alb_diff_df$year, diff_years)]
@@ -578,7 +567,4 @@ for (i in 1:length(facets)){
 }
 dev.off()
 
-run_end(outputs = Filter(file.exists, c(
-  list.files(path_figure(paths), pattern = 'alb_interp', full.names = TRUE),
-  path_file(paths, 'ice_fort'), path_file(paths, 'ice_fort_diff_young'), path_file(paths, 'ice_fort_diff_old'),
-  path_file(paths, 'coarse_differences'))))
+run_finish(run)

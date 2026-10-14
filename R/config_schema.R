@@ -63,6 +63,9 @@ check_run_dir = function(v) {
   NULL
 }
 
+# A setting that is TRUE or FALSE.
+check_flag = function(v) if (!is.logical(v) || length(v) != 1 || is.na(v)) 'must be TRUE or FALSE'
+
 CONFIG_SCHEMA = list(
   analysis = list(
     coarse = list(
@@ -77,7 +80,8 @@ CONFIG_SCHEMA = list(
                        tail        = MAP_WINDOW_SCHEMA,
                        diagnostics = MAP_WINDOW_SCHEMA)),
   run = list(
-    dir = check_run_dir))
+    dir         = check_run_dir,
+    allow_stale = check_flag))
 
 # Rules across keys. Called only once every key has passed its own check.
 config_combination_errors = function(cfg) {

@@ -9,12 +9,14 @@ library(raster)
 library(sf)
 library(dplyr)
 
-# Settings and file locations: config.R, and R/paths.R for every file read or written. The
-# directories products go to are created by pipeline_paths() (issue I07).
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07; it creates the product
+# directories) and starts the run's manifest; files are then read and written through it
+# (issue I05).
+source('R/run_manifest.R')
+run   = run_begin('8_radiative')
+cfg   = run$cfg
+paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
@@ -25,24 +27,9 @@ months = MONTHS
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 
-source('R/run_manifest.R')
-run_start('8_radiative',
-          note   = Sys.getenv('RUN_NOTE'),
-          runs_dir = path_runs(paths),
-          inputs = Filter(file.exists, c(
-            path_file(paths, 'albedo_differences'),
-            path_file(paths, 'kernel_hadgem'),
-            path_file(paths, 'kernel_cam5'),
-            path_file(paths, 'kernel_cack'),
-            path_file(paths, 'ice_fort'), path_file(paths, 'ice_fort_diff_young'), path_file(paths, 'ice_fort_diff_old'),
-            path_file(paths, 'boundaries_ll'),
-            path_file(paths, 'boundaries'))),
-          config = list(alb_prod = alb_prod, months = months,
-                        cack_band = 3, cack_band_meaning = 'year 2003, see question C3'))
-
-ice_fort = readRDS(path_file(paths, 'ice_fort'))
-ice_fort_diff_young = readRDS(path_file(paths, 'ice_fort_diff_young'))
-ice_fort_diff_old = readRDS(path_file(paths, 'ice_fort_diff_old'))
+ice_fort = read_input(run, path_file(paths, 'ice_fort'))
+ice_fort_diff_young = read_input(run, path_file(paths, 'ice_fort_diff_young'))
+ice_fort_diff_old = read_input(run, path_file(paths, 'ice_fort_diff_old'))
 
 ages = c(50, 200, seq(500, 11500, by=500))
 N_times = length(ages)
@@ -56,12 +43,12 @@ ice_colour = 'gray60'
 ice_fill_dark = 'ivory3'
 ice_colour_dark = 'gray40'
 
-pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
-pbs = readRDS(path_file(paths, 'boundaries'))
+pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
+pbs = read_input(run, path_file(paths, 'boundaries'))
 
-rk_hadgem = brick(path_file(paths, 'kernel_hadgem'), level=1, varname='albedo_sw_cs')
+rk_hadgem = read_input(run, path_file(paths, 'kernel_hadgem'), brick, level=1, varname='albedo_sw_cs')
 
-alb_interp_diff_full = readRDS(path_file(paths, 'albedo_differences'))
+alb_interp_diff_full = read_input(run, path_file(paths, 'albedo_differences'))
 
 alb_diff = alb_interp_diff_full
 
@@ -99,7 +86,7 @@ for (month in months){
     geom_point(data=data.frame(alb_diff_spatial), aes(x=long360, y=lat), shape=1, alpha=0.1) +
     scale_fill_gradientn(colours = terrain.colors(10))
 
-  rk_cam5 = raster(path_file(paths, 'kernel_cam5'),
+  rk_cam5 = read_input(run, path_file(paths, 'kernel_cam5'), raster,
                    varname='FSNSC',
                    band=month_number)
 
@@ -109,7 +96,7 @@ for (month in months){
   rk_cam5_df = as.data.frame(rk_cam5, xy=TRUE)
   colnames(rk_cam5_df) = c('x', 'y', 'kernel')
 
-  rk_cack = raster(path_file(paths, 'kernel_cack'),
+  rk_cack = read_input(run, path_file(paths, 'kernel_cack'), raster,
                    varname='CACK',
                    level=month_number,
                    band=3)
@@ -197,6 +184,6 @@ ggplot(data=bar) +
 
 bar$alb_diff_ice_thresh
 
-saveRDS(alb_diff, path_forcing(paths))
+write_output(run, alb_diff, path_forcing(paths))
 
-run_end(outputs = Filter(file.exists, path_forcing(paths)))
+run_finish(run)

@@ -111,12 +111,15 @@ library(dplyr)
 library(tidyr)
 library(patchwork)
 
-source('R/run_manifest.R')
 source('R/calendar.R')
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)   # every file read or written (issue I07)
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# manifest, which records the inputs with checksums and the whole configuration; files are
+# then read and written through it (issue I05).
+source('R/run_manifest.R')
+run   = run_begin('9_forcing_barplot')
+cfg   = run$cfg
+paths = run$paths   # every file read or written (issue I07)
 
 # Albedo product tag; Earth's surface area for the global-equivalent normalisation (A8);
 # the forcing column to use per kernel, named by kernel (A1, A3); the variants to
@@ -131,20 +134,8 @@ VARIANTS   = cfg$analysis$forcing$sensitivity_variants
 ages_sub      = cfg$analysis$coarse$ages
 labels_period = period_labels(ages_sub)
 
-# Provenance manifest: inputs with checksums and the whole configuration, as JSON.
-run_start('9_forcing_barplot',
-          note   = Sys.getenv('RUN_NOTE'),
-          runs_dir = path_runs(paths),
-          inputs = Filter(file.exists, c(
-            path_forcing(paths),
-            path_file(paths, 'coarse_differences'),
-            path_file(paths, 'ipcc_erf'),
-            path_file(paths, 'ipcc_erf_pc05'),
-            path_file(paths, 'ipcc_erf_pc95'))),
-          config = list(config = config_json(cfg)))
-
 # The per-cell forcing table from script 8.
-d = readRDS(path_forcing(paths))
+d = read_input(run, path_forcing(paths))
 
 # --- A4/A5: assign each slice-pair to a period -------------------------------
 # A row's `year` is the YOUNGER end of the pair; the pair spans year -> next age.
@@ -201,7 +192,7 @@ sens = bind_rows(lapply(VARIANTS, function(v) {
 sens$period = factor(sens$period, levels = labels_period)
 
 # --- modern IPCC agents ------------------------------------------------------
-read_erf <- function(p) { x = read.csv(p); x[x$year == 2019, ] }
+read_erf <- function(p) { x = read_input(run, p, read.csv); x[x$year == 2019, ] }
 erf    = read_erf(path_file(paths, 'ipcc_erf'))
 erf_lo = read_erf(path_file(paths, 'ipcc_erf_pc05'))
 erf_hi = read_erf(path_file(paths, 'ipcc_erf_pc95'))
@@ -328,7 +319,7 @@ ggsave(path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'), p_sens, wi
 # script 7's 7 coarse slice-pairs (one per period, so nothing to sum); months
 # are feb/may/aug/nov only; binary-flagged ice cells are masked; and the bar is
 # the PLAIN UNWEIGHTED MEAN over cells x months, i.e. a domain mean. See C5.
-d7 = readRDS(path_file(paths, 'coarse_differences'))
+d7 = read_input(run, path_file(paths, 'coarse_differences'))
 # Kernel and area per cell-month come from `d`, which has already been trimmed to 27-74 N
 # and to period-complete cells (A4, A10); the join therefore applies the same trim to the
 # recipe, which Andria's April-2024 code did not.
@@ -363,23 +354,13 @@ p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE) /
                         subtitle = 'domain mean, feb/may/aug/nov, ice masked, HadGEM3; NOT global-equivalent')
 ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.pdf'), p_egu, width = 8, height = 6.5)
 ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.png'), p_egu, width = 8, height = 6.5, dpi = 150)
-write.csv(egu, path_file(paths, 'forcing_egu2024_recipe'), row.names = FALSE)
+write_output(run, egu, path_file(paths, 'forcing_egu2024_recipe'), write.csv, row.names = FALSE)
 } # CM: end of the EGU 2024 recipe
 
 # --- numbers out -------------------------------------------------------------
-write.csv(main, path_file(paths, 'forcing_by_period'), row.names = FALSE)
-write.csv(sens, path_file(paths, 'forcing_variant_sensitivity'), row.names = FALSE)
-write.csv(modern, path_file(paths, 'modern_erf'), row.names = FALSE)
+write_output(run, main, path_file(paths, 'forcing_by_period'), write.csv, row.names = FALSE)
+write_output(run, sens, path_file(paths, 'forcing_variant_sensitivity'), write.csv, row.names = FALSE)
+write_output(run, modern, path_file(paths, 'modern_erf'), write.csv, row.names = FALSE)
 
-# Close the provenance manifest.
-run_end(outputs = Filter(file.exists, c(
-  path_figure(paths, 'forcing_barplot_slide18.pdf'),
-  path_figure(paths, 'forcing_barplot_slide18.png'),
-  path_figure(paths, 'forcing_barplot_kernel_spread.pdf'),
-  path_figure(paths, 'forcing_barplot_domain_mean.pdf'),
-  path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'),
-  path_file(paths, 'forcing_by_period'),
-  path_file(paths, 'forcing_variant_sensitivity'),
-  path_file(paths, 'modern_erf'),
-  path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.pdf'),
-  path_file(paths, 'forcing_egu2024_recipe'))))
+# Close the run manifest: closes the plot devices and records the figures written.
+run_finish(run)

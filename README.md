@@ -272,25 +272,35 @@ on 2026-09-17 sat for 2.5 hours producing nothing. A typical launch:
 
 ```
 OPENBLAS_NUM_THREADS=8 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 RUN_CORES=0-7 \
-  RUN_NOTE="what this run is for" \
   nice taskset -c 0-7 micromamba run -n paleo-rf Rscript scripts/7_plot_preds.R
 ```
 
-`RUN_CORES` and `RUN_NOTE` are picked up by the provenance manifest. A
+The thread settings and `RUN_CORES` are recorded in the run manifest. A
 package lockfile (`renv`) is planned.
 
 ## Run provenance (`runs/`)
 
-Scripts that source `R/run_manifest.R` write one markdown file per run to
-`runs/`, named by start time and script. It records the human note, the
-commit that was checked out when the run **started** (and whether HEAD
-moved during the run), whether `scripts/` or `R/` had uncommitted
-changes, the host, cores and thread caps, R and package versions, the
-script's configuration, every declared input with its md5, and every
-output with its size. Three older manifests were written by hand after
-the fact and are marked `RECONSTRUCTED`. Wiring the helper into a script
-is two calls, `run_start()` after its configuration and `run_end()` at
-the end; scripts 7, 7a, 8 and 9 have it.
+Every run of a script that uses `R/run_manifest.R` writes
+`runs/<script>/<start time>_<process id>.md` (in the run directory, for a
+run with `run$dir` set) as soon as it starts, and updates it as the run
+goes: status `started`, then `completed` or `failed` with the error (a run
+that is killed stays `started`). It records the full commit and any
+uncommitted changes to `config.R`, `scripts/` or `R/`, the whole
+configuration, every file read and written with its md5, the figures
+written, and R, package and thread settings. The top of the file is a
+readable summary; the full record is JSON at the end.
+
+Before a script reads a file made by an earlier script it checks that
+script's latest manifest: the file must be the one that run wrote, and the
+run must have used the same `analysis` settings. If not, the script stops
+and lists what differs; rerun the earlier script, or set
+`run$allow_stale = TRUE` in the config to go on regardless (each such file
+is listed in the manifest). A script uses it with `run_begin()` at the top,
+`read_input()` and `write_output()` for its files, and `run_finish()` at
+the end; scripts 7, 7a, 8 and 9 have it (issue I05), the others follow in
+I06. Older manifests in `runs/` (flat, named by minute) are kept as they
+are; three were written by hand after the fact and are marked
+`RECONSTRUCTED`.
 
 ## Regression anchors (`tests/anchors/`)
 

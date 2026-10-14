@@ -74,7 +74,13 @@ stopifnot(
   rejects("run\\$dir must not be inside the repository's output/", 'dir = NULL', 'dir = "output/alt"'),
   rejects("run\\$dir must not contain '..'", 'dir = NULL', 'dir = "../elsewhere"'),
   rejects("run\\$dir must be NULL or one directory path", 'dir = NULL', 'dir = c("a", "b")'),
-  rejects("run is missing key\\(s\\) dir", 'dir = NULL', ''),
+  rejects("run is missing key\\(s\\) dir", 'dir = NULL,', ''),
+  # the stale-input override (issue I05): off by default, TRUE or FALSE only
+  identical(cfg$run$allow_stale, FALSE),
+  isTRUE(load_variant('allow_stale = FALSE', 'allow_stale = TRUE')$run$allow_stale),
+  rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = 1'),
+  rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = c(TRUE, FALSE)'),
+  rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = NA'),
   # unsupported combinations
   rejects("report_kernels must include hadgem", 'report_kernels = c("hadgem", "cam5", "cack")', 'report_kernels = c("cam5", "cack")'),
   # every problem is reported at once, not just the first
