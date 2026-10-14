@@ -75,6 +75,19 @@ check("the manifest is readable Markdown with the record at the end",
 r <- run_toy("8_radiative", consumer_body)
 m <- latest("8_radiative")
 check("consumer passes the check", r$status == 0 && m$status == "completed" && m$inputs[[1]]$check == "ok")
+check("reads and writes are traced with their file names",
+      any(grepl("reading data/ALB_diffs_bluesky.RDS", r$out, fixed = TRUE)) &&
+      any(grepl("wrote data/ALB_diffs_bluesky.RDS", run_toy("7a_alb_diff_full", producer_body)$out, fixed = TRUE)))
+
+# An interactive session (as in RStudio) writes no manifest until the run writes or finishes.
+# run_begin()'s interactive_session argument stands in for RStudio here.
+r <- run_toy("toy_stepping", c("run = run_begin('toy_stepping', interactive_session = TRUE)",
+                               "x = read_input(run, path_file(run$paths, 'glacier_albedo'), read.csv)"))
+check("an interactive session that only reads leaves no manifest", r$status == 0 && !length(manifests("toy_stepping")))
+r <- run_toy("toy_stepping_write", c("run = run_begin('toy_stepping_write', interactive_session = TRUE)",
+                                     "write_output(run, 1, 'data/toy_interactive.RDS')"))
+check("... and one that writes gets its manifest at the first write",
+      length(manifests("toy_stepping_write")) == 1 && length(latest("toy_stepping_write")$outputs) == 1)
 
 r <- run_toy("8_radiative", c("run = run_begin('8_radiative'); paths = run$paths",
                               "for (month in 1:3) d = read_input(run, path_file(paths, 'albedo_differences'))",
@@ -124,7 +137,7 @@ invisible(run_toy("7a_alb_diff_full", producer_body))
 dir.create("output/prediction", recursive = TRUE, showWarnings = FALSE)
 saveRDS(1, "output/prediction/paleo_interp_predict_gam_summary_bluesky.RDS")
 r <- run_toy("7_plot_preds", c("run = run_begin('7_plot_preds')",
-                               "x = read_input(run, path_prediction(run$paths, 'summary'))", "run_finish(run)"))
+                               "x = read_input(run, path_file(run$paths, 'prediction_summary'))", "run_finish(run)"))
 check("... when no run of the producer is recorded",
       r$status == 1 && grepl("no run of 6_prediction_model is recorded", latest("7_plot_preds")$error))
 
