@@ -175,8 +175,16 @@ path_calibration_model = function(paths, model_id, month) {
 # Script 8's per-cell forcing table. Its name has no albedo tag.
 path_forcing = function(paths) path_file(paths, 'forcing')
 
-# A figure file, under figures/ in the run's root.
-path_figure = function(paths, ...) under_root(paths, file.path('figures', ...))
+# A figure file, under figures/ in the run's root. Every figure path handed out is noted, so
+# a run manifest lists the figures this run wrote and not those another run (scripts 7 and
+# 7a run side by side) wrote into the same figures/ meanwhile (issue I05).
+FIGURES_REQUESTED = new.env(parent = emptyenv())
+FIGURES_REQUESTED$paths = character()
+path_figure = function(paths, ...) {
+  path = under_root(paths, file.path('figures', ...))
+  FIGURES_REQUESTED$paths = union(FIGURES_REQUESTED$paths, path)
+  path
+}
 
 # Where run manifests are written.
 path_runs = function(paths) under_root(paths, 'runs')

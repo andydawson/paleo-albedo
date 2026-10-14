@@ -58,6 +58,15 @@ run_begin = function(script, config_file = config_path()) {
     warning('config.R, scripts/ or R/ have uncommitted changes; this run cannot be ',
             'reproduced from a commit', call. = FALSE, immediate. = TRUE)
   write_manifest(run)
+  FIGURES_REQUESTED$paths = character()
+  # Plots printed with no device open go to Rplots.pdf. Note whether this run did that, so
+  # the file is claimed only by a run that wrote to it. (Not in an interactive session,
+  # whose screen device must stay as it is.)
+  if (!interactive()) {
+    device = getOption('device')
+    if (is.character(device)) device = get(device, mode = 'function')
+    options(device = function(...) { run$used_default_device = TRUE; device(...) })
+  }
   run$previous_error_handler = getOption('error')
   options(error = function() {
     run_failed(run, geterrmessage())
@@ -268,11 +277,12 @@ session_info = function() {
        threads = as.list(Sys.getenv(c('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'RUN_CORES'))))
 }
 
-# Figures written since the run started: files under the run's figures/ (and its Rplots.pdf)
-# modified after the start, so figures left by earlier runs are not claimed.
+# The figures this run wrote: the figure paths it asked path_figure() for (and Rplots.pdf if
+# it plotted to the default device), modified since the run started, so neither figures left
+# by earlier runs nor those of a run working alongside are claimed.
 new_figures = function(run) {
-  candidates = c(list.files(under_root(run$paths, 'figures'), recursive = TRUE, full.names = TRUE),
-                 under_root(run$paths, 'Rplots.pdf'))
+  candidates = c(FIGURES_REQUESTED$paths,
+                 if (isTRUE(run$used_default_device)) under_root(run$paths, 'Rplots.pdf'))
   candidates = candidates[file.exists(candidates)]
   fresh = candidates[file.mtime(candidates) >= trunc(run$started, 'secs')]
   lapply(sort(fresh), function(f) list(path = f, md5 = unname(tools::md5sum(f))))

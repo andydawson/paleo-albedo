@@ -166,6 +166,24 @@ out <- suppressWarnings(system2(rscript, c("-e", shQuote("source('scripts/toy_so
 check("a script run with source() fails the same way",
       identical(attr(out, "status"), 1L) && latest("toy_sourced")$status == "failed")
 
+# --- figures: only this run's ------------------------------------------------------------
+writeLines(c("source('R/run_manifest.R')", "run = run_begin('toy_fig_a')",
+             "Sys.sleep(1); png(path_figure(run$paths, 'a.png')); plot(1); dev.off()",
+             "plot(2)   # no device open: Rplots.pdf",
+             "Sys.sleep(3); run_finish(run)"), "scripts/toy_fig_a.R")
+writeLines(c("source('R/run_manifest.R')", "run = run_begin('toy_fig_b')",
+             "Sys.sleep(2); png(path_figure(run$paths, 'b.png')); plot(3); dev.off()",
+             "Sys.sleep(3); run_finish(run)"), "scripts/toy_fig_b.R")
+for (s in c("a", "b")) system2(rscript, sprintf("scripts/toy_fig_%s.R", s), wait = FALSE, stdout = FALSE, stderr = FALSE)
+for (i in 1:120) {
+  if (all(vapply(c("toy_fig_a", "toy_fig_b"), function(s) length(manifests(s)) == 1 &&
+                 latest(s)$status == "completed", TRUE))) break
+  Sys.sleep(0.5)
+}
+figs_of <- function(s) vapply(latest(s)$figures, `[[`, "", "path")
+check("two runs writing figures side by side each list only their own (and Rplots.pdf only if they used it)",
+      setequal(figs_of("toy_fig_a"), c("Rplots.pdf", "figures/a.png")) && identical(figs_of("toy_fig_b"), "figures/b.png"))
+
 # --- two runs started together ------------------------------------------------------------
 writeLines(c("source('R/run_manifest.R')", "run = run_begin('toy_parallel')", "Sys.sleep(2)", "run_finish(run)"),
            "scripts/toy_parallel.R")
