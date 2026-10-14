@@ -28,6 +28,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I07 Paths; run directories; R-only tools | #5 | merged 2026-10-13 | 252c6b6 |
 | I05 Run manifests; consistency check | #6 | merged 2026-10-14 | f867506 |
 | I04a Model, draw and reduction settings; seed | #7 | merged 2026-10-14 | 520b6e6 |
+| I04b Months, ages, alias, domain, ice, CACK year | #8 | merged 2026-10-14 | (pending) |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -508,4 +509,68 @@ The repository's `figures/`, `runs/`, `output/` and `Rplots.pdf` were unchanged,
 month selection setting of I04b; the property it tests (a month's draws do not depend on
 the other months) is tested in `test_random.R` instead, and the 1000-draw run by
 `draw_index()`'s test.
+
+---
+
+## I04b: months, ages, slice alias, domain, ice and the CACK year as settings (#8), merged 2026-10-14
+
+**Purpose.** Make the analysis choices of the tail (scripts 7, 7a, 8) visible and checked
+in `config.R`, with the inherited oddities exposed under their question ids, and let any
+subset of months run through scripts 4 to 9.
+
+**Decisions taken while planning (Chris, 2026-10-14):**
+- The fine time slices are a config key (`analysis$ages`), with a comment that they must
+  agree with the data; script 7a stops, naming them, if a slice is not in the prediction
+  table.
+- The glacier-albedo column for each of the three ice roles is its own setting, with the
+  legal columns listed (question C0a).
+
+**New keys** (all checked by the schema):
+- `months` (written out; any subset);
+- `ages` (the reconstruction's 25 slices);
+- `coarse$slice_alias = c(11500, 12000)` or NULL (C7). The comment explains that it also
+  picks the 11.5 ka slice's ice polygon, and that NULL is implemented but drops the
+  oldest period;
+- `domain`: `lon_min`, `lat_min`, `lat_max`, `lon_max_coarse`;
+- `ice`: `threshold`, `albedo_coarse`, `albedo_fixed`, `albedo_scaled` (C0, C0a, C2);
+- `kernels$cack_year` 2001-2016 (C3; band = year - 2000, checked against the file's
+  "2001 = 1").
+
+Combination rules: `lat_min < lat_max`; `lon_min` west of `lon_max_coarse`; the alias's
+data slice is in `ages` and its coarse age is in `coarse$ages`.
+
+**Changed:**
+- **Scripts 4, 5, 6, 7, 7a, 8** use `months`; script 4's three redundant reassignments
+  are removed. Script 2 deliberately keeps all twelve months, so the calibration table
+  serves any selection.
+- **Script 7a** pairs the configured `ages` and uses the threshold and domain keys.
+- **Script 7** applies the alias and `lon_max_coarse`.
+- **Script 8** uses `lat_min`/`lat_max` and the CACK band from `cack_year`.
+- **Script 1's diagnostic** builds its zones from the domain keys, with the same text at
+  the defaults.
+- **Dead copies removed:** the fine `ages` and its relabelling in scripts 7 and 8, and
+  7a's coarse `years` and `labels_year`.
+
+**Outputs changed.** None at the default settings.
+
+**Verification.** Code at b88813b. Each run was in its own run directory, at 8 threads,
+starting from frozen inputs with `allow_stale = TRUE`. Load was 40-60 on 48 cores from
+another project; this verification used three 8-core lanes.
+
+| Check | Result | Time, peak memory |
+|---|---|---|
+| baseline tail: 7 ‖ 7a, then 8, 9 | all six tail-anchor files and four forcing tables byte-identical; 23 figures identical to I05's | 109 min, 23.3 GB (7); 77 min (7a) |
+| script 1, diagnostic mode | both land-cover tables byte-identical; 28 figures and the diagnostic CSV identical to I07's | 1 min |
+| four months (feb, may, aug, nov), seed 1: scripts 5, 6, 7a, 7, 8, 9 | the four months' draw and summary files byte-identical to the twelve-month seeded anchor (the check carried over from I04a); the forcing table has exactly those months | 2, 6, 17, 35 min |
+| `slice_alias = NULL` (script 7, four months) | the 10-12 ka differences disappear; the younger periods are identical | 34 min |
+| `ice$threshold = 0.6` (7a, four months) | the `*_part` variants are identical, the `*_thresh` variants differ (2,408 of 268,724 rows of `veg_ice_thresh`) | 17 min |
+| `ice$albedo_fixed = "ice_albedo_sc"` (7a) | the fixed-ice variants equal the default run's scaled-ice ones exactly; the vegetation-only variants are unchanged | 17 min |
+| `kernels$cack_year = 2010` (script 8) | every non-CACK column is identical to the baseline; the CACK kernel and forcings differ; `raster(band = 10)` holds the netCDF's Year 10 values (not Year 3 or 11) for two months; the Year attribute reads "2001 = 1" | under 1 min |
+| `domain$lat_max = 70` (script 8) | identical to the baseline's rows below 70 N | under 1 min |
+| literal equivalence before the runs | the config's `ages`, the diagnostic zone labels and the CACK band are `identical()` to the old literals | - |
+
+The repository's figures, runs, data and outputs were unchanged, and the 331 frozen inputs
+matched. Two first-pass failures were in my comparison harness, not the pipeline:
+- a misread netCDF attribute;
+- subsetting a table with a `units` column without loading `units`, which strips the class.
 
