@@ -237,23 +237,24 @@ catalogue_paths = function(paths, months = MONTHS, include_spatial_eval = FALSE)
 # Make baseline products available in a run directory, for a run that reuses them (for
 # example script 6 reading the selected models of the baseline run of script 5). `files`
 # are baseline paths, e.g. path_calibration_model(baseline, 'selected', 'jan'). Each is
-# linked where the system allows it, otherwise copied; a file already in the run
-# directory is left alone. The seeded paths are listed in SEEDED.txt in the run
-# directory, so checks can tell a reused file from one the run produced. Returns the
-# run-directory paths.
+# copied (never linked: a run writing to a linked file would write into the baseline), and
+# the copy is writable, as the run's own file; a file already in the run directory is
+# left alone. The seeded paths are listed in SEEDED.txt in the run directory once copied,
+# so checks can tell a reused file from one the run produced. Returns the run-directory
+# paths.
 seed_run_dir = function(paths, files) {
   if (is.null(paths$root)) stop('seed_run_dir: the baseline profile has no run directory to seed')
-  record = file.path(paths$root, 'SEEDED.txt')
-  done = if (file.exists(record)) readLines(record) else character()
-  writeLines(sort(unique(c(done, files))), record)
-  vapply(files, function(f) {
+  targets = vapply(files, function(f) {
     if (!file.exists(f)) stop('seed_run_dir: no baseline file ', f)
     target = file.path(paths$root, f)
     if (!file.exists(target)) {
       dir.create(dirname(target), recursive = TRUE, showWarnings = FALSE)
-      linked = suppressWarnings(file.symlink(normalizePath(f), target))
-      if (!linked && !file.copy(f, target)) stop('seed_run_dir: could not link or copy ', f)
+      if (!file.copy(f, target, copy.mode = FALSE)) stop('seed_run_dir: could not copy ', f)
     }
     target
   }, character(1), USE.NAMES = FALSE)
+  record = file.path(paths$root, 'SEEDED.txt')
+  done = if (file.exists(record)) readLines(record) else character()
+  writeLines(sort(unique(c(done, files))), record)
+  targets
 }

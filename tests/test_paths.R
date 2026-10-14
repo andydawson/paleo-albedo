@@ -86,10 +86,14 @@ local({
   stopifnot(file.exists(file.path(tmp, "Rplots.pdf")))
 })
 
-# seed_run_dir links or copies baseline products into a run directory, once.
+# seed_run_dir copies baseline products into a run directory, once: a real, writable file
+# (a link would let the run write into the baseline), listed in SEEDED.txt.
 seeded <- seed_run_dir(alt, path_file(base, "calibration_stats"))
 stopifnot(identical(seeded, file.path(tmp, "output/calibration/calibration_model_stats.csv")),
           identical(unname(tools::md5sum(seeded)), unname(tools::md5sum(path_file(base, "calibration_stats")))),
+          !nzchar(Sys.readlink(seeded)),
+          file.access(seeded, 2) == 0,
+          identical(readLines(file.path(tmp, "SEEDED.txt")), path_file(base, "calibration_stats")),
           identical(seed_run_dir(alt, path_file(base, "calibration_stats")), seeded))
 unlink(tmp, recursive = TRUE)
 cat("test_paths: all tests passed\n")
