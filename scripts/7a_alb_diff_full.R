@@ -254,7 +254,8 @@ for (i in 1:N_cells){
     alb_diff_df = rbind(alb_diff_df,
                         data.frame(subset(alb_cell_filled[1:(nrow(alb_cell_filled)-1), ],
                                           select=alb_diff_colnames),
-                                   pair_albedo_differences(alb_cell_filled, ice_threshold)))
+                                   pair_albedo_differences(alb_cell_filled, ice_threshold,
+                                                           cfg$analysis$ice$difference_method)))
 
   }
 }
