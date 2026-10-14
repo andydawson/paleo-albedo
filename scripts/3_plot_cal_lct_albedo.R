@@ -10,6 +10,17 @@
 # Writes figures/LCT_*_interp.{png,pdf}; the albedo scatter plots are printed only, so a
 #        non-interactive run leaves them in Rplots.pdf.
 
+
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# manifest; files are then read and written through it (issues I05, I06).
+source('R/run_manifest.R')
+run   = run_begin('3_plot_cal_lct_albedo')
+cfg   = run$cfg
+paths = run$paths
+
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
 library(ggplot2)
 library(ggtern)
 library(scales)
@@ -19,17 +30,10 @@ library(reshape2)
 library(tricolore)
 library(scatterpie)
 
-# Settings and file locations: config.R, and R/paths.R for every file read or written. The
-# directories products go to are created by pipeline_paths() (issue I07).
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)
-
 ###############################################################################################################
 ## maps data
 ###############################################################################################################
-pbs_ll = readRDS(path_file(paths, 'boundaries_ll'))
+pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
 # CM: boundaries prepared by the shared helper (see R/map_helpers.R for why the raw file
 # cannot be drawn as-is). The original drew pbs_ll with geom_polygon and coord_fixed.
@@ -42,7 +46,7 @@ pbs_land = prepare_boundaries(pbs_ll, map_window)
 ## calibration data
 ###############################################################################################################
 
-cal_data = readRDS(path_file(paths, 'calibration_table'))
+cal_data = read_input(run, path_file(paths, 'calibration_table'))
 cal_long = melt(cal_data, id.vars=c('x', 'y', 'elev', 'ET', 'OL', 'ST'))
 colnames(cal_long) = c('x', 'y', 'elev', 'ET', 'OL', 'ST', 'month', 'albedo')
 # cal_long$month = as.numeric(substr(cal_long$month, 4, 5))
@@ -249,3 +253,5 @@ ggplot(data=corr_lct) +
         axis.title = element_text(size=16),
         legend.text = element_text(size=14),
         legend.title = element_text(size=16))
+
+run_finish(run)

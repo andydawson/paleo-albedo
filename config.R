@@ -10,9 +10,9 @@
 #   presentation  settings that change only how figures look
 #   run           where this run writes its files, and whether stale inputs are allowed
 #
-# A key appears here only once a script reads it; the rest of the pipeline's settings
-# are still in the scripts and move here issue by issue (single-config migration,
-# GitHub issues #2 to #17). Where a value is a choice nobody has yet confirmed, the
+# A key appears here only once a script reads it. The set of analysis keys is complete as
+# of issue I06 (2026-10-14): the remaining migration issues move code into functions
+# without adding keys, so run manifests from now on stay comparable. Where a value is a choice nobody has yet confirmed, the
 # comment gives its question id in docs/cc/questions_for_andria_scientific.md (C*) or
 # questions_for_andria_general.md (section number). Created 2026-10-13 (issue I03).
 
@@ -136,6 +136,11 @@ list(
     # same analysis settings as this one; if not, it stops and says what differs. TRUE
     # lets the run go on regardless, and every such file is listed in its run manifest.
     # Meant for checks against products made before run manifests existed (issue I05).
-    allow_stale = FALSE
+    allow_stale = FALSE,
+
+    # Script 1's diagnostic mode: TRUE adds checks and plots of the land-cover input (the
+    # discarded ice flag, absent cell-slices, mean versus median) into figures/diagnostics/.
+    # Changes no output (issue I06; was the DIAGNOSTIC environment variable).
+    diagnostic = FALSE
   )
 )

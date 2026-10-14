@@ -83,11 +83,11 @@ into `data/`.
 
 | Script | Does |
 |---|---|
-| `1_veg_lct_prep.R` | mean over the 200 posterior draws; ET/ST/OL per cell and slice; elevation from a committed cache (first built from AWS terrain tiles); modern (age 50) vs paleo split. With `DIAGNOSTIC=TRUE` it also reports on the discarded ice flag, the absent cell-slices and mean-versus-median, and maps the ice flag at every slice into `figures/diagnostics/`
+| `1_veg_lct_prep.R` | mean over the 200 posterior draws; ET/ST/OL per cell and slice; elevation from a committed cache (first built from AWS terrain tiles); modern (age 50) vs paleo split. With `diagnostic = TRUE` in the run section of `config.R` it also reports on the discarded ice flag, the absent cell-slices and mean-versus-median, and maps the ice flag at every slice into `figures/diagnostics/`
 | `2_calibration_lct_bluesky.R` | monthly blue-sky albedo at the modern cells, native pixel and 1-degree mean |
 | `3_plot_cal_lct_albedo.R` | diagnostic plots of the calibration data (optional) |
 | `4_calibration_model.R` | model ladder mod1-mod8 for every month; AIC table; spatial-effects experiment |
-| `5_calibration_eval.R` | fit diagnostics; saves model 8 as the selected model per month |
+| `5_calibration_eval.R` | fit diagnostics; saves the selected model (config.R `calibration$model_id`, model 8 by default) per month |
 | `6_prediction_model.R` | hindcast albedo per slice and month with 100 draws |
 | `6_prediction_model_spatial_eval.R` | sensitivity of hindcasts to model structure (optional) |
 | `7_plot_preds.R` | albedo, uncertainty and difference maps with ice overlays; coarse (7-period) albedo differences |
@@ -117,12 +117,11 @@ branch and earlier versions).
 
 Run order is 1 -> 2 -> 4 -> 5 -> 6 -> 7 -> 7a -> 8 -> 9; 3 and
 6-spatial-eval are optional, and 7 and 7a are independent of each other.
-Scripts 7, 7a, 8 and 9 log a provenance manifest (see below); the others
-will as they are next touched.
+Every script logs a provenance manifest (see below).
 
-Diagnostics: script 1 has a `DIAGNOSTIC` switch (`DIAGNOSTIC=TRUE Rscript
-scripts/1_veg_lct_prep.R`, off by default) that adds checks and plots
-without changing any output; the plots go to `figures/diagnostics/`. The
+Diagnostics: script 1 has a diagnostic switch (`run$diagnostic` in
+`config.R`, off by default) that adds checks and plots without changing
+any output; the plots go to `figures/diagnostics/`. The
 pattern is meant to be extended to the other scripts.
 
 Measured runtimes on this machine (48 cores, capped as noted, one R thread
@@ -271,12 +270,14 @@ you give the job** or the fits oversubscribe the machine: an uncapped run
 on 2026-09-17 sat for 2.5 hours producing nothing. A typical launch:
 
 ```
-OPENBLAS_NUM_THREADS=8 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 RUN_CORES=0-7 \
+OPENBLAS_NUM_THREADS=8 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 \
   nice taskset -c 0-7 micromamba run -n paleo-rf Rscript scripts/7_plot_preds.R
 ```
 
-The thread settings and `RUN_CORES` are recorded in the run manifest. A
-package lockfile (`renv`) is planned.
+The thread settings are recorded in the run manifest (they can change results in the
+last bit). They are the only environment variables involved, and the pipeline only
+records them: every setting it reads is in `config.R` (issue I06). A package lockfile
+(`renv`) is planned.
 
 ## Run provenance (`runs/`)
 
@@ -297,8 +298,9 @@ and lists what differs; rerun the earlier script, or set
 `run$allow_stale = TRUE` in the config to go on regardless (each such file
 is listed in the manifest). A script uses it with `run_begin()` at the top,
 `read_input()` and `write_output()` for its files, and `run_finish()` at
-the end; scripts 7, 7a, 8 and 9 have it (issue I05), the others follow in
-I06. Older manifests in `runs/` (flat, named by minute) are kept as they
+the end; every numbered script has it (issues I05, I04a, I06), with
+`run_begin()` before the packages are loaded so that a missing package is
+recorded as a failed run. Older manifests in `runs/` (flat, named by minute) are kept as they
 are; three were written by hand after the fact and are marked
 `RECONSTRUCTED`.
 

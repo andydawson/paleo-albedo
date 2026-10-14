@@ -116,6 +116,10 @@ stopifnot(
   rejects("cack_year must be a whole number", 'cack_year = 2003', 'cack_year = 2003.5'),
   # the stale-input override (issue I05): off by default, TRUE or FALSE only
   identical(cfg$run$allow_stale, FALSE),
+  # script 1's diagnostic switch (issue I06)
+  identical(cfg$run$diagnostic, FALSE),
+  isTRUE(load_variant('diagnostic = FALSE', 'diagnostic = TRUE')$run$diagnostic),
+  rejects("run\\$diagnostic must be TRUE or FALSE", 'diagnostic = FALSE', 'diagnostic = "yes"'),
   isTRUE(load_variant('allow_stale = FALSE', 'allow_stale = TRUE')$run$allow_stale),
   rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = 1'),
   rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = c(TRUE, FALSE)'),

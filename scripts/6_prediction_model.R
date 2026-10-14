@@ -4,11 +4,6 @@
 # are read and written through the run manifest; the computation is unchanged.
 
 
-library(dplyr)
-library(mgcv)
-library(gratia)
-library(reshape2)
-
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
 # given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
 # manifest; files are then read and written through it (issues I05, I04a).
@@ -17,6 +12,13 @@ run   = run_begin('6_prediction_model')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
+
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
+# (issue I06).
+library(dplyr)
+library(mgcv)
+library(gratia)
+library(reshape2)
 
 # Simulated draws per prediction (config.R analysis$draws, questions A2, A3), and the base
 # random seed of this run, recorded in its manifest (R/random.R).
