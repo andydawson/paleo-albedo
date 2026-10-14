@@ -32,11 +32,9 @@ source('R/calendar.R')
 # here rather than offered as a setting.
 ALBEDO_TAG = 'bluesky'
 
-# The fits of script 4, by model id: the eight-model ladder, and the spatial experiments
-# (which script 5 compares with the selected model, SP_ELEV_LC).
-LADDER_MODELS  = paste0('mod', 1:8)
-SPATIAL_MODELS = c('spatial', 'elev', 'spatial_elev', 'spatial_cover', 'cover', 'cover_elev',
-                   'spatial_elev_cover')
+# The fits of script 4, by model id (LADDER_MODELS, SPATIAL_MODELS): defined with their
+# formulas in R/model_registry.R (issue I04a).
+source('R/model_registry.R')
 
 # One row per file or family of files. `template` is the path relative to the repository
 # (input) or to the run directory (product); {month} is a month name, {model} a model id,

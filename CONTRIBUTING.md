@@ -119,7 +119,10 @@ feasible, checked against `tests/anchors/`; version control as above. Chris,
   answer (general question 7). The random seed for the simulations in
   scripts 5 and 6 is a config option, `"random"` by default with the drawn
   seed recorded in every manifest (Chris, 2026-10-08; issues #7, #6, #11,
-  #15, #16).
+  #15, #16). On 2026-10-14 Chris kept the calibration settings in
+  `config.R` to the choice of model (`calibration$model_id`): formulas,
+  basis sizes and `maxit` live in `R/model_registry.R`, changed only by a
+  reviewed code change.
 - **2026-09-23.** Branch `annotated-interp` is a teaching copy of the same
   code with a comment on every line. It is read, not merged; its code was
   kept identical to `chris-dev`'s by the comment-stripped comparison

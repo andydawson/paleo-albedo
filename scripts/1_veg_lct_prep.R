@@ -1,7 +1,8 @@
 # 1_veg_lct_prep.R: turn the land-cover posterior into two plain tables
 # Interp (spatially complete) path only: the point-based code and its guards are
-# removed. The pipeline lines are unchanged from the original; the elevation lookup is
-# now cached on disk, and a DIAGNOSTIC switch adds checks and plots at the end.
+# removed. The pipeline lines are unchanged from the original except the reduction of the
+# draws, now reduce_land_cover() (issue I04a); the elevation lookup is cached on disk, and
+# a DIAGNOSTIC switch adds checks and plots at the end.
 
 library(dplyr)
 library(tidyr)
@@ -44,16 +45,11 @@ if (diagnostic) {
 }
 
 #  not sure if should use median
-lct_interp = lct_interp %>%
-  group_by(cell_id, x, y, ages, LCT) %>%
-  dplyr::summarize(value = mean(value))
-
-lct_interp_wide = pivot_wider(lct_interp, 
-                              id_cols = c('cell_id', 'x', 'y', 'ages'), 
-                              names_from = c('LCT'), 
-                              values_from = c('value'))
-
-lct_interp_wide = data.frame(lct_interp_wide)
+# CM: the draws are summarised by reduce_land_cover() (R/preparation.R): the mean, as here
+# before, or the median, chosen in config.R (analysis$land_cover$reduction, question A1;
+# issue I04a).
+source('R/preparation.R')
+lct_interp_wide = reduce_land_cover(lct_interp, cfg$analysis$land_cover$reduction)
 
 locations_interp = lct_interp_wide[,c('x', 'y')]
 

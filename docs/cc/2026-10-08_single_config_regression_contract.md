@@ -40,7 +40,7 @@ seen; a change to this document is a decision for Chris, recorded in its own com
 | Deterministic | land-cover tables (script 1), calibration table (2), point predictions (6), ice and coarse-difference tables (7), consecutive differences (7a), forcing table (8), the four summary CSVs (9), AIC table (4) | **byte-identical** to the anchor, no tolerance | `Rscript tools/check_anchors.R <anchor-dir> [run-dir]` |
 | Stochastic | script 5's statistics, script 6's simulation summary | within the **measured tolerances** in section 3, against the historical anchor | `tools/compare_tables.R <ref> <cand> tests/anchors/tolerances.tsv` |
 | Fitted models | the `bam` objects of script 4 | predictions on the calibration table within 1e-6 of the stored fit, and integer AIC equal to the anchored table; never whole-object identity (a `bam` object carries its call and environment) | `tools/check_calibration_month.R <month>` |
-| Seeded (after I04a) | scripts 5 and 6 run with a fixed configured seed | **byte-identical** between two runs, and between old and new code with the same seed | `tools/check_anchors.R` against a seeded reference made in that issue |
+| Seeded (after I04a) | scripts 5 and 6 run with a fixed configured seed | **byte-identical** between two runs, and between old and new code with the same seed | `tools/check_anchors.R tests/anchors/interp-seed1-2026-10-14 <run-dir>` (made in I04a: seed 1, checksums only) |
 | Median path (I04a) | land-cover tables with `reduction = "median"` | the properties listed in I04a; no anchor exists and none is compared with the mean anchors | tests written in I04a |
 
 ## 3. Measured tolerances (approved by Chris, 2026-10-09)

@@ -1,6 +1,7 @@
 # 6_prediction_model.R: hindcast albedo for every Holocene slice
 # Interp (spatially complete) path only: the point-based code and its guards are
-# removed. Every remaining line is unchanged from the original.
+# removed. Since issue I04a the draw count and random seed come from config.R and files
+# are read and written through the run manifest; the computation is unchanged.
 
 
 library(dplyr)
@@ -8,13 +9,21 @@ library(mgcv)
 library(gratia)
 library(reshape2)
 
-# Settings and file locations: config.R, and R/paths.R for every file read or written. The
-# directories products go to are created by pipeline_paths() (issue I07).
-source('R/config.R')
-source('R/paths.R')
-cfg   = load_config()
-paths = pipeline_paths(cfg)
+# Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
+# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# manifest; files are then read and written through it (issues I05, I04a).
+source('R/run_manifest.R')
+run   = run_begin('6_prediction_model')
+cfg   = run$cfg
+paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
+
+# Simulated draws per prediction (config.R analysis$draws, questions A2, A3), and the base
+# random seed of this run, recorded in its manifest (R/random.R).
+source('R/random.R')
+n_draws   = cfg$analysis$draws$prediction
+seed_base = run_record(run, 'random_seed', list(setting = cfg$analysis$draws$seed,
+                                                base = base_seed(cfg$analysis$draws$seed)))$base
 
 
 # Month list from the shared calendar (R/calendar.R) rather than typed out in each script
@@ -22,14 +31,14 @@ alb_prod = paths$tag   # the albedo product in file names
 source('R/calendar.R')
 months = MONTHS
 
-lct_interp_paleo = readRDS(path_file(paths, 'lct_paleo'))
+lct_interp_paleo = read_input(run, path_file(paths, 'lct_paleo'))
 colnames(lct_interp_paleo)[1] = 'year'
 
 for (month in months){
 
   print(month)
 
-  cal_interp_model = readRDS(path_calibration_model(paths, 'selected', month))
+  cal_interp_model = read_input(run, path_calibration_model(paths, 'selected', month))
 
   print(">>Predict")
   paleo_interp_predict_gam_vec = predict.gam(cal_interp_model,
@@ -38,11 +47,12 @@ for (month in months){
   paleo_interp_predict_gam = data.frame(lct_interp_paleo,
                                         alb_mean = paleo_interp_predict_gam_vec)
 
-  saveRDS(paleo_interp_predict_gam, path_prediction(paths, 'point', month))
+  write_output(run, paleo_interp_predict_gam, path_prediction(paths, 'point', month))
 
   print(">>Simulate")
   paleo_interp_sim_gam = simulate(cal_interp_model,
-                                  nsim = 100,
+                                  nsim = n_draws,
+                                  seed = derive_seed(seed_base, '6_prediction_model', month, 'prediction'),
                                   data = lct_interp_paleo)
 
   paleo_interp_sim_gam_df = data.frame(lct_interp_paleo,
@@ -51,9 +61,9 @@ for (month in months){
   paleo_interp_sim_gam_melt = melt(paleo_interp_sim_gam_df, id.vars = c('year', 'x', 'y', 'elev', 'ET', 'OL', 'ST'))
   colnames(paleo_interp_sim_gam_melt) = c('year', 'x', 'y', 'elev', 'ET', 'OL', 'ST', 'iter', 'value')#c('cell_idx', 'iter', 'value')
 
-  paleo_interp_sim_gam_melt$iter = as.numeric(substr(paleo_interp_sim_gam_melt$iter, 2, 4))
+  paleo_interp_sim_gam_melt$iter = draw_index(paleo_interp_sim_gam_melt$iter)
 
-  saveRDS(paleo_interp_sim_gam_melt, path_prediction(paths, 'samples', month))
+  write_output(run, paleo_interp_sim_gam_melt, path_prediction(paths, 'samples', month))
 
   print(">>Summarize")
   paleo_interp_sim_gam_sum = paleo_interp_sim_gam_melt %>%
@@ -65,7 +75,7 @@ for (month in months){
               alb_hi = quantile(value, c(0.975)),
               .groups = 'keep')
 
-  saveRDS(paleo_interp_sim_gam_sum, path_prediction(paths, 'summary', month))
+  write_output(run, paleo_interp_sim_gam_sum, path_prediction(paths, 'summary', month))
 
 }
 
@@ -81,14 +91,16 @@ for (month in months) {
 
   print(month)
 
-  alb_preds_month = readRDS(path_prediction(paths, 'point', month))
+  alb_preds_month = read_input(run, path_prediction(paths, 'point', month))
   alb_preds_months = rbind(alb_preds_months,
                            data.frame(alb_preds_month, month = rep(month)))
 
-  alb_preds_summary_month = readRDS(path_prediction(paths, 'summary', month))
+  alb_preds_summary_month = read_input(run, path_prediction(paths, 'summary', month))
   alb_preds_summary_months = rbind(alb_preds_summary_months,
                                    data.frame(alb_preds_summary_month, month = rep(month)))
 }
 
-saveRDS(alb_preds_months, path_prediction(paths, 'point'))
-saveRDS(alb_preds_summary_months, path_prediction(paths, 'summary'))
+write_output(run, alb_preds_months, path_prediction(paths, 'point'))
+write_output(run, alb_preds_summary_months, path_prediction(paths, 'summary'))
+
+run_finish(run)

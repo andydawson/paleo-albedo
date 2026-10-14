@@ -10,6 +10,9 @@
 # JSON written to run manifests unless config_json() keeps them, and no key so far needs
 # them. Written 2026-10-13.
 
+# The calibration model ids (LADDER_MODELS) are defined with their formulas.
+source('R/model_registry.R')
+
 # Script 8 computes every forcing as rf_<kernel>_<variant>; these are the ten variants
 # (scripts/8_radiative.R, the rf_* columns) and the three kernels.
 FORCING_VARIANTS = c('veg_thresh', 'ice_thresh', 'icesc_thresh',
@@ -63,11 +66,34 @@ check_run_dir = function(v) {
   NULL
 }
 
+# A count of draws: one whole number, at least 2 (a standard deviation needs two).
+check_draws = function(v) {
+  msg = check_numbers(v, len = 1, range = c(2, 1e5))
+  if (is.null(msg) && v != round(v)) msg = 'must be a whole number'
+  msg
+}
+
+# The random seed: "random", or one whole number from 0 to 2147483647 (R's seed range).
+check_seed = function(v) {
+  if (identical(v, 'random')) return(NULL)
+  if (is.numeric(v) && length(v) == 1 && is.null(names(v)) && is.finite(v) && v == round(v) &&
+      v >= 0 && v <= 2147483647) return(NULL)
+  'must be "random" or one whole number from 0 to 2147483647'
+}
+
 # A setting that is TRUE or FALSE.
 check_flag = function(v) if (!is.logical(v) || length(v) != 1 || is.na(v)) 'must be TRUE or FALSE'
 
 CONFIG_SCHEMA = list(
   analysis = list(
+    land_cover = list(
+      reduction = function(v) check_choice(v, c('mean', 'median'), single = TRUE)),
+    calibration = list(
+      model_id = function(v) check_choice(v, LADDER_MODELS, single = TRUE)),
+    draws = list(
+      evaluation = check_draws,
+      prediction = check_draws,
+      seed       = check_seed),
     coarse = list(
       ages = function(v) check_numbers(v, min_len = 2, increasing = TRUE, range = c(0, 100000))),
     forcing = list(
