@@ -31,6 +31,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I04b Months, ages, alias, domain, ice, CACK year | #8 | merged 2026-10-14 | 9210d04 |
 | I06 Manifests in every script; plain config loader | #9 | merged 2026-10-14 | 3ea2624 |
 | I17 Path readability | #20 | merged 2026-10-14 | 7abb45c |
+| I11 (slim) Script 7a's per-pair arithmetic as a tested function | #12 | merged 2026-10-14 | (pending) |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -696,4 +697,35 @@ and meets one path vocabulary.
 - scripts 8 and 9 from frozen inputs reproduce the forcing table and the four CSVs byte
   for byte;
 - every script parses.
+
+---
+
+## I11 (slimmed): script 7a's per-pair arithmetic as one tested function (#12), merged 2026-10-14
+
+**Purpose.** Make the arithmetic behind every forcing variant testable on small cases, and
+give I16's ice-advance fix a home. As rescoped by Fable's review and adopted by Chris; the
+readvance adjustment goes inside the function (Chris).
+
+**Changed:**
+- **`R/differences.R`:** `pair_albedo_differences(alb_cell_filled, ice_threshold)` holds
+  script 7a's lines, moved unchanged. Its header states the input, the output, the sign
+  (younger minus older) and the inherited rules (questions C2, C0).
+- **Script 7a's loop** keeps its `subset`/`rbind` and calls the function, so the row names
+  and bytes are as before.
+- **Removed:** the three tallies, which were incremented but never read. The per-cell
+  messages stay.
+- **Removed in its own commit:** the repeated `rowSums` pair (identical expressions).
+- **`tests/test_differences.R`:** eight hand-checkable cases: vegetation only, retreat,
+  still ice, exactly at the threshold, a missing fraction, and the readvance adjustment.
+  Two of them document the known faults: an advance across the threshold reported as zero
+  change, and a first-pair readvance error.
+
+**Outputs changed.** None.
+
+**Verification.**
+- **Join check:** `identical()` on a fixture, row names included.
+- **7a from frozen predictions** (67 min, 2.4 GB): `ALB_diffs_bluesky.RDS` byte-identical
+  to the anchor.
+- **Scripts 8 and 9:** the forcing table and four CSVs byte-identical; figures identical.
+- **Manifests and inputs:** all completed; the frozen inputs matched.
 
