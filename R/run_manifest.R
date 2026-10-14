@@ -284,7 +284,7 @@ session_info = function() {
        host = unname(Sys.info()['nodename']),
        packages = as.list(setNames(vapply(pkgs, function(p) as.character(utils::packageVersion(p)), ''), pkgs)),
        rng_kind = RNGkind(),
-       threads = as.list(Sys.getenv(c('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'RUN_CORES'))))
+       threads = as.list(Sys.getenv(c('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS'))))
 }
 
 # The figures this run wrote: the figure paths it asked path_figure() for (and Rplots.pdf if
