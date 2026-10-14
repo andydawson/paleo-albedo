@@ -19,6 +19,17 @@
 list(
   analysis = list(
 
+    # The months analysed, by their three-letter names. Any subset, e.g.
+    # c("feb", "may", "aug", "nov"), runs scripts 4 to 8 on those months only (script 2
+    # always builds the calibration table for all twelve, so it need not be rerun).
+    months = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"),
+
+    # The time slices of the land-cover reconstruction, years BP, used by script 7a to
+    # pair consecutive slices. They MUST be slices present in the prediction table (the
+    # reconstruction has these 25); script 7a stops if one is not. A subset makes 7a
+    # difference across wider gaps. The oldest slice is 11,500 BP (question C7).
+    ages = c(50, 200, seq(500, 11500, by = 500)),
+
     # Script 1: how the 200 posterior draws of land cover per cell, slice and class are
     # summarised into one value. "mean" (the original choice) or "median"; the median is
     # rescaled so that ET + OL + ST = 1 in every cell and slice. Andria's note in script 1
@@ -43,8 +54,38 @@ list(
     # the forcing summary (script 9) and of script 7's coarse differences; period
     # labels such as '0.05 - 0.5 ka' are made from these numbers. The oldest is 12000
     # although the oldest slice in the data is 11500: script 7 relabels 11500 as 12000
-    # to match it (question C7; the alias becomes its own setting in issue I06).
-    coarse = list(ages = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)),
+    # to match it, via slice_alias below (question C7).
+    coarse = list(
+      ages = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000),
+      # c(data slice, coarse age it stands for): script 7 treats the 11,500 BP slice as
+      # 12,000 BP. This also decides its ice outline: script 7 matches each age to the
+      # nearest ice-sheet polygon (1, 2, ... 21 ka), so 12,000 gets the 12 ka polygon,
+      # whereas 11,500 would get the 11 ka one. NULL is implemented, but is not a sensible
+      # choice: no slice is then at 12,000 and the oldest period (10-12 ka) drops out.
+      slice_alias = c(11500, 12000)),
+
+    # The study domain, degrees. Script 7a drops cells west of lon_min; script 8 keeps
+    # cells strictly between lat_min and lat_max before computing forcing; script 7 drops
+    # cells east of lon_max_coarse before its coarse differences (which script 9 uses for
+    # the EGU 2024 recipe). Inherited, not chosen (questions D3, C5).
+    domain = list(lon_min = -170, lat_min = 27, lat_max = 74, lon_max_coarse = -60),
+
+    # Ice. A cell counts as ice when its ice fraction exceeds `threshold` (script 7a, the
+    # *_thresh forcing variants; questions C0, C2). The ice albedo per month comes from
+    # data/albedo_glacier_monthly.csv; each role names the column it uses, one of
+    # "ice_albedo", "ice_albedo_fixed" or "ice_albedo_sc". Script 7 uses `ice_albedo` and
+    # script 7a the other two; the file's source and the meaning of the columns are
+    # question C0a.
+    ice = list(
+      threshold = 0.5,
+      albedo_coarse = "ice_albedo",          # script 7: the coarse ice-albedo maps
+      albedo_fixed  = "ice_albedo_fixed",    # script 7a: the *_ice_* forcing variants
+      albedo_scaled = "ice_albedo_sc"),      # script 7a: the *_icesc_* forcing variants
+
+    # Radiative kernels (script 8). The CACK kernel varies by year, 2001 to 2016; the
+    # original code used 2003 (band 3 of the file, whose Year dimension is "2001 = 1").
+    # Which year, or an average of years, is question C3(b).
+    kernels = list(cack_year = 2003),
 
     # Script 9: continental forcing by period, beside the modern IPCC agents.
     forcing = list(

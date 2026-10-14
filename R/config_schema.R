@@ -10,8 +10,13 @@
 # JSON written to run manifests unless config_json() keeps them, and no key so far needs
 # them. Written 2026-10-13.
 
-# The calibration model ids (LADDER_MODELS) are defined with their formulas.
+# The calibration model ids (LADDER_MODELS) are defined with their formulas; the month
+# names (MONTHS) in the calendar.
 source('R/model_registry.R')
+source('R/calendar.R')
+
+# The ice-albedo columns of data/albedo_glacier_monthly.csv.
+GLACIER_ALBEDO_COLUMNS = c('ice_albedo', 'ice_albedo_fixed', 'ice_albedo_sc')
 
 # Script 8 computes every forcing as rf_<kernel>_<variant>; these are the ten variants
 # (scripts/8_radiative.R, the rf_* columns) and the three kernels.
@@ -81,11 +86,32 @@ check_seed = function(v) {
   'must be "random" or one whole number from 0 to 2147483647'
 }
 
+# A month selection: known month names, no repeats, not empty (R/calendar.R).
+check_month_names = function(v) {
+  if (!is.character(v) || anyNA(v) || !is.null(names(v))) return('must be month names as text')
+  tryCatch({ check_months(v); NULL }, error = conditionMessage)
+}
+
+# The slice alias: NULL, or c(data slice, coarse age), two years BP.
+check_slice_alias = function(v) {
+  if (is.null(v)) return(NULL)
+  check_numbers(v, len = 2, range = c(0, 100000))
+}
+
+# One whole number from a range.
+check_whole = function(v, range) {
+  msg = check_numbers(v, len = 1, range = range)
+  if (is.null(msg) && v != round(v)) msg = 'must be a whole number'
+  msg
+}
+
 # A setting that is TRUE or FALSE.
 check_flag = function(v) if (!is.logical(v) || length(v) != 1 || is.na(v)) 'must be TRUE or FALSE'
 
 CONFIG_SCHEMA = list(
   analysis = list(
+    months = check_month_names,
+    ages = function(v) check_numbers(v, min_len = 2, increasing = TRUE, range = c(0, 100000)),
     land_cover = list(
       reduction = function(v) check_choice(v, c('mean', 'median'), single = TRUE)),
     calibration = list(
@@ -95,7 +121,20 @@ CONFIG_SCHEMA = list(
       prediction = check_draws,
       seed       = check_seed),
     coarse = list(
-      ages = function(v) check_numbers(v, min_len = 2, increasing = TRUE, range = c(0, 100000))),
+      ages = function(v) check_numbers(v, min_len = 2, increasing = TRUE, range = c(0, 100000)),
+      slice_alias = check_slice_alias),
+    domain = list(
+      lon_min        = function(v) check_numbers(v, len = 1, range = c(-180, 180)),
+      lat_min        = function(v) check_numbers(v, len = 1, range = c(-90, 90)),
+      lat_max        = function(v) check_numbers(v, len = 1, range = c(-90, 90)),
+      lon_max_coarse = function(v) check_numbers(v, len = 1, range = c(-180, 180))),
+    ice = list(
+      threshold     = function(v) check_numbers(v, len = 1, range = c(0, 1)),
+      albedo_coarse = function(v) check_choice(v, GLACIER_ALBEDO_COLUMNS, single = TRUE),
+      albedo_fixed  = function(v) check_choice(v, GLACIER_ALBEDO_COLUMNS, single = TRUE),
+      albedo_scaled = function(v) check_choice(v, GLACIER_ALBEDO_COLUMNS, single = TRUE)),
+    kernels = list(
+      cack_year = function(v) check_whole(v, range = c(2001, 2016))),
     forcing = list(
       earth_area_m2        = function(v) check_numbers(v, len = 1, range = c(1, Inf)),
       variant              = function(v) check_choice(v, FORCING_VARIANTS, single = TRUE),
@@ -113,6 +152,18 @@ CONFIG_SCHEMA = list(
 config_combination_errors = function(cfg) {
   errs = character()
   # Script 9's slide-layout figure and its variant-sensitivity table use HadGEM3.
+  a = cfg$analysis
+  if (a$domain$lat_min >= a$domain$lat_max)
+    errs = c(errs, 'analysis$domain$lat_min must be below lat_max')
+  if (a$domain$lon_min >= a$domain$lon_max_coarse)
+    errs = c(errs, 'analysis$domain$lon_min must be west of lon_max_coarse')
+  # The alias maps a slice of the data onto a coarse age, so each must be what it claims.
+  if (!is.null(a$coarse$slice_alias)) {
+    if (!a$coarse$slice_alias[1] %in% a$ages)
+      errs = c(errs, 'analysis$coarse$slice_alias: its first value must be one of analysis$ages (a slice of the data)')
+    if (!a$coarse$slice_alias[2] %in% a$coarse$ages)
+      errs = c(errs, 'analysis$coarse$slice_alias: its second value must be one of analysis$coarse$ages')
+  }
   if (!'hadgem' %in% cfg$analysis$forcing$report_kernels)
     errs = c(errs, 'analysis$forcing$report_kernels must include hadgem: script 9 draws its headline figure and the variant sensitivity with it')
   errs
