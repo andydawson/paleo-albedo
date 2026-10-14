@@ -79,7 +79,8 @@ list(
       # How script 7a turns each pair of slices into an albedo change, for the threshold
       # variants: "endpoint" takes each slice's albedo (ice or vegetation) and subtracts,
       # so an ice advance is counted (decided by Chris on 2026-10-14, question C2); the
-      # original "legacy_components" reported an advance across the threshold as zero.
+      # original "legacy_components" reported an advance across the threshold as zero,
+      # and counted a pair twice where the readvance smoothing moved the older slice across it.
       # The readvance smoothing is the same in both (Andria's call, C2).
       difference_method = "legacy_components",
       albedo_coarse = "ice_albedo",          # script 7: the coarse ice-albedo maps

@@ -150,6 +150,10 @@ alb_grid_full$alb_veg_icesc_parts = alb_grid_full$alb_icesc_part + alb_grid_full
 # C0, C2; issue I04b).
 ice_threshold = cfg$analysis$ice$threshold
 source('R/differences.R')   # pair_albedo_differences(), the per-pair arithmetic (issue I11)
+# Per-slice ice/vegetation albedo by the UNADJUSTED ice fraction. Only the
+# "legacy_components" method in pair_albedo_differences() reads alb_ice_thresh and
+# alb_icesc_thresh; its readvance adjustment can disagree with this classification
+# (see R/differences.R).
 idx_ice = which(alb_grid_full$ice_frac > ice_threshold)
 idx_veg = which(alb_grid_full$ice_frac <= ice_threshold)
 

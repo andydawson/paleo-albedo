@@ -7,7 +7,8 @@
 # Input: one cell and month, one row per configured slice in ascending age (years BP), as
 # script 7a builds it: ice_frac (Dalton ice fraction), alb_veg (vegetation albedo),
 # ice_albedo_fixed and ice_albedo_sc (glacier albedo, fixed and scaled), alb_ice_thresh and
-# alb_icesc_thresh (glacier albedo where the slice counts as ice, otherwise NA).
+# alb_icesc_thresh (glacier albedo where the slice counts as ice by its unadjusted fraction,
+# otherwise NA; read by "legacy_components" only).
 #
 # Output: one row per consecutive pair of slices, younger slice first: the ice fractions at
 # both ends and the ten albedo differences, each younger minus older. Two families:
@@ -16,18 +17,30 @@
 #
 # Rules carried over from the original, which questions C2 and C0 put to Andria:
 #   - an ice fraction that increases from an older to a younger slice (a readvance) is
-#     replaced by the mean of its neighbouring slices, once;
-#   - where a pair is ice at both ends, the ice differences are 0 ("still ice");
+#     replaced by the mean of its neighbouring slices, once. A readvance in the youngest
+#     pair has no younger neighbour: with two slices this stops with an error; with more it
+#     silently averages the wrong values (see tests/test_differences.R);
+#   - where a pair is ice at both ends, the ice differences are 0 ("still ice"; in
+#     "endpoint" this follows because the glacier albedo depends on the month only);
 #   - where an ice fraction is missing, the ice and combined differences are NA.
 #
 # difference_method (config.R analysis$ice$difference_method, issue I16) chooses how the
-# threshold variants are computed. "legacy_components" is the original arithmetic, in which
-# an ice advance across the threshold (ice in the younger slice, vegetation in the older)
-# comes out as zero change. "endpoint" takes each slice's albedo, ice or vegetation, and
-# subtracts (endpoint_albedo_differences() below), so advances count. The area-mixed
-# *_part(s) variants already equal the difference of the mixed endpoint albedos and are the
-# same in both.
+# threshold variants are computed. "legacy_components" is the original arithmetic: a
+# vegetation term, NA where either end is ice by the ADJUSTED fraction, plus an ice term
+# that subtracts alb_ice_thresh, chosen by the UNADJUSTED fraction, summed with na.rm. Where
+# the two classifications agree it is right; where the readvance adjustment moves the older
+# slice across the threshold it double-counts (both terms numeric, 6 cell-pairs in the data)
+# or reports zero or the wrong sign; and an ice advance across the threshold (ice in the
+# younger slice, vegetation in the older) comes out as zero (3 cell-pairs). "endpoint"
+# classifies both ends from the adjusted fraction, takes each slice's albedo, ice or
+# vegetation, and subtracts (endpoint_albedo_differences() below); it never reads
+# alb_ice_thresh. The area-mixed *_part(s) variants are the same in both.
 pair_albedo_differences = function(alb_cell_filled, ice_threshold, difference_method = 'legacy_components') {
+
+  # Guard here too, so a misspelt method can never fall through to the original arithmetic.
+  if (!difference_method %in% c('legacy_components', 'endpoint')) {
+    stop('difference_method must be "legacy_components" or "endpoint", not "', difference_method, '"')
+  }
 
   idx_ice_increase = which(diff(alb_cell_filled$ice_frac)<0)
   if(length(idx_ice_increase)>1){

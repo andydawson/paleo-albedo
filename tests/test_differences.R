@@ -2,10 +2,12 @@
 #
 # Small hand-made cells, one month each, slices in ascending age (row 1 is the youngest).
 # Cases 1-8 document the original behaviour ("legacy_components"), inherited from script
-# 7a, including two known faults (question C2): an ice advance across the threshold comes
-# out as zero change, and a readvance in the first pair stops with an error. Cases 9 on
-# test the "endpoint" method of issue I16, which counts advances; the first-pair error
-# stays in both, because the readvance rule itself is Andria's call (C2).
+# 7a, including three known faults (question C2): an ice advance across the threshold comes
+# out as zero change; a pair whose older slice the readvance smoothing moves below the
+# threshold is counted twice; and a readvance in the youngest pair stops with an error or
+# averages the wrong values. Cases 9 on test the "endpoint" method of issue I16, which
+# fixes the first two; the youngest-pair fault stays in both, because the readvance rule
+# itself is Andria's call (C2).
 source("R/differences.R")
 fails <- function(expr) inherits(try(expr, silent = TRUE), "try-error")
 same <- function(a, b) isTRUE(all.equal(a, b, tolerance = 1e-12))
@@ -58,9 +60,28 @@ stopifnot(same(r$ice_frac_young, c(0.95, 0.925, 0.525)), same(r$ice_frac_old, c(
 #    confident zero change. I16 fixes this behind ice$difference_method.
 stopifnot(is.na(r$alb_diff_veg_thresh[3]), is.na(r$alb_diff_ice_thresh[3]), same(r$alb_diff_veg_ice_thresh[3], 0))
 
-# 8. KNOWN FAULT (C2): a readvance in the first pair has no older neighbour on one side and
-#    stops with an error (not met in the data so far).
+# 7b. KNOWN FAULT (C2): the readvance adjustment moves the older slice below the threshold
+#     (0.60 becomes (0.22 + 0.48) / 2 = 0.35) but alb_ice_thresh was chosen from the
+#     unadjusted 0.60, so the original adds a vegetation change AND an ice change for the
+#     same pair: -0.05 + (0.20 - 0.68) = -0.53, where only -0.05 is real (6 cell-pairs in the
+#     data). "endpoint" classifies both ends from the adjusted fraction and reports -0.05.
+d <- diffs(ice_frac = c(0.22, 0.60, 0.48), alb_veg = c(0.20, 0.25, 0.30))
+stopifnot(same(d$ice_frac_old[1], 0.35), same(d$alb_diff_veg_thresh[1], -0.05),
+          same(d$alb_diff_ice_thresh[1], 0.20 - 0.68), same(d$alb_diff_veg_ice_thresh[1], -0.53))
+d_e <- diffs(ice_frac = c(0.22, 0.60, 0.48), alb_veg = c(0.20, 0.25, 0.30), method = "endpoint")
+stopifnot(same(d_e$alb_diff_veg_ice_thresh[1], -0.05), is.na(d_e$alb_diff_ice_thresh[1]))
+# ... and "endpoint" never reads the alb_ice_thresh columns: blanking them changes nothing.
+blank <- cell(ice_frac = c(0.22, 0.60, 0.48), alb_veg = c(0.20, 0.25, 0.30)); blank$alb_ice_thresh <- NA; blank$alb_icesc_thresh <- NA
+invisible(capture.output(e2 <- pair_albedo_differences(blank, 0.5, "endpoint")))
+stopifnot(same(e2$alb_diff_veg_ice_thresh, d_e$alb_diff_veg_ice_thresh), same(e2$alb_diff_veg_icesc_thresh, d_e$alb_diff_veg_icesc_thresh))
+
+# 8. KNOWN FAULT (C2): a readvance in the youngest pair has no younger neighbour. With two
+#    slices it stops with an error (not met in the data so far) ...
 stopifnot(fails(diffs(ice_frac = c(0.9, 0.1), alb_veg = c(0.20, 0.25))))
+# ... and with more slices R recycles the slice's own value in place of the missing
+#    neighbour: 0.9 becomes (0.8 + 0.9) / 2 = 0.85, with no error.
+y <- diffs(ice_frac = c(0.9, 0.8, 0.1), alb_veg = c(0.20, 0.25, 0.30))
+stopifnot(same(y$ice_frac_young, c(0.85, 0.5)))
 
 # 9. "endpoint": the advance of case 7 now counts: ice (0.68) in the younger slice minus
 #    vegetation (0.35) in the older one.
@@ -95,5 +116,8 @@ stopifnot(same(f$total, -g$total))
 
 # 14. The first-pair readvance still stops, under either method (readvance policy: C2).
 stopifnot(fails(diffs(ice_frac = c(0.9, 0.1), alb_veg = c(0.20, 0.25), method = "endpoint")))
+
+# 15. A misspelt method stops rather than falling back to the original arithmetic.
+stopifnot(fails(diffs(ice_frac = c(0, 0), alb_veg = c(0.20, 0.25), method = "endpiont")))
 
 cat("test_differences: all tests passed\n")
