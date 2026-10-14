@@ -149,6 +149,7 @@ alb_grid_full$alb_veg_icesc_parts = alb_grid_full$alb_icesc_part + alb_grid_full
 # A cell is ice when its ice fraction exceeds config.R analysis$ice$threshold (questions
 # C0, C2; issue I04b).
 ice_threshold = cfg$analysis$ice$threshold
+source('R/differences.R')   # pair_albedo_differences(), the per-pair arithmetic (issue I11)
 idx_ice = which(alb_grid_full$ice_frac > ice_threshold)
 idx_veg = which(alb_grid_full$ice_frac <= ice_threshold)
 
@@ -234,10 +235,6 @@ colnames(alb_diff_df) = c(alb_diff_colnames,
 cell_ids = unique(alb_grid_full$cell_id)
 N_cells  = length(cell_ids)
 
-tally_both = 0
-tally_increase = 0
-tally_increase_mult = 0
-
 for (i in 1:N_cells){
 
   print(paste0('Cell ', i, ' of ', N_cells))
@@ -253,84 +250,11 @@ for (i in 1:N_cells){
 
     alb_cell_filled = merge(years_df, alb_cell, all.x=TRUE)
 
-    idx_ice_increase = which(diff(alb_cell_filled$ice_frac)<0)
-    if(length(idx_ice_increase)>1){
-      tally_increase_mult = tally_increase_mult + 1
-      print('Ice increase over multiple time periods')
-    }
-
-    alb_cell_filled$ice_frac_adj = alb_cell_filled$ice_frac
-    alb_cell_filled$ice_frac_adj[idx_ice_increase] = (alb_cell_filled$ice_frac_adj[idx_ice_increase + 1] +  alb_cell_filled$ice_frac_adj[idx_ice_increase - 1])/2
-
-    ice_frac_young = alb_cell_filled$ice_frac_adj[1:(nrow(alb_cell_filled)-1)]
-    ice_frac_old = alb_cell_filled$ice_frac_adj[2:nrow(alb_cell_filled)]
-
-    is_ice_young =  ice_frac_young > ice_threshold
-    is_ice_old =  ice_frac_old > ice_threshold
-    is_ice_both = is_ice_young & is_ice_old
-
-    is_ice_increase = ice_frac_old < ice_frac_young
-
-    is_ice_missing = is.na(ice_frac_young) | is.na(ice_frac_old)
-
-    if (sum(is_ice_both[!is_ice_missing], na.rm=TRUE)>0){
-
-      tally_both = tally_both + sum(is_ice_both[!is_ice_missing], na.rm=TRUE)
-      print(paste0('Still ice, forcing 0: ', sum(is_ice_both[!is_ice_missing], na.rm=TRUE)))
-    }
-
-    if (any(is_ice_increase[!is_ice_missing])) {
-      tally_increase = tally_increase + sum(is_ice_increase[!is_ice_missing], na.rm=TRUE)
-      print(paste0('Increasing ice fraction: ', sum(is_ice_increase[!is_ice_missing], na.rm=TRUE)))
-
-    }
-
-    alb_diff_veg_part = -diff(alb_cell_filled$alb_veg) * (1-ice_frac_old)
-
-    alb_diff_ice_part = (alb_cell_filled$alb_veg[1:(nrow(alb_cell_filled)-1)] - alb_cell_filled$ice_albedo_fixed[2:nrow(alb_cell_filled)]) * (ice_frac_old-ice_frac_young)
-    alb_diff_icesc_part = (alb_cell_filled$alb_veg[1:(nrow(alb_cell_filled)-1)] - alb_cell_filled$ice_albedo_sc[2:nrow(alb_cell_filled)]) * (ice_frac_old-ice_frac_young)
-
-    alb_diff_veg_ice_parts = rowSums(cbind(alb_diff_veg_part, alb_diff_ice_part))
-    alb_diff_veg_icesc_parts =  rowSums(cbind(alb_diff_veg_part, alb_diff_icesc_part))
-
-    alb_diff_veg_ice_parts = rowSums(cbind(alb_diff_veg_part, alb_diff_ice_part))
-    alb_diff_veg_icesc_parts =  rowSums(cbind(alb_diff_veg_part, alb_diff_icesc_part))
-
-    alb_diff_veg_thresh = -diff(alb_cell_filled$alb_veg)
-    alb_diff_veg_thresh[is_ice_old | is_ice_young] = NA
-
-    alb_diff_ice_thresh = alb_cell_filled$alb_veg[1:(nrow(alb_cell_filled)-1)] -
-      alb_cell_filled$alb_ice_thresh[2:nrow(alb_cell_filled)]
-
-    alb_diff_icesc_thresh =  alb_cell_filled$alb_veg[1:(nrow(alb_cell_filled)-1)] -
-      alb_cell_filled$alb_icesc_thresh[2:nrow(alb_cell_filled)]
-
-    alb_diff_ice_thresh[is_ice_both] = 0
-    alb_diff_icesc_thresh[is_ice_both] = 0
-    alb_diff_ice_thresh[is_ice_missing] = NA
-    alb_diff_icesc_thresh[is_ice_missing] = NA
-
-    alb_diff_veg_ice_thresh = rowSums(cbind(alb_diff_veg_thresh, alb_diff_ice_thresh), na.rm=TRUE)
-    alb_diff_veg_icesc_thresh =  rowSums(cbind(alb_diff_veg_thresh, alb_diff_icesc_thresh), na.rm=TRUE)
-
-    alb_diff_veg_ice_thresh[is_ice_missing] = NA
-    alb_diff_veg_icesc_thresh[is_ice_missing] = NA
-
+    # The albedo differences of each consecutive pair of slices (R/differences.R, issue I11).
     alb_diff_df = rbind(alb_diff_df,
                         data.frame(subset(alb_cell_filled[1:(nrow(alb_cell_filled)-1), ],
                                           select=alb_diff_colnames),
-                                   ice_frac_young = ice_frac_young,
-                                   ice_frac_old = ice_frac_old,
-                                   alb_diff_veg_thresh = alb_diff_veg_thresh,
-                                   alb_diff_ice_thresh = alb_diff_ice_thresh,
-                                   alb_diff_veg_ice_thresh = alb_diff_veg_ice_thresh,
-                                   alb_diff_icesc_thresh = alb_diff_icesc_thresh,
-                                   alb_diff_veg_icesc_thresh = alb_diff_veg_icesc_thresh,
-                                   alb_diff_veg_part = alb_diff_veg_part,
-                                   alb_diff_ice_part = alb_diff_ice_part,
-                                   alb_diff_veg_ice_parts = alb_diff_veg_ice_parts,
-                                   alb_diff_icesc_part = alb_diff_icesc_part,
-                                   alb_diff_veg_icesc_parts = alb_diff_veg_icesc_parts))
+                                   pair_albedo_differences(alb_cell_filled, ice_threshold)))
 
   }
 }
