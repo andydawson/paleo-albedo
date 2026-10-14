@@ -65,7 +65,8 @@ centre or a bin edge?
 ## 5. Method choices to confirm for the write-up
 
 - The manuscript says 1,000 posterior samples per cell and month; the
-  scripts draw 100. Which is intended?
+  scripts draw 100. Which is intended? **Decided 2026-10-14 (Chris, to be
+  reviewed): 1,000 in the final run** (scientific A3).
 - Snow is never modelled: the 2000-2009 snow climatology enters through
   the location and elevation terms and is held fixed for every slice. You
   said the snow / water-budget branch was dropped deliberately. Should the

@@ -5,7 +5,7 @@ AGENTS.md). Simple and logistical questions are in
 `questions_for_andria_general.md`. Each entry says what the code does now,
 why it matters, what the options are, and what we need from you. Line
 numbers refer to the code as received (branches `main` / `legacy`).
-Updated 2026-09-18.
+Updated 2026-09-18. Decisions Chris took on 2026-10-14 (to be reviewed by Andria) are marked "Decided 2026-10-14" under their questions; the review behind them is docs/cc/2026-10-14_methodology_decisions_check_codex_gpt6astra.md on the migration branch.
 
 ## A. Uncertainty
 
@@ -94,6 +94,8 @@ says "posterior samples", which readers will take to mean (ii).
 The manuscript says 1,000 posterior samples per cell and month; the
 scripts draw 100. Which is intended? (This interacts with A1 and A2.)
 
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** 1,000 draws in the final run (reduces Monte Carlo noise; does not by itself add model or land-cover uncertainty, which is A1/A2).
+
 ## B. The calibration model
 
 ### B1. The land-cover smooth has one direction with no data in it
@@ -118,6 +120,8 @@ two-dimensional smooth of two fractions, `s(ET, ST)`, or a compositional
 **What we need from you.** Did you know about the rank deficiency, and do
 you have a preference? (ii) changes the model and the results; (i) is a
 small correction.
+
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Treated as a check: the three fractions must sum to one before calibration and prediction, and the run stops with a report if not, rather than rescaling silently. (The posterior now read is already three-class; the median option is rescaled by design.)
 
 ### B2. Calibration on the interpolated field rather than pollen cells
 **What the code does.** The all-months calibration reads
@@ -225,6 +229,8 @@ November against 0.90-0.94 elsewhere; on the cells that have data every
 month is about 0.92. The winter models are not worse; the denominator
 is. Worth fixing before the number is quoted.
 
+**Considered 2026-10-14 (Chris), not decided:** weighting the annual forcing by sunlight was dropped, because the monthly kernels already include sunlight and it would count it twice. How to treat the extrapolated winter cells remains your call.
+
 ### B3. The spatial term cancels through time and may have absorbed the cover effect
 **What the code does.** Every prediction uses the same location and
 elevation values for a cell in every time slice; only the cover fractions
@@ -275,6 +281,8 @@ monotone the ordering is, refitting by ML would very likely confirm
 model 8 rather than overturn it, so this is tidying rather than a
 threat. **Would you like the ladder refitted with `method = "ML"` so the
 selection can be defended as stated?**
+
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Compare the ladder after fitting by ML; fit the model used for prediction by REML; check rank and fit diagnostics before selection.
 
 ### B4a. Land cover matters most in autumn, least in midwinter
 **Found 2026-09-20 in the interp AIC table.**
@@ -334,6 +342,8 @@ in water or ice pixels at coasts and lake margins, and have you tried
 fitting to the cell average instead? If the two calibrations differ, the
 cell average is the like-for-like match to the 1-degree predictors.
 
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Calibrate on the mean albedo over the land part of each 1-degree cell, with inland water (lakes, Hudson Bay) masked with MODIS MOD44W, instead of the centre pixel.
+
 ### B6. Albedo values of exactly zero are set to 0.0001
 *Checked 2026-09-19: no cell-month in the interp calibration table hits
 this replacement, so it affects the non-interp flavour only.*
@@ -368,6 +378,7 @@ the 1 ka polygons, which the flag already uses for older slices) is a
 one-line change in script 2 that could shift the fitted open-land
 albedo, which is the term the whole hindcast rests on.
 
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Exclude cells whose centre lies inside the 1 ka ice polygons (48) from the calibration; they stay in the prediction domain. The 1 ka mask is a proxy for recent ice.
 
 ### B9. Elevation is a single point at the cell centre, at an unstated resolution
 Script 1 takes elevation from `elevatr::get_elev_point()` at each cell's
@@ -382,6 +393,7 @@ This is the same point-versus-cell mismatch as B5, applied to the second
 predictor. Was a cell-mean elevation (e.g. from a DEM averaged over the
 cell) considered, and should offshore centres be clipped to zero?
 
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Elevation is the DEM mean over the land part of each cell (water excluded), instead of the centre point.
 
 ### B10. The "modern" land cover is nominally AD 1900; the albedo is 2000-2009
 The calibration pairs the land cover of the 50 BP slice with a satellite
@@ -532,6 +544,8 @@ kernel: 36 pairs. And if the offending step were ever the first pair of
 a series the index arithmetic would hit position 0 and the script would
 stop; it has not happened in the data so far.
 
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** The arithmetic error is fixed as a code correction (legacy switch kept): an ice advance across the threshold was recorded as zero change; changes are now computed from each slice's complete albedo state. Whether to keep readvances rather than smoothing them stays with you.
+
 ### C3. The three kernels are not like for like
 **Verified on 2026-09-19** for HadGEM3 and CAM5, and **on 2026-09-21**
 for CACK, by downloading the kernels and opening them (README.md records
@@ -598,6 +612,8 @@ cells and all three kernels return values with no missing cells, which is
 consistent with correct alignment but does not prove the grids are not
 transposed.
 
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** (a) top-of-atmosphere flux for all kernels (CAM5 read at TOA); (b) CACK's climatological mean kernel instead of the year 2003. (c) is settled by C4. (d) remains open.
+
 ### C4. Clear-sky, pre-industrial kernels across the Holocene
 The HadGEM kernel is clear-sky and pre-industrial. Clear-sky albedo
 kernels are typically 1.5 to 2 times larger than all-sky because clouds
@@ -636,6 +652,8 @@ effects, and both variables are already in the files we hold.
 months, taken directly from `output/forcing/RF_holocene_all_cases.RDS`;
 the talk's bar plots are per-period and area-weighted, so the ratio is
 the meaningful quantity here rather than the absolute values.
+
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** All-sky kernels for the headline (HadGEM3 albedo_sw, CAM5 FSNT, CACK), clear-sky kept as a sensitivity.
 
 ### C5. The comparison with modern forcing agents
 The talk compares the Holocene forcing with IPCC forcing from modern
@@ -750,6 +768,8 @@ the slide's bottom panel exactly, which confirms the AR6 source and that
 the slide's x axis really is a global-mean W/m² scale shared by both
 panels. That is strong evidence for the global-equivalent reading of
 assumption A8.
+
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Express the regional effect as a global-equivalent flux (area-weighted, over Earth's area) for the IPCC comparison, and distinguish this direct albedo effect from IPCC effective radiative forcing. The rest of C5 (slide 18's numbers) stays open.
 
 ### C6. Consecutive-slice differences and interval length
 Forcing is defined per consecutive pair of slices. The pairs span
