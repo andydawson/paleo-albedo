@@ -54,17 +54,19 @@ Paths and versions actually installed are recorded below as they happen.
 
 - **RefChecker** (`academic-refchecker` 3.1.6, with its `webui` extra for the retraction
   check) and **refaudit** 0.4.9: in `~/.local/share/research-tools/citecheck-venv`.
-  refaudit needs a contact email for Crossref and OpenAlex; not yet run (asked Chris which
-  address to use).
-- **Not installed, refused by Claude Code's auto-mode safety check; Chris to install by
-  hand:** PaperTrace (a small beta repository cloned from GitHub), and the
-  `claude-md-management` plugin. Commands below.
+  refaudit sends a contact email to Crossref and OpenAlex: Chris chose
+  Chris.mcwilliams@bristol.ac.uk.
+- **`combine_reference_checks.py`** in `~/.local/share/research-tools/`: one table from both
+  tools and the retraction check (see the pilot below).
+- **PaperTrace** (commit 4f1c3ac, 2026-09-27) in `~/.local/share/research-tools/PaperTrace/.venv`,
+  and the **`claude-md-management`** plugin 1.0.0 (user scope): first refused by Claude
+  Code's auto-mode safety check, then installed with Chris's explicit permission.
 - **`tidy-instructions-and-memory`** skill: `~/.claude/skills/tidy-instructions-and-memory/SKILL.md`.
 - **Identity test set**, reusable for any reference checker:
   `~/.local/share/research-tools/testsets/bmjopen-2019-identity/` (`pilot.bib`,
   `answer_key.tsv`, the Crossref record).
 
-To install by hand (Chris):
+The install commands (for another machine):
 ```bash
 cd ~/.local/share/research-tools && git clone https://github.com/defraction0/PaperTrace
 cd PaperTrace && uv venv .venv --python 3.12 && VIRTUAL_ENV=$PWD/.venv uv pip install -e '.[full]'
@@ -102,10 +104,22 @@ name forms). Acceptable as warnings.
 **A real error found in passing.** Reference 30 of the published paper, as deposited with
 Crossref by the publisher, carries the DOI of a dental-research paper ("Indian Hedgehog: a
 mechanotransduction mediator in condylar cartilage", J Dent Res 2004). Either the paper's
-reference or the publisher's DOI matching is wrong; Chris to check.
+reference or the publisher's DOI matching is wrong; Chris: not worth pursuing.
 
-**What this means.** RefChecker alone is not enough: it can pass a reference whose title is
-wrong when the DOI is right. That is the gap refaudit is meant to cover (it compares the
-title against the DOI record, threshold 0.75). Run both, plus the retraction check, and
-read warnings. To repeat after refaudit is run.
+**refaudit result** (`refaudit pilot.bib --email ...`): caught both wrong DOIs (title
+mismatch: it names the paper the DOI really belongs to), the wrong authors, the wrong year,
+both fabricated references (one "unverified", one "DOI not registered"). It passed the
+altered title, the wrong journal, the year off by one, and the retracted paper. It does
+report a title similarity for the altered title (0.77) but does not act on it when the DOI
+resolves, even with `--title-match 0.9`.
+
+**Combined** (`combine_reference_checks.py`: PASS only if both tools pass, the DOI record's
+title is at least 0.95 similar to ours, and the paper is not retracted): **all 10 planted
+errors flagged**; the correct entry without a DOI passes; 5 of the 41 clean entries flagged
+for a look (online-first versus print year, journal name forms). Every clean entry's title
+similarity was 0.95 or more.
+
+**What this means.** Neither tool alone is enough; both together, with the retraction check
+and a strict title rule, caught everything planted. The 0.95 rule is set on one test set of
+45 DOI entries: check it again on our own bibliography.
 
