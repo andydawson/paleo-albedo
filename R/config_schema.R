@@ -15,6 +15,10 @@
 source('R/model_registry.R')
 source('R/calendar.R')
 
+# The kernel variables that can be read (R/kernels.R).
+source('R/kernels.R')
+kernel_variable = function(kernel) function(v) check_choice(v, KERNEL_VARIABLES$variable[KERNEL_VARIABLES$kernel == kernel], single = TRUE)
+
 # The ice-albedo columns of data/albedo_glacier_monthly.csv.
 GLACIER_ALBEDO_COLUMNS = c('ice_albedo', 'ice_albedo_fixed', 'ice_albedo_sc')
 
@@ -130,11 +134,15 @@ CONFIG_SCHEMA = list(
       lon_max_coarse = function(v) check_numbers(v, len = 1, range = c(-180, 180))),
     ice = list(
       threshold     = function(v) check_numbers(v, len = 1, range = c(0, 1)),
+      difference_method = function(v) check_choice(v, c('endpoint', 'legacy_components'), single = TRUE),
       albedo_coarse = function(v) check_choice(v, GLACIER_ALBEDO_COLUMNS, single = TRUE),
       albedo_fixed  = function(v) check_choice(v, GLACIER_ALBEDO_COLUMNS, single = TRUE),
       albedo_scaled = function(v) check_choice(v, GLACIER_ALBEDO_COLUMNS, single = TRUE)),
     kernels = list(
-      cack_year = function(v) check_whole(v, range = c(2001, 2016))),
+      hadgem_variable = kernel_variable('hadgem'),
+      cam5_variable   = kernel_variable('cam5'),
+      cack_variable   = kernel_variable('cack'),
+      cack_year       = function(v) check_whole(v, range = c(2001, 2016))),
     forcing = list(
       earth_area_m2        = function(v) check_numbers(v, len = 1, range = c(1, Inf)),
       variant              = function(v) check_choice(v, FORCING_VARIANTS, single = TRUE),
