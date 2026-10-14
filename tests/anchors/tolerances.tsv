@@ -7,7 +7,8 @@
 #   abs_bias: four standard errors of the mean difference (sd of the per-row differences
 #     over the square root of 839,232 rows), because six pairs are too few to estimate it.
 # Used by: Rscript tools/compare_tables.R <anchor-file> <candidate-file> tests/anchors/tolerances.tsv
-# Not used once runs are seeded (issue I04a): seeded comparisons must be byte-identical.
+# Still the test for runs with seed = "random" (the default) against this unseeded anchor;
+# runs with seed = 1 must match tests/anchors/interp-seed1-2026-10-14 byte for byte (I04a).
 # Changing a value here is a decision for Chris, in its own commit.
 artefact	column	statistic	tolerance
 calibration_model_stats.csv	correlation	max_abs	0.02

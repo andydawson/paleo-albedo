@@ -16,13 +16,15 @@ check against these before and after each cleanup step.
 | **interp, scripts 1-6** | our first interp run, 2026-09-19/20 | `interp-allmonths-2026-09-20/` |
 | **interp, scripts 7, 7a, 8** | the first run of the tail, 2026-09-21 | `interp-tail-2026-09-21/` |
 | **interp, script 9** | the four summary tables, 2026-10-08 | `interp-forcing-2026-10-08/` |
+| **interp, scripts 5-6 with seed 1** | the simulated draws and their summaries, 2026-10-14 (checksums only) | `interp-seed1-2026-10-14/` |
 
 The interp flavour is the analysis; the point (non-interp) flavour was
 retired from the trunk on 2026-09-24. Every interp anchor directory has an
 `MD5SUMS.txt` for its deterministic files, checked with
 `tools/check_anchors.R`; the stochastic ones (script 5's statistics,
 script 6's summary) are compared with `tools/compare_tables.R` against the
-measured tolerances in `tolerances.tsv`. What counts as unchanged for each
+measured tolerances in `tolerances.tsv`, or, run with `seed = 1` (issue I04a),
+byte for byte with `interp-seed1-2026-10-14/`. What counts as unchanged for each
 artefact is set out in
 `docs/cc/2026-10-08_single_config_regression_contract.md`.
 
