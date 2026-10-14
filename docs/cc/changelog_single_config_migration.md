@@ -29,6 +29,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I05 Run manifests; consistency check | #6 | merged 2026-10-14 | f867506 |
 | I04a Model, draw and reduction settings; seed | #7 | merged 2026-10-14 | 520b6e6 |
 | I04b Months, ages, alias, domain, ice, CACK year | #8 | merged 2026-10-14 | 9210d04 |
+| I06 Manifests in every script; plain config loader | #9 | merged 2026-10-14 | (pending) |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -573,4 +574,70 @@ The repository's figures, runs, data and outputs were unchanged, and the 331 fro
 matched. Two first-pass failures were in my comparison harness, not the pipeline:
 - a misread netCDF attribute;
 - subsetting a table with a `units` column without loading `units`, which strips the class.
+
+---
+
+## I06: every script on the run manifest; plain config loader; session fixes (#9), merged 2026-10-14
+
+**Purpose.** Every invocation of every numbered script leaves a provenance record, and
+no environment variable steers the pipeline.
+
+**Decisions taken while planning (Chris, 2026-10-14):**
+- **The draw-identity helper (`lc_draw`) is parked**, as overcomplicated. Astra's redesign
+  was adopted instead: no ensemble work during the migration; at I14, a plain loop over
+  draws.
+- **Readability before elegance**, recorded in AGENTS.md (chris-dev 85af40a).
+- **Script 1's diagnostic switch** becomes `run$diagnostic` in the config. `RUN_CORES` is
+  dropped. No environment variable is used as a setting; the three BLAS thread variables
+  are recorded only.
+- **The config loader** becomes plain `source()` plus the same validation, replacing the
+  restricted parser.
+- **The behaviour bugs** found by Astra's readability review are fixed simply; its other
+  items go to I15.
+
+**Changed:**
+- **Scripts 1-4** now call `run_begin()`, read and write through the manifest, and end
+  with `run_finish()`, as scripts 5-9 already did.
+  - Script 4's fits and AIC table are recorded too.
+  - Script 1's elevation cache is a recorded input. When absent, the AWS lookup is
+    recorded and the new cache written through the manifest.
+- **In all ten scripts** `run_begin()` precedes the `library()` calls, so a missing
+  package is recorded as a failed run.
+- **Script 8** no longer reads script 7's three ice tables, which it never used.
+- **`config.R`** gains `run$diagnostic`, and its header explains that later issues add
+  method options rather than closing the key set.
+- **`R/run_manifest.R`:**
+  - the error handler is installed for batch runs only;
+  - the error and device options are restored at the end;
+  - only the run's own plot devices are closed;
+  - the "no run recorded" message explains that files made before run manifests existed
+    have none.
+- **`seed_run_dir()`** copies instead of linking, so a run can never write into the
+  baseline through a link.
+- **`R/config.R`** reads the config with `source()`.
+- **Tests** updated and extended: session restoration, seeding by copy, the new
+  loader's contract and `run$diagnostic`.
+- **Docs:** Astra's ensemble redesign and readability review, and the two Fable reviews
+  (extraction issues; completed work).
+
+**Outputs changed.** None.
+
+**Verification.** Code at 34365c1 (merged with feature/single-config). Each run was in its
+own run directory at 8 threads.
+
+| Check | Result | Time, peak memory |
+|---|---|---|
+| full chain at seed 1: 1, 2, 3, script 4's AIC section (from frozen fits), 5, 6, each checked against the previous script's real manifest | land-cover tables, calibration table, AIC table and point predictions byte-identical; all 26 files of the seed-1 anchor byte-identical; 62 figures of scripts 2-3 identical to I07's; manifests completed, with checks 2 vs 1, 3 vs 2, 5 vs 2 and 37 of 6 vs 1 and 5 all passing | 0, 4, 1, 0, 10, 17 min |
+| tail from frozen predictions: 7 ‖ 7a, then 8, 9 | all ten tail and forcing anchors byte-identical; 23 figures identical; 8's check against 7a and 9's two checks pass; 8 now reads only 7a's product | 103 min, 23.2 GB (7); 70 min (7a) |
+| script 1, `run$diagnostic = TRUE` | both tables byte-identical; 28 figures and the diagnostic CSV identical to I07's | 1 min |
+| a copy of script 5 with an error injected after its first output | manifest `failed` with the error, the selected-model output written before it recorded; exit status 1 (rerun by hand) | under 1 min |
+| unit tests | all seven test files pass | - |
+
+The repository was unchanged and the frozen inputs matched before and after.
+
+**A fault in my verification drivers, found here.** The I04a, I04b and I06 drivers logged
+`exit=$?` after a `$(date)` in the same line, which resets `$?`, so every `exit=` in those
+status logs is meaningless. No conclusion rested on them: every result above, and in
+I04a and I04b, comes from the outputs and the manifests' recorded status. Driver template
+fixed (capture the code first).
 
