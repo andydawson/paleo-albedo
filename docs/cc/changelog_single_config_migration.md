@@ -30,6 +30,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I04a Model, draw and reduction settings; seed | #7 | merged 2026-10-14 | 520b6e6 |
 | I04b Months, ages, alias, domain, ice, CACK year | #8 | merged 2026-10-14 | 9210d04 |
 | I06 Manifests in every script; plain config loader | #9 | merged 2026-10-14 | 3ea2624 |
+| I17 Path readability | #20 | merged 2026-10-14 | (pending) |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -640,4 +641,59 @@ The repository was unchanged and the frozen inputs matched before and after.
 status logs is meaningless. No conclusion rested on them: every result above, and in
 I04a and I04b, comes from the outputs and the manifests' recorded status. Driver template
 fixed (capture the code first).
+
+---
+
+## Order revised and two reviews (2026-10-14)
+
+Chris asked why the extraction issue I10 was needed, then for two adversarial reviews
+(Fable, maximum effort, read-only) under the readability priority:
+- `docs/cc/2026-10-14_extraction_issues_adversarial_review_fable.md`: the extraction
+  programme was mostly net-negative for Andria. I10, I12, I13a and I09 were closed as not
+  planned, and I08 was folded into I16. I11 was slimmed to one tested function for script
+  7a's per-pair arithmetic, with the readvance adjustment inside.
+- `docs/cc/2026-10-14_completed_work_adversarial_review_fable.md`: the completed work is
+  net positive, and nothing is rolled back. The path catalogue was the one real readability
+  cost, answered by I17.
+
+Remaining order: I11 (slim), I16 (method options), I13b (with I15 inside). I14 stays parked.
+
+---
+
+## I17: path readability (#20), merged 2026-10-14
+
+**Purpose.** A reader stepping through a script sees which file each line reads or writes,
+and meets one path vocabulary.
+
+**Decisions (Chris, 2026-10-14):**
+- all three of Fable's fixes;
+- `runs/` git-ignored, except the official runs' manifests;
+- the stale check and the exact config keys stay strict;
+- `path_calibration_model()` kept as the one exception, for code that loops over model ids.
+
+**Changed:**
+- **Trace messages.** `read_input()` and `write_output()` print `reading <path>` and
+  `wrote <path>`.
+- **Deferred interactive manifests.** In an interactive session the manifest is first
+  written at the first output or at the end, so stepping through a script leaves no stray
+  `started` manifest. `run_begin()` takes `interactive_session = interactive()`, so tests
+  can stand in for RStudio.
+- **One path vocabulary.** `path_prediction()` and `path_forcing()` are retired; calls
+  name the catalogue id, e.g. `path_file(paths, 'prediction_summary_month', month =
+  month)`. Fixed calibration files are named the same way. `path_calibration_model()`
+  remains only where the model id is a variable; its comment explains the file-name
+  oddity it hides.
+- **`runs/` in `.gitignore`.**
+- **`config.R`'s header** says how to add a setting.
+
+**Outputs changed.** None.
+
+**Verification:**
+- every replaced path is `identical()` to the helper it replaced, for all models, all
+  twelve months and both layouts;
+- all seven test files pass, including new cases for the trace messages and interactive
+  timing;
+- scripts 8 and 9 from frozen inputs reproduce the forcing table and the four CSVs byte
+  for byte;
+- every script parses.
 
