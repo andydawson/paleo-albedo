@@ -282,15 +282,19 @@ ggsave(path_figure(paths, 'forcing_barplot_slide18.png'), p_slide_lab, width = 8
 hol3 = main %>%
   transmute(kernel, label = sub(' ka$', '', as.character(period)), value = global_equiv)
 hol3$label = factor(hol3$label, levels = rev(sub(' ka$', '', labels_period)))
+# Labels say which kernel variable was read (R/kernels.R, issue I16). The 'factor of two'
+# title holds only when the kernels mix clear-sky and all-sky, as in the original analysis.
+kernel_rows = kernels_read(cfg)
+mixed_sky = length(unique(kernel_rows$sky)) > 1
 p_kern = ggplot(hol3, aes(x = label, y = value, fill = kernel)) +
   geom_col(position = position_dodge(0.8), width = 0.7) +
   geom_hline(yintercept = 0, linewidth = 0.3) +
   coord_flip() +
   scale_fill_manual(values = c(hadgem='#1b6ca8', cam5='#5fa8d3', cack='#f2a65a'),
-                    labels = c(cack='CACK (all-sky)', cam5='CAM5 (clear, surface)',
-                               hadgem='HadGEM3 (clear, TOA)'), name = NULL) +
-  labs(title = 'Kernel choice moves the answer by about a factor of two',
-       subtitle = 'see C3 and C4; CACK is the only all-sky kernel of the three',
+                    labels = c(cack=kernel_rows['cack', 'label'], cam5=kernel_rows['cam5', 'label'],
+                               hadgem=kernel_rows['hadgem', 'label']), name = NULL) +
+  labs(title = if (mixed_sky) 'Kernel choice moves the answer by about a factor of two' else 'Forcing by kernel',
+       subtitle = if (mixed_sky) 'see C3 and C4; CACK is the only all-sky kernel of the three' else 'all three kernels all-sky; see C3 and C4',
        x = 'time period (k years)', y = expression('radiative forcing ('*W/m^2*')')) +
   theme_bw(base_size = 12) + theme(panel.grid.minor = element_blank())
 ggsave(path_figure(paths, 'forcing_barplot_kernel_spread.pdf'), p_kern, width = 8, height = 5)

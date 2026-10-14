@@ -32,6 +32,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I06 Manifests in every script; plain config loader | #9 | merged 2026-10-14 | 3ea2624 |
 | I17 Path readability | #20 | merged 2026-10-14 | 7abb45c |
 | I11 (slim) Script 7a's per-pair arithmetic as a tested function | #12 | merged 2026-10-14 | d772ea3 |
+| I16a Kernel variables; ice-advance method; legacy config | #19 | verified 2026-10-14; merge awaits Chris (one unexpected effect, below) | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -728,4 +729,79 @@ readvance adjustment goes inside the function (Chris).
   to the anchor.
 - **Scripts 8 and 9:** the forcing table and four CSVs byte-identical; figures identical.
 - **Manifests and inputs:** all completed; the frozen inputs matched.
+
+## I16a: kernel variables, the ice-advance method and a legacy configuration (#19, first part)
+
+**Purpose.** Make the method choices Chris took on 2026-10-14 (to be reviewed by Andria)
+switches in `config.R`, and keep the original analysis reproducible from
+`configs/legacy_config.R`. This part covers the kernels and the ice-advance method; the
+calibration choices (i16b) and land support (i16c, waits for the MOD44W data) follow.
+
+**Changed:**
+- **`R/kernels.R` (new):** a table of the kernel variables script 8 can read, with sky
+  (clear or all), level (top of atmosphere or surface) and the label script 9 prints;
+  `kernels_read(cfg)` returns the rows for the configured variables.
+- **`config.R`:** `analysis$kernels` (`hadgem_variable = "albedo_sw"`, `cam5_variable =
+  "FSNT"`, `cack_variable = "CACK CM"`, `cack_year`) and `analysis$ice$difference_method =
+  "endpoint"`. The schema checks each name against the table and the method against its two
+  choices.
+- **`configs/legacy_config.R` (new):** a complete copy of `config.R` with the original
+  choices (`albedo_sw_cs`, `FSNSC`, `CACK` for 2003, `legacy_components`, seed 1) and its own
+  run directory; its header lists every difference.
+- **Script 8** reads the configured variable of each kernel (the CACK 2001-2016 mean is one
+  band per month; the single year is a level and a band). **Script 9** labels the kernels
+  from the table, and prints the "factor of two" sky warning only when the kernels mix clear
+  and all-sky.
+- **`R/differences.R`:** `difference_method = "endpoint"` takes each slice's albedo, ice or
+  vegetation by the threshold, and subtracts; `"legacy_components"` is the original
+  arithmetic. **`tests/test_differences.R`:** sixteen cases, including the advance, the double count
+  (below) and a misspelt method, which now stops rather than using the original arithmetic.
+
+**Outputs changed (new configuration only; the legacy configuration reproduces the old
+outputs exactly).** Global-equivalent forcing, mW/m², 8-10 ka as the example:
+
+| Kernel | Original | Clear-sky + endpoint | New (all-sky + endpoint) |
+|---|---|---|---|
+| HadGEM3 | 302.8 | 302.5 | 163.7 |
+| CAM5 | 316.9 | 294.9 (top of atmosphere) | 191.4 |
+| CACK | 155.4 | 147.0 (2001-2016 mean) | 147.0 |
+
+- The **endpoint method** alone (HadGEM3, same kernel) moves any period by at most 4.7 mW/m²
+  (10-12 ka: 270.2 to 265.5).
+- **All-sky kernels** roughly halve the HadGEM3 and CAM5 forcing at 6-12 ka, as expected
+  where clouds hide the surface; this is the largest change.
+- **CAM5 at the top of the atmosphere** instead of the surface: about 7% smaller.
+- **CACK 2001-2016 mean** instead of 2003: within about 5%.
+
+**Unexpected effect, reviewed by Fable and Astra before merging (Chris's request).** The endpoint method changed 9 pairs of
+slices (108 cell-months), not only the 3 ice advances it was meant to fix. In the other 6
+(cells 3077, 3693, 3966, 7551, 7554, 9086), the readvance adjustment lowers a slice's ice
+fraction below the threshold, but script 7a chose the glacier albedo from the *unadjusted*
+fraction. The original arithmetic therefore added a vegetation change and an ice change
+for the same pair, about -0.6 in July albedo where the vegetation change alone is about
+-0.02. The endpoint method uses the adjusted fraction throughout and keeps only the
+vegetation change. Effect on forcing: within the 4.7 mW/m² above. Added to question C2.
+Both reviewers confirmed the diagnosis and agreed the double count should go with no
+separate switch (it describes an inconsistency, not a method). Fable's full cross-tabulation
+of the two classifications over all 806,172 rows: only the 3 advances and the 6 double
+counts differ; retreats, still-ice and missing pairs agree; 24 vegetation-component values
+become NA in two cells north of 74°N, which script 8 drops. On their advice the comments
+now describe both faults, the youngest-pair readvance fault is stated precisely (an error
+with two slices, wrong averages with more), and tests cover each (reviews:
+`2026-10-14_i16a_double_count_review_{fable,codex_gpt6astra}.md`).
+
+**Verification** (runs in `.rundirs/i16a_{legacy,new,clear}`, from the frozen predictions):
+- **Legacy configuration:** script 7a (67 min, 2.4 GB) `ALB_diffs_bluesky.RDS`,
+  `RF_holocene_all_cases.RDS` and the four forcing CSVs byte-identical to the anchors;
+  figures identical to I11's (PNG byte-identical, PDF identical apart from the embedded
+  dates).
+- **New configuration:** 7a, 8 and 9 complete (exit 0); the changed rows counted and
+  explained above.
+- **Clear-sky configuration** (endpoint with clear-sky kernels): separates the effect of the
+  method from that of the sky choice.
+- **Manifests** record the kernel variables and the method each run used.
+- **A slip in the verification set-up, caught and corrected:** the clear-sky configuration
+  first wrote into the new run's directory, so its scripts 8 and 9 overwrote the new run's
+  forcing outputs (the run manifests showed it). Both were rerun in their own directories;
+  script 7a's output was not affected.
 

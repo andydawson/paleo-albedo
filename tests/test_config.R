@@ -110,9 +110,18 @@ stopifnot(
   rejects("ice\\$threshold must lie between 0 and 1", 'threshold = 0.5', 'threshold = 1.5'),
   identical(load_variant('albedo_coarse = "ice_albedo"', 'albedo_coarse = "ice_albedo_sc"')$analysis$ice$albedo_coarse, "ice_albedo_sc"),
   rejects("albedo_fixed has 'albedo'", 'albedo_fixed  = "ice_albedo_fixed"', 'albedo_fixed  = "albedo"'),
-  identical(load_variant('cack_year = 2003', 'cack_year = 2010')$analysis$kernels$cack_year, 2010),
-  rejects("cack_year must lie between 2001 and 2016", 'cack_year = 2003', 'cack_year = 2000'),
-  rejects("cack_year must be a whole number", 'cack_year = 2003', 'cack_year = 2003.5'),
+  identical(load_variant('cack_year       = 2003', 'cack_year       = 2010')$analysis$kernels$cack_year, 2010),
+  rejects("cack_year must lie between 2001 and 2016", 'cack_year       = 2003', 'cack_year       = 2000'),
+  rejects("cack_year must be a whole number", 'cack_year       = 2003', 'cack_year       = 2003.5'),
+  # kernel variables and the difference method (issue I16); the legacy configuration loads
+  identical(cfg$analysis$kernels[c("hadgem_variable", "cam5_variable", "cack_variable")],
+            list(hadgem_variable = "albedo_sw", cam5_variable = "FSNT", cack_variable = "CACK CM")),
+  identical(cfg$analysis$ice$difference_method, "endpoint"),
+  rejects("hadgem_variable has 'FSNT'", 'kernels = list(hadgem_variable = "albedo_sw",', 'kernels = list(hadgem_variable = "FSNT",'),
+  rejects("cam5_variable has 'albedo_sw'", 'cam5_variable   = "FSNT",', 'cam5_variable   = "albedo_sw",'),
+  rejects("difference_method has 'fancy'", 'difference_method = "endpoint",', 'difference_method = "fancy",'),
+  identical(load_config("configs/legacy_config.R")$analysis$kernels$cam5_variable, "FSNSC"),
+  identical(load_config("configs/legacy_config.R")$analysis$draws$seed, 1),
   # the stale-input override (issue I05): off by default, TRUE or FALSE only
   identical(cfg$run$allow_stale, FALSE),
   # script 1's diagnostic switch (issue I06)

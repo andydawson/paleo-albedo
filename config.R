@@ -80,18 +80,35 @@ list(
     # question C0a.
     ice = list(
       threshold = 0.5,
+      # How script 7a turns each pair of slices into an albedo change, for the threshold
+      # variants: "endpoint" takes each slice's albedo (ice or vegetation) and subtracts,
+      # so an ice advance is counted (decided by Chris on 2026-10-14, question C2); the
+      # original "legacy_components" reported an advance across the threshold as zero,
+      # and counted a pair twice where the readvance smoothing moved the older slice across it.
+      # The readvance smoothing is the same in both (Andria's call, C2).
+      difference_method = "endpoint",
       albedo_coarse = "ice_albedo",          # script 7: the coarse ice-albedo maps
       albedo_fixed  = "ice_albedo_fixed",    # script 7a: the *_ice_* forcing variants
       albedo_scaled = "ice_albedo_sc"),      # script 7a: the *_icesc_* forcing variants
 
-    # Radiative kernels (script 8). The CACK kernel varies by year, 2001 to 2016; the
-    # original code used 2003 (band 3 of the file, whose Year dimension is "2001 = 1").
-    # Which year, or an average of years, is question C3(b).
-    kernels = list(cack_year = 2003),
+    # Radiative kernels (script 8): the variable read from each kernel file, which decides
+    # clear-sky or all-sky and top of atmosphere (TOA) or surface. The legal names and what
+    # each is are in R/kernels.R. Decided by Chris on 2026-10-14, to be reviewed by Andria:
+    # all-sky kernels at the TOA for the headline (C3a, C4) and CACK's 2001-2016
+    # climatological mean (C3b). The original analysis read HadGEM3 "albedo_sw_cs"
+    # (clear, TOA), CAM5 "FSNSC" (clear, surface) and CACK "CACK" for one year
+    # (configs/legacy_config.R). cack_year is used only with cack_variable = "CACK"; the
+    # file's Year dimension is "2001 = 1".
+    kernels = list(hadgem_variable = "albedo_sw",
+                   cam5_variable   = "FSNT",
+                   cack_variable   = "CACK CM",
+                   cack_year       = 2003),
 
     # Script 9: continental forcing by period, beside the modern IPCC agents.
     forcing = list(
-      # Earth's surface area, for the global-equivalent forcing (script 9, A8).
+      # Earth's surface area, for the global-equivalent forcing (script 9, A8). The headline
+      # figure plots the global-equivalent forcing for comparison with the IPCC's global
+      # means (decision C5, 2026-10-14); the domain mean stays as a separate figure.
       earth_area_m2 = 5.101e14,
       # The forcing variant reported: vegetation plus ice albedo change, threshold
       # method (script 9, A1). Which ice representation the paper reports is question

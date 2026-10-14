@@ -46,7 +46,9 @@ ice_colour_dark = 'gray40'
 pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 pbs = read_input(run, path_file(paths, 'boundaries'))
 
-rk_hadgem = read_input(run, path_file(paths, 'kernel_hadgem'), brick, level=1, varname='albedo_sw_cs')
+# The kernel variables read are set in config.R (analysis$kernels; R/kernels.R says what
+# each is: clear-sky or all-sky, TOA or surface; questions C3, C4; issue I16).
+rk_hadgem = read_input(run, path_file(paths, 'kernel_hadgem'), brick, level=1, varname=cfg$analysis$kernels$hadgem_variable)
 
 alb_interp_diff_full = read_input(run, path_file(paths, 'albedo_differences'))
 
@@ -87,7 +89,7 @@ for (month in months){
     scale_fill_gradientn(colours = terrain.colors(10))
 
   rk_cam5 = read_input(run, path_file(paths, 'kernel_cam5'), raster,
-                   varname='FSNSC',
+                   varname=cfg$analysis$kernels$cam5_variable,
                    band=month_number)
 
   rk_cam5_month = raster::extract(rk_cam5, alb_diff_spatial[idx_month,])
@@ -96,10 +98,18 @@ for (month in months){
   rk_cam5_df = as.data.frame(rk_cam5, xy=TRUE)
   colnames(rk_cam5_df) = c('x', 'y', 'kernel')
 
-  rk_cack = read_input(run, path_file(paths, 'kernel_cack'), raster,
-                   varname='CACK',
-                   level=month_number,
-                   band=cfg$analysis$kernels$cack_year - 2000)   # Year dimension: 2001 = 1 (C3; I04b)
+  if (cfg$analysis$kernels$cack_variable == 'CACK') {
+    # One satellite year: CACK is [row, col, Month, Year], Year 2001 = 1 (C3; I04b).
+    rk_cack = read_input(run, path_file(paths, 'kernel_cack'), raster,
+                     varname='CACK',
+                     level=month_number,
+                     band=cfg$analysis$kernels$cack_year - 2000)
+  } else {
+    # The 2001-2016 climatological mean: 'CACK CM' is [row, col, Month] (C3b; issue I16).
+    rk_cack = read_input(run, path_file(paths, 'kernel_cack'), raster,
+                     varname='CACK CM',
+                     band=month_number)
+  }
 
   rk_cack =  t(flip((rk_cack)))
 
