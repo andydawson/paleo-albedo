@@ -20,15 +20,17 @@ cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
-ages = c(50, 200, seq(500, 11500, by=500))
+# The time slices to pair, from config.R (analysis$ages, issue I04b); they must be slices
+# of the prediction table, which is checked once it is read.
+ages = cfg$analysis$ages
 N_times = length(ages)
 # CM: the coarse ages (ages_sub) and the tail map window (xlim, ylim) were defined here but
 # never used in this script; removed so config.R holds their only definition (issue I03).
 
-# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
-# (issue I02, 2026-10-12).
+# The months analysed, from config.R (analysis$months, issue I04b); month names and
+# numbers come from the shared calendar, R/calendar.R (issue I02).
 source('R/calendar.R')
-months = MONTHS
+months = cfg$analysis$months
 
 breaks_alb = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
@@ -37,6 +39,14 @@ proj_WGS84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'
 alb_interp_preds = read_input(run, path_prediction(paths, 'summary'))
 
 alb_interp_preds$alb_bin = cut(alb_interp_preds$alb_mean, breaks_alb, labels=FALSE)
+
+# CM: every configured slice must exist in the data, or the differences below would be
+# taken across a missing slice (issue I04b).
+missing_slices = setdiff(ages, alb_interp_preds$year)
+if (length(missing_slices)) {
+  stop('config.R analysis$ages has slice(s) not in the prediction table: ', paste(missing_slices, collapse = ', '),
+       '; the table has ', paste(sort(unique(alb_interp_preds$year)), collapse = ', '))
+}
 
 ice_dalton_interp = read_input(run, path_file(paths, 'dalton_ice'), rast)
 ice_dalton_years = as.numeric(sapply(names(ice_dalton_interp), function(x) strsplit(x, 'yr|bp')[[1]][2]))
@@ -67,7 +77,8 @@ for (i in 1:length(alb_preds_ages)){
 
 }
 
-alb_interp_preds = alb_interp_preds[which(alb_interp_preds$x > -170),]
+# Cells west of config.R analysis$domain$lon_min are dropped (issue I04b).
+alb_interp_preds = alb_interp_preds[which(alb_interp_preds$x > cfg$analysis$domain$lon_min),]
 
 alb_interp_preds = alb_interp_preds[which(!is.na(alb_interp_preds$ice_frac)),]
 
@@ -87,7 +98,8 @@ labels_period_full$period_id = seq(1, nrow(labels_period_full))
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
-years = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)
+# CM: the coarse ages (years) were typed out again here but never used in this script;
+# removed so config.R holds their only definition (issue I04b).
 
 breaks_alb = c(0, 5, 10, 20, 30, 40, 60, 80, 100)/100
 labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "60 - 80", "80 - 100")
@@ -117,8 +129,10 @@ alb_grid_full = alb_grid
 
 alb_glacier = read_input(run, path_file(paths, 'glacier_albedo'), read.csv, header=TRUE)
 
-alb_grid_full$ice_albedo_fixed = alb_glacier[match(alb_grid_full$month, alb_glacier$month), 'ice_albedo_fixed']
-alb_grid_full$ice_albedo_sc = alb_glacier[match(alb_grid_full$month, alb_glacier$month), 'ice_albedo_sc']
+# The glacier-albedo columns for the fixed and scaled ice variants: config.R
+# analysis$ice$albedo_fixed and albedo_scaled (question C0a; issue I04b).
+alb_grid_full$ice_albedo_fixed = alb_glacier[match(alb_grid_full$month, alb_glacier$month), cfg$analysis$ice$albedo_fixed]
+alb_grid_full$ice_albedo_sc = alb_glacier[match(alb_grid_full$month, alb_glacier$month), cfg$analysis$ice$albedo_scaled]
 
 alb_grid_full$alb_veg = alb_grid_full$alb_mean
 
@@ -130,8 +144,11 @@ alb_grid_full$alb_veg_part = alb_grid_full$alb_veg * (1 - alb_grid_full$ice_frac
 alb_grid_full$alb_veg_ice_parts = alb_grid_full$alb_ice_part + alb_grid_full$alb_veg_part
 alb_grid_full$alb_veg_icesc_parts = alb_grid_full$alb_icesc_part + alb_grid_full$alb_veg_part
 
-idx_ice = which(alb_grid_full$ice_frac > 0.5)
-idx_veg = which(alb_grid_full$ice_frac <= 0.5)
+# A cell is ice when its ice fraction exceeds config.R analysis$ice$threshold (questions
+# C0, C2; issue I04b).
+ice_threshold = cfg$analysis$ice$threshold
+idx_ice = which(alb_grid_full$ice_frac > ice_threshold)
+idx_veg = which(alb_grid_full$ice_frac <= ice_threshold)
 
 alb_grid_full$alb_veg_thresh = alb_grid_full$alb_veg
 alb_grid_full$alb_veg_thresh[idx_ice] = NA
@@ -185,7 +202,8 @@ alb_grid_full$alb_cv_bin = factor(alb_grid_full$alb_cv_bin,
                                   levels=seq(1, length(labels_cv)),
                                   labels = labels_cv)
 
-labels_year = c('0.05 ka', '0.5 ka', '2 ka', '4 ka', '6 ka', '8 ka', '10 ka', '12 ka')
+# CM: coarse slice labels (labels_year) were typed out here but never used; removed
+# (issue I04b).
 
 alb_grid_full$facets = labels_ages_full[match(alb_grid_full$year/1000, labels_ages_full$age), 'facets']
 alb_grid_full$facets = factor(alb_grid_full$facets, levels = labels_ages_full$facets)
@@ -245,8 +263,8 @@ for (i in 1:N_cells){
     ice_frac_young = alb_cell_filled$ice_frac_adj[1:(nrow(alb_cell_filled)-1)]
     ice_frac_old = alb_cell_filled$ice_frac_adj[2:nrow(alb_cell_filled)]
 
-    is_ice_young =  ice_frac_young > 0.5
-    is_ice_old =  ice_frac_old > 0.5
+    is_ice_young =  ice_frac_young > ice_threshold
+    is_ice_old =  ice_frac_old > ice_threshold
     is_ice_both = is_ice_young & is_ice_old
 
     is_ice_increase = ice_frac_old < ice_frac_young

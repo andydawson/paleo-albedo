@@ -26,14 +26,14 @@ breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
 labels = seq(1, length(breaks)-1)
 
-ages = c(50, 200, seq(500, 11500, by=500))
-N_times = length(ages)
+# CM: the fine time slices (ages, N_times) were defined here and relabelled further down
+# but never used; removed so config.R holds their only definition (issue I04b).
 ages_sub = cfg$analysis$coarse$ages
 
-# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
-# (issue I02, 2026-10-12).
+# The months analysed, from config.R (analysis$months, issue I04b); month names and
+# numbers come from the shared calendar, R/calendar.R (issue I02).
 source('R/calendar.R')
-months = MONTHS
+months = cfg$analysis$months
 
 xlim = cfg$presentation$map_windows$tail$x
 ylim = cfg$presentation$map_windows$tail$y
@@ -79,7 +79,12 @@ ice_fill_dark = 'ivory3'
 ice_colour_dark = 'gray40'
 
 alb_interp_preds = read_input(run, path_prediction(paths, 'summary'))
-alb_interp_preds$year[which(alb_interp_preds$year == 11500)] = 12000
+# CM: the slice alias, config.R analysis$coarse$slice_alias (question C7; issue I04b): the
+# 11,500 BP slice is treated as 12,000 BP, which also gives it the 12 ka ice polygon below.
+slice_alias = cfg$analysis$coarse$slice_alias
+if (!is.null(slice_alias)) {
+  alb_interp_preds$year[which(alb_interp_preds$year == slice_alias[1])] = slice_alias[2]
+}
 
 pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 pbs = read_input(run, path_file(paths, 'boundaries'))
@@ -111,8 +116,6 @@ sc_colour_seq <- scale_colour_brewer(type = "seq",
 alb_interp_preds$alb_bin = cut(alb_interp_preds$alb_mean, breaks, labels=FALSE)
 
 alb_interp_preds$ice = NA
-
-ages[which(ages == 11500)] = 12000
 
 alb_preds_ages = unique(alb_interp_preds$year)
 
@@ -159,7 +162,9 @@ alb_grid_sub = subset(alb_grid, year %in% years)
 
 alb_glacier = read_input(run, path_file(paths, 'glacier_albedo'), read.csv, header=TRUE)
 
-alb_grid_sub$alb_mean_ice = alb_glacier[match(alb_grid_sub$month, alb_glacier$month), 'ice_albedo']
+# The glacier-albedo column for these maps: config.R analysis$ice$albedo_coarse (question
+# C0a; script 7a uses other columns of the same file; issue I04b).
+alb_grid_sub$alb_mean_ice = alb_glacier[match(alb_grid_sub$month, alb_glacier$month), cfg$analysis$ice$albedo_coarse]
 
 alb_grid_sub$alb_mean_ice[which(is.na(alb_grid_sub$ice))] = alb_grid_sub$alb_mean[which(is.na(alb_grid_sub$ice))]
 
@@ -195,7 +200,8 @@ labels_year = paste(ages_ka(years), 'ka')
 alb_grid_sub$facets = labels_year[match(alb_grid_sub$year, years)]
 alb_grid_sub$facets = factor(alb_grid_sub$facets, levels = labels_year)
 
-alb_grid_sub = alb_grid_sub[which(alb_grid_sub$long < (-60)),]
+# Cells east of config.R analysis$domain$lon_max_coarse are dropped (issue I04b).
+alb_grid_sub = alb_grid_sub[which(alb_grid_sub$long < cfg$analysis$domain$lon_max_coarse),]
 
 alb_grid_sub$month = factor(alb_grid_sub$month, levels = months)
 

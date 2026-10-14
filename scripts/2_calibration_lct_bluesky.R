@@ -15,8 +15,9 @@ source('R/paths.R')
 cfg   = load_config()
 paths = pipeline_paths(cfg)
 
-# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
-# (issue I02, 2026-10-12).
+# All twelve months from the shared calendar (R/calendar.R; issue I02). Deliberately not
+# config.R's month selection: the calibration table keeps every month, so scripts 4 onward
+# can run on any selection without rebuilding it (issue I04b).
 source('R/calendar.R')
 months = MONTHS
 

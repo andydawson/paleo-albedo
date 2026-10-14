@@ -19,10 +19,10 @@ cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
-# Month list from the shared calendar (R/calendar.R) rather than typed out in each script
-# (issue I02, 2026-10-12).
+# The months analysed, from config.R (analysis$months, issue I04b); month names and
+# numbers come from the shared calendar, R/calendar.R (issue I02).
 source('R/calendar.R')
-months = MONTHS
+months = cfg$analysis$months
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
@@ -31,11 +31,9 @@ ice_fort = read_input(run, path_file(paths, 'ice_fort'))
 ice_fort_diff_young = read_input(run, path_file(paths, 'ice_fort_diff_young'))
 ice_fort_diff_old = read_input(run, path_file(paths, 'ice_fort_diff_old'))
 
-ages = c(50, 200, seq(500, 11500, by=500))
-N_times = length(ages)
 # CM: the period labels (labels_period), the coarse ages (ages_sub) and the tail map window
 # (xlim, ylim) were defined here but never used in this script; removed so config.R holds
-# their only definition (issue I03).
+# their only definition (issue I03). Likewise the fine time slices (ages, N_times; I04b).
 
 ice_fill = 'gainsboro'
 ice_colour = 'gray60'
@@ -99,7 +97,7 @@ for (month in months){
   rk_cack = read_input(run, path_file(paths, 'kernel_cack'), raster,
                    varname='CACK',
                    level=month_number,
-                   band=3)
+                   band=cfg$analysis$kernels$cack_year - 2000)   # Year dimension: 2001 = 1 (C3; I04b)
 
   rk_cack =  t(flip((rk_cack)))
 
@@ -111,8 +109,9 @@ for (month in months){
 
 }
 
-alb_diff = alb_diff[which(alb_diff$lat>27),]
-alb_diff = alb_diff[which(alb_diff$lat<74),]
+# Keep cells strictly between config.R analysis$domain$lat_min and lat_max (issue I04b).
+alb_diff = alb_diff[which(alb_diff$lat>cfg$analysis$domain$lat_min),]
+alb_diff = alb_diff[which(alb_diff$lat<cfg$analysis$domain$lat_max),]
 
 alb_diff$rf_hadgem_veg_thresh = alb_diff$alb_diff_veg_thresh*100 * alb_diff$rk_hadgem
 alb_diff$rf_hadgem_ice_thresh = alb_diff$alb_diff_ice_thresh*100 * alb_diff$rk_hadgem
