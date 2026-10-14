@@ -9,6 +9,7 @@
 #   kernels$cam5_variable     "FSNSC"  (clear-sky, surface)        config.R: "FSNT"
 #   kernels$cack_variable     "CACK"   (the single year 2003)      config.R: "CACK CM"
 #   ice$difference_method     "legacy_components"                  config.R: "endpoint"
+#   calibration$comparison_method "REML"                           config.R: "ML"
 #   draws$seed                1   (the original was unseeded; seed 1 reproduces the seeded
 #                                  anchor and meets the unseeded anchor's tolerances; Chris)
 #   run$dir                   ".rundirs/legacy"
@@ -37,7 +38,8 @@ list(
     # Script 5: the model, by id, that is saved as the selected calibration model and used
     # by script 6 for prediction. One of the ladder mod1 ... mod8; their formulas are in
     # R/model_registry.R. Model 8 was chosen by hand (question B4).
-    calibration = list(model_id = "mod8"),
+    calibration = list(model_id = "mod8",
+                       comparison_method = "REML"),
 
     # Draws of simulated albedo from the calibration model (gratia's simulate()): per
     # evaluation in script 5, and per prediction in script 6, where they become the

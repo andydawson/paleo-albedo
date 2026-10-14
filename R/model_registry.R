@@ -1,5 +1,5 @@
-# The calibration models of script 4: one month's blue-sky albedo as a beta GAM (logit link,
-# REML) of location (x, y), elevation and the land-cover fractions ET, OL and ST.
+# The calibration models of script 4: one month's blue-sky albedo as a beta GAM (logit link)
+# of location (x, y), elevation and the land-cover fractions ET, OL and ST.
 #
 # Why: script 4 wrote out the same bam() call fifteen times, once per model, and script 5
 # took "model 8" as the selected model in three separate places. Each model is now defined
@@ -63,12 +63,15 @@ calibration_formula = function(model_id, month) {
 # The model's terms as text, for the run manifest: "s(x, y, bs = \"gp\", k = 500) + ...".
 calibration_terms = function(model_id) paste(deparse(CALIBRATION_MODELS[[model_id]]$rhs[[2]], width.cutoff = 500L), collapse = ' ')
 
-# Fit one model for one month to the calibration table.
-fit_calibration_model = function(model_id, month, data) {
+# Fit one model for one month to the calibration table. method is "REML" (the default, for
+# the fit used to predict) or "ML" (for comparing models that differ in their fixed terms,
+# as the ladder does: REML likelihoods are not comparable across such models; question B4,
+# issue I16).
+fit_calibration_model = function(model_id, month, data, method = "REML") {
   mgcv::bam(calibration_formula(model_id, month),
             data      = data,
             family    = mgcv::betar(link = "logit"),
-            method    = "REML",
+            method    = method,
             na.action = na.omit,
             control   = CALIBRATION_CONTROL)
 }

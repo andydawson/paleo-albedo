@@ -119,7 +119,8 @@ CONFIG_SCHEMA = list(
     land_cover = list(
       reduction = function(v) check_choice(v, c('mean', 'median'), single = TRUE)),
     calibration = list(
-      model_id = function(v) check_choice(v, LADDER_MODELS, single = TRUE)),
+      model_id = function(v) check_choice(v, LADDER_MODELS, single = TRUE),
+      comparison_method = function(v) check_choice(v, c('ML', 'REML'), single = TRUE)),
     draws = list(
       evaluation = check_draws,
       prediction = check_draws,

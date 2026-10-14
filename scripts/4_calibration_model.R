@@ -30,14 +30,17 @@ cal_data3 = cal_data2[,c('site', 'ET', 'OL', 'ST')]
 source('R/calendar.R')
 months = cfg$analysis$months
 
-# The eight-model ladder for every month. The formulas are in R/model_registry.R
-# (issue I04a); each was written out here in full before.
+# The eight-model ladder for every month, fitted by config.R's comparison method ("ML" or
+# the original "REML"; question B4, issue I16) because the ladder is compared by AIC below
+# and in script 5. The formulas are in R/model_registry.R (issue I04a).
+comparison_method = cfg$analysis$calibration$comparison_method
 for (month in months) {
 
   for (model_id in LADDER_MODELS) {
-    print(paste('Fitting', CALIBRATION_MODELS[[model_id]]$label))
-    write_output(run, fit_calibration_model(model_id, month, cal_interp_data),
-                 path_calibration_model(paths, model_id, month))
+    print(paste('Fitting', CALIBRATION_MODELS[[model_id]]$label, 'by', comparison_method))
+    fit = fit_calibration_model(model_id, month, cal_interp_data, method = comparison_method)
+    print(paste('converged:', fit$converged))
+    write_output(run, fit, path_calibration_model(paths, model_id, month))
   }
 
 }
@@ -82,16 +85,20 @@ for (month in months) {
 
 }
 
-# Model 8 fitted a third time and saved over the ladder's fit, as in the original script
-# (whether this and the spatial_elev_cover fit of the same formula can go is general
-# question 7).
+# The model used for prediction (config.R analysis$calibration$model_id), fitted by REML
+# into its own file, which script 5 saves as the selected model for script 6. The original
+# fitted model 8 a third time here and saved it over the ladder's fit; with an ML ladder the
+# two must differ, so the prediction fit now has its own file (question B4, issue I16).
+# (Whether the spatial_elev_cover fit of the same formula can go is general question 7.)
+prediction_model_id = cfg$analysis$calibration$model_id
 for (month in months) {
 
   print(paste0('Fitting calibration model for: ', month))
 
-  print(paste('Fitting', CALIBRATION_MODELS[['mod8']]$label))
-  write_output(run, fit_calibration_model('mod8', month, cal_interp_data),
-               path_file(paths, 'calibration_ladder', month = month, model = 'mod8'))
+  print(paste('Fitting', CALIBRATION_MODELS[[prediction_model_id]]$label, 'by REML, for prediction'))
+  fit = fit_calibration_model(prediction_model_id, month, cal_interp_data, method = 'REML')
+  print(paste('converged:', fit$converged))
+  write_output(run, fit, path_file(paths, 'calibration_prediction_fit', month = month))
 
 }
 
