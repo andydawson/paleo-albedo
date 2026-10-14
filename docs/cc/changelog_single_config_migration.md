@@ -31,7 +31,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I04b Months, ages, alias, domain, ice, CACK year | #8 | merged 2026-10-14 | 9210d04 |
 | I06 Manifests in every script; plain config loader | #9 | merged 2026-10-14 | 3ea2624 |
 | I17 Path readability | #20 | merged 2026-10-14 | 7abb45c |
-| I11 (slim) Script 7a's per-pair arithmetic as a tested function | #12 | merged 2026-10-14 | (pending) |
+| I11 (slim) Script 7a's per-pair arithmetic as a tested function | #12 | merged 2026-10-14 | d772ea3 |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
