@@ -27,6 +27,14 @@ files) carry no date.
 This is a research project, but it is written to good software practice, and
 that includes version control:
 
+- **Readability comes before elegance (Chris, 2026-10-14).** The code must be
+  easy for Andria and her colleagues to read, understand and change: R users
+  and scientists, not software engineers. Where a simpler, more explicit
+  design (a plain `if`, a separate clearly named function, a little
+  repetition in a script's flow) is easier to follow than a more general or
+  clever one, choose the simpler one. Generality is added when it is needed,
+  not in anticipation.
+
 - **Do not duplicate code.** A fix or a routine needed in more than one place
   becomes a function, in `R/` if more than one script uses it (e.g.
   `R/map_helpers.R`), sourced from the scripts. Pasting the same lines into
