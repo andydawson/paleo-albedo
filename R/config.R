@@ -5,39 +5,16 @@
 #   cfg = load_config()          # config.R, or the file given with --config <file>
 #   cfg$analysis$forcing$variant
 #
-# config.R is one R list expression, but it is not run as R code. The loader reads it as
-# a syntax tree and accepts only list(), c(), seq(), arithmetic, parentheses and literal
-# numbers, text, TRUE/FALSE/NULL/NA. Anything else (an assignment, any other function,
-# a variable, pkg::fun, a file or environment read) is refused before evaluation, and the
-# expression is then evaluated in an environment holding only those functions. A config
-# therefore cannot depend on anything but its own text, so the text in a run manifest is
-# a complete record of the settings. The result is then checked against the schema in
-# R/config_schema.R: unknown or missing keys and illegal values stop the script with a
-# message naming every problem. Single-config migration, issue I03, 2026-10-13.
+# config.R is an ordinary R file whose value is one list of settings. It is run with
+# source() in a fresh environment, so it cannot see or change a script's variables, and
+# the list it returns is checked against the schema in R/config_schema.R: unknown or
+# missing keys and illegal values stop the script with a message naming every problem.
+# Each run manifest records the settings as evaluated. (Until 2026-10-14 the file was read
+# by a restricted parser that allowed only list(), c(), seq() and literal values; Chris
+# replaced it with plain source() for readability, issue I06.) Single-config migration,
+# issue I03, 2026-10-13.
 
 source('R/config_schema.R')
-
-# The only functions config.R may call.
-CONFIG_FUNCTIONS = c('list', 'c', 'seq', '+', '-', '*', '/', '^', '(')
-
-# Every disallowed construct in an expression, as messages; empty if it is acceptable.
-config_syntax_errors = function(e) {
-  if (is.call(e)) {
-    f = e[[1]]
-    if (!is.symbol(f) || !as.character(f) %in% CONFIG_FUNCTIONS) {
-      what = paste(deparse(f), collapse = ' ')
-      return(sprintf('`%s` is not allowed; config.R may use only %s and literal values', what,
-                     paste(CONFIG_FUNCTIONS, collapse = ' ')))
-    }
-    args = as.list(e)[-1]
-    if (any(vapply(args, function(a) identical(a, quote(expr = )), logical(1))))
-      return(sprintf('empty argument in %s(...)', as.character(f)))
-    return(unlist(lapply(args, config_syntax_errors)))
-  }
-  if (is.symbol(e)) return(sprintf('`%s` is not allowed: config.R may not refer to variables', as.character(e)))
-  if (is.null(e) || (is.atomic(e) && length(e) == 1)) return(character())
-  sprintf('unsupported element `%s`', paste(deparse(e), collapse = ' '))
-}
 
 # Check a value against a schema node; returns messages, each prefixed with the key path.
 config_schema_errors = function(value, schema, path = 'cfg') {
@@ -79,15 +56,8 @@ config_path = function(args = commandArgs(trailingOnly = TRUE)) {
 # presentation and run. Stops with every problem found.
 load_config = function(path = config_path()) {
   if (!file.exists(path)) stop('config file not found: ', path, call. = FALSE)
-  exprs = tryCatch(parse(path, keep.source = FALSE),
-                   error = function(e) stop('config file ', path, ' does not parse: ', conditionMessage(e), call. = FALSE))
-  if (length(exprs) != 1)
-    stop('config file ', path, ' must contain exactly one expression, a list(...); it has ', length(exprs), call. = FALSE)
-  errs = config_syntax_errors(exprs[[1]])
-  if (length(errs)) stop('config file ', path, ':\n  ', paste(unique(errs), collapse = '\n  '), call. = FALSE)
-  env = new.env(parent = emptyenv())
-  for (f in CONFIG_FUNCTIONS) assign(f, get(f, envir = baseenv()), envir = env)
-  cfg = eval(exprs[[1]], env)
+  cfg = tryCatch(source(path, local = new.env(parent = baseenv()))$value,
+                 error = function(e) stop('config file ', path, ' could not be read: ', conditionMessage(e), call. = FALSE))
   errs = config_schema_errors(cfg, CONFIG_SCHEMA)
   if (!length(errs)) errs = config_combination_errors(cfg)
   if (length(errs)) stop('config file ', path, ':\n  ', paste(errs, collapse = '\n  '), call. = FALSE)
