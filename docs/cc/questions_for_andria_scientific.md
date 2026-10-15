@@ -274,7 +274,12 @@ setting and the two are compared. Nothing is built until Chris approves the desi
 calibration albedo will be our own build from MODIS MCD43A3/A2 v6.1 with the ERA5 all-sky
 diffuse fraction, 2000-2009, water removed at 500 m; Jia et al. (2022, doi:10.1029/2021JD035987)
 is kept as a cross-check, not the primary response, because it is a clear-sky product while the
-radiative kernels are all-sky. One recipe, settled after a small pilot.
+radiative kernels are all-sky. Settings, each following published practice (Chris, 2026-10-15):
+full-inversion retrievals only, as NASA's product guidance recommends, with all processed
+retrievals as a sensitivity (Wang et al. 2018); no minimum coverage, every value kept with
+its count of valid days, as the published climatologies do (Jia et al. 2022; Duveiller et
+al. 2018); water removed by keeping only the 500 m pixels that the product's own land/water
+class (MCD43A2 `BRDF_Albedo_LandWaterType`) labels land, as NASA's MCD43 processing does.
 
 ### B2d. What the paper claims about past snow
 **Raised 2026-10-15** by Chris ("snow is perhaps the weakest point"), reviewed in Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch.
