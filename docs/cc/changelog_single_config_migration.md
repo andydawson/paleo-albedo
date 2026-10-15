@@ -36,7 +36,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
 | I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
-| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3, 1, 2 merged 2026-10-15 | |
+| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3, 1, 2, 5 merged 2026-10-15 | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -976,4 +976,17 @@ new, and its outputs compared.
 - Verified (`docs/cc/verification/2026-10-15_i15c-script2-{before,after}_report.md`, PASS):
   both calibration tables byte-identical (to the anchor and to the old code's); all 55
   figure files identical to the old code's.
+
+### Script 5 (merged 2026-10-15)
+- The seven spatial-experiment fits, seven variables found again by
+  `eval(as.name(paste0('model_', model)))`, are one named list (`comparison_fits`), read in the
+  same order. The draws and the table built from them (`cal_interp_sim_gam`, reassigned) are
+  `response_draws`, `response_table` and `response_long`; the experiment loop's `sim`/`sim_df`/
+  `sim_melt` are `comparison_draws`/`comparison_response_table`/`comparison_response_long`;
+  `cal_diff` is `calibration_stats`. The draws' column names come from `simulate()`, checked.
+- The base seed is computed, then recorded (two statements; same value, same record).
+- Removed: `cal_sim_SPE` (an empty table never filled) and the `alb_prod` line.
+- Verified with seed 1 (`docs/cc/verification/2026-10-15_i15c-script5-{before,after}_report.md`,
+  PASS): the statistics CSV byte-identical to the seed-1 anchor; the twelve selected models and
+  all ten figure files identical to the old code's.
 
