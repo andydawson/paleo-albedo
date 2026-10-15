@@ -1,7 +1,7 @@
 # 6_prediction_model.R: hindcast albedo for every Holocene slice
-# Interp (spatially complete) path only: the point-based code and its guards are
-# removed. The draw count and random seed come from config.R, and files are read and
-# written through the run manifest.
+# Interp (spatially complete) path only. Settings come from config.R, and every file is
+# read and written through the run manifest; comments marked '# CM:' are notes on
+# changes from the original analysis.
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file

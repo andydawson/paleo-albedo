@@ -1,8 +1,10 @@
 # 1_veg_lct_prep.R: turn the land-cover posterior into two plain tables
-# Interp (spatially complete) path only: the point-based code and its guards are
-# removed. The pipeline lines are unchanged from the original except the reduction of the
-# draws, now reduce_land_cover(); the elevation lookup is cached on disk, and
-# a diagnostic switch (config.R run$diagnostic) adds checks and plots at the end.
+# Interp (spatially complete) path only. Settings come from config.R, and every file is
+# read and written through the run manifest; comments marked '# CM:' are notes on
+# changes from the original analysis.
+# The draws are reduced by reduce_land_cover() and the fractions checked by
+# check_fractions() (R/preparation.R); the elevation lookup is cached on disk; a
+# diagnostic switch (config.R run$diagnostic) adds checks and plots at the end.
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
 # given with --config), sets up the paths of R/paths.R and starts the run's

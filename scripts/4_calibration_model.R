@@ -1,7 +1,8 @@
 # 4_calibration_model.R: fit the models that turn land cover into albedo
-# Interp (spatially complete) path only: the point-based code and its guards are
-# removed. The fits are now made in loops over R/model_registry.R; the
-# models, their order and the files written are unchanged.
+# Interp (spatially complete) path only. Settings come from config.R, and every file is
+# read and written through the run manifest; comments marked '# CM:' are notes on
+# changes from the original analysis.
+# The models are defined once, by id, in R/model_registry.R and fitted here in loops.
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
