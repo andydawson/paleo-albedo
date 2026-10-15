@@ -11,7 +11,6 @@ source('R/run_manifest.R')
 run   = run_begin('5_calibration_eval')
 cfg   = run$cfg
 paths = run$paths
-alb_prod = paths$tag   # the albedo product in file names
 
 # Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(ggplot2)
@@ -32,8 +31,8 @@ run_record(run, 'selected_model', list(id = model_id, terms = calibration_terms(
 # random seed of this run, recorded in its manifest (R/random.R).
 source('R/random.R')
 n_draws   = cfg$analysis$draws$evaluation
-seed_base = run_record(run, 'random_seed', list(setting = cfg$analysis$draws$seed,
-                                                base = base_seed(cfg$analysis$draws$seed)))$base
+seed_base = base_seed(cfg$analysis$draws$seed)
+run_record(run, 'random_seed', list(setting = cfg$analysis$draws$seed, base = seed_base))
 
 
 # The months analysed, from config.R (analysis$months); month names and
@@ -67,20 +66,20 @@ for (n in 1:length(months)){
 
   cor_month
 
-  cal_interp_sim_gam = simulate(cal_interp_model,
+  response_draws = simulate(cal_interp_model,
                                 nsim = n_draws,
                                 seed = derive_seed(seed_base, '5_calibration_eval', month, 'model_vs_data'),
                                 data = cal_interp_data[,c('x', 'y', 'elev', 'ET', 'OL', 'ST', month)])
 
-  cal_interp_sim_gam = data.frame(cal_interp_data[,c('x', 'y', month)],
-                                  cal_interp_sim_gam)
-  cal_interp_sim_gam_melt = melt(cal_interp_sim_gam,
+  response_table = data.frame(cal_interp_data[,c('x', 'y', month)],
+                                  response_draws)
+  response_long = melt(response_table,
                                  id.vars = c('x', 'y', month))
   # 'month' here holds this month's OBSERVED albedo (the column named after the month), not
   # the month's name; 'value' holds the simulated draws.
-  colnames(cal_interp_sim_gam_melt) = c('x', 'y', 'month', 'variable', 'value')
+  colnames(response_long) = c('x', 'y', 'month', 'variable', 'value')
 
-  cal_interp_sim_gam_sum = cal_interp_sim_gam_melt %>%
+  cal_interp_sim_gam_sum = response_long %>%
     group_by(x, y, month) %>%
     summarize(alb_mean = mean(value),
               alb_lo = quantile(value, c(0.025), na.rm=TRUE),
@@ -139,20 +138,20 @@ for (n in 1:length(months)){
   cor_month
   cor_all[n] = cor_month
 
-  cal_interp_sim_gam = simulate(cal_interp_model,
+  response_draws = simulate(cal_interp_model,
                                 nsim = n_draws,
                                 seed = derive_seed(seed_base, '5_calibration_eval', month, 'statistics'),
                                 data = cal_interp_data[,c('x', 'y', 'elev', 'ET', 'OL', 'ST', month)])
 
-  cal_interp_sim_gam = data.frame(cal_interp_data[,c('x', 'y', month)],
-                                  cal_interp_sim_gam)
-  cal_interp_sim_gam_melt = melt(cal_interp_sim_gam,
+  response_table = data.frame(cal_interp_data[,c('x', 'y', month)],
+                                  response_draws)
+  response_long = melt(response_table,
                                  id.vars = c('x', 'y', month))
-  colnames(cal_interp_sim_gam_melt) = c('x', 'y', 'alb_data', 'variable', 'alb_model')
+  colnames(response_long) = c('x', 'y', 'alb_data', 'variable', 'alb_model')
 
-  cal_interp_sim_gam_melt$month = rep(month)
+  response_long$month = rep(month)
 
-  cal_interp_sim_gam_all = rbind(cal_interp_sim_gam_all, cal_interp_sim_gam_melt)
+  cal_interp_sim_gam_all = rbind(cal_interp_sim_gam_all, response_long)
 
 }
 
@@ -209,7 +208,7 @@ cal_interp_sim_gam_quants %>%
   group_by(month) %>%
   summarize(frac_in=sum(in_credible, na.rm=TRUE)/n())
 
-cal_diff = cal_interp_sim_gam_quants %>%
+calibration_stats = cal_interp_sim_gam_quants %>%
   group_by(month) %>%
   summarize(alb_corr = round(cor(alb_mid, alb_data,, use = "pairwise.complete.obs"),2),
             frac_in=round(sum(in_credible, na.rm=TRUE)/n(),2),
@@ -217,20 +216,12 @@ cal_diff = cal_interp_sim_gam_quants %>%
             diff_hi = round(quantile(alb_diff, c(0.975), na.rm=TRUE),2),
             .groups = "keep")
 
-cal_diff
+calibration_stats
 
-colnames(cal_diff) = c('month', 'correlation', 'data in credible interval', 'diff lower (model - data; 2.5%)', 'diff upper (model - data; 97.5%)')
+colnames(calibration_stats) = c('month', 'correlation', 'data in credible interval', 'diff lower (model - data; 2.5%)', 'diff upper (model - data; 97.5%)')
 
 # One row per month: correlation, interval coverage and error quantiles.
-write_output(run, cal_diff, path_file(paths, 'calibration_stats'), write.csv, row.names = FALSE)
-
-cal_sim_SPE = data.frame(x = numeric(0),
-                         y = numeric(0),
-                         alb_data = numeric(0),
-                         variable = character(0),
-                         alb_pred = numeric(0),
-                         month = character(0),
-                         model = character(0))
+write_output(run, calibration_stats, path_file(paths, 'calibration_stats'), write.csv, row.names = FALSE)
 
 models = c('SP_ELEV_LC', 'ELEV_LC', 'LC', 'SP_LC', 'SP', 'SP_ELEV', 'ELEV')
 
@@ -249,33 +240,34 @@ for (n in 1:length(months)){
   # same formula as model 8; it used to be read as the selected model, which would be
   # mislabelled now that the selected model is a setting (the repeated fits of model 8 are a
   # question for Andria, general 7).
-  model_SP_ELEV_LC = read_input(run, path_file(paths, 'calibration_spatial_elev_cover', month = month))
-
-  model_ELEV_LC = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'cover_elev'))
-  model_LC = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'cover'))
-  model_SP_LC = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial_cover'))
-  model_SP = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial'))
-  model_SP_ELEV = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial_elev'))
-  model_ELEV = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'elev'))
+  # The seven experiment fits, by the labels in `models` (read in the same order as before).
+  comparison_fits = list(
+    SP_ELEV_LC = read_input(run, path_file(paths, 'calibration_spatial_elev_cover', month = month)),
+    ELEV_LC    = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'cover_elev')),
+    LC         = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'cover')),
+    SP_LC      = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial_cover')),
+    SP         = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial')),
+    SP_ELEV    = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'spatial_elev')),
+    ELEV       = read_input(run, path_file(paths, 'calibration_spatial', month = month, model = 'elev')))
 
   for (model in models){
 
-    model_name = eval(as.name(paste0('model_', model)))
+    comparison_fit = comparison_fits[[model]]
 
-    sim = simulate(model_name,
+    comparison_draws = simulate(comparison_fit,
                               nsim = n_draws,
                               seed = derive_seed(seed_base, '5_calibration_eval', month, paste0('experiment_', model)),
                               data = cal_interp_data[,c('x', 'y', 'elev', 'ET', 'OL', 'ST', month)])
-    sim_df = data.frame(cal_interp_data[,c('x', 'y', month)],
-                                   sim)
-    sim_melt = melt(sim_df,
+    comparison_response_table = data.frame(cal_interp_data[,c('x', 'y', month)],
+                                   comparison_draws)
+    comparison_response_long = melt(comparison_response_table,
                                id.vars = c('x', 'y', month))
-    colnames(sim_melt) = c('x', 'y', 'alb_data', 'variable', 'alb_pred')
-    sim_melt$month = rep(month)
-    sim_melt$model = rep(model)
+    colnames(comparison_response_long) = c('x', 'y', 'alb_data', 'variable', 'alb_pred')
+    comparison_response_long$month = rep(month)
+    comparison_response_long$model = rep(model)
 
     cal_sims = rbind(cal_sims,
-                           sim_melt)
+                           comparison_response_long)
 
   }
 
@@ -390,19 +382,19 @@ if ('nov' %in% months) {
   ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.png')))
   ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.pdf')))
 
-  cal_interp_sim_gam = simulate(cal_interp_model,
+  response_draws = simulate(cal_interp_model,
                                 nsim = n_draws,
                                 seed = derive_seed(seed_base, '5_calibration_eval', month, 'november'),
                                 data = cal_interp_data)
 
-  cal_interp_sim_gam = data.frame(cal_interp_data[,c('x', 'y', month)],
-                                  cal_interp_sim_gam)
-  cal_interp_sim_gam_melt = melt(cal_interp_sim_gam,
+  response_table = data.frame(cal_interp_data[,c('x', 'y', month)],
+                                  response_draws)
+  response_long = melt(response_table,
                                  id.vars = c('x', 'y', month))
 
   vars_to_group = c('x', 'y', month)
 
-  cal_interp_sim_gam_sum = cal_interp_sim_gam_melt %>%
+  cal_interp_sim_gam_sum = response_long %>%
     group_by_at(vars_to_group) %>%
     summarize(alb_mean = mean(value),
               alb_lo = quantile(value, c(0.025)),
