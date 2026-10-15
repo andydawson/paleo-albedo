@@ -171,7 +171,7 @@ instructions:**
   when the source describes the method.
 - **One example cited for a general statement** ("datasets are increasingly available
   [one database paper]") is **partly supported**: suggest "e.g." or a review citation.
-Against these rules, of the 9 disagreements Astra matched Chris on 5 (C03, C04, C05, C25:
-framing; C15: partly rather than supported, so a near miss) and PaperTrace on 2 (C22 and,
-for the framing items, neither); the remaining (C13, C26, C27) are left for the full run.
-
+Against these rules, of the 9 disagreements: Astra matches Chris on the 4 framing claims
+(C03, C04, C05, C25); PaperTrace on the one-example claim (C22); neither on the methods
+citation (C15: PaperTrace "not addressed", Astra "partly"; Chris "supported"); the other 3
+(C13, C26, C27) are not covered by the rules and are left for the full run.
