@@ -265,6 +265,15 @@ micromamba create -n paleo-rf -c conda-forge r-base r-terra r-raster r-sp r-sf \
 micromamba run -n paleo-rf Rscript -e 'install.packages(c("gratia","tidyterra","elevatr","tricolore"))'
 ```
 
+For the albedo rebuild (reading MODIS HDF4 and ERA5 netCDF files; added 2026-10-15, existing
+packages frozen, pipeline outputs checked unchanged against the regression anchors):
+
+```
+micromamba install -n paleo-rf -c conda-forge --freeze-installed libgdal-hdf4 libgdal-netcdf \
+  r-getpass r-keyring r-rstudioapi r-filelock r-yaml
+micromamba run -n paleo-rf Rscript -e 'install.packages("ecmwfr", dependencies = FALSE)'
+```
+
 Run scripts from the repository root. **Cap the BLAS threads to the cores
 you give the job** or the fits oversubscribe the machine: an uncapped run
 on 2026-09-17 sat for 2.5 hours producing nothing. A typical launch:
