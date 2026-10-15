@@ -51,9 +51,9 @@ that includes version control:
 | Change | Review |
 |---|---|
 | Documentation, comments, local naming | The implementer checks it; an independent check only where useful |
-| Paths, manifests, config plumbing, tools, tests | One independent reviewer (the `change-reviewer` role) plus targeted executable checks |
-| Arithmetic, units, signs, stochastic behaviour, scientific options | Independent reviews by Fable (`science-reviewer`) and Astra (Codex), each given the same code and requirements before seeing the other's view; one reconciliation pass; open scientific questions go to Chris or Andria as questions, not forced consensus |
-| Final integration (end of the migration) | Astra's review of all the migration code, and the full-run gate |
+| Paths, manifests, config plumbing, tools, tests | One independent reviewer (the `change-reviewer` role: Fable, maximum effort) plus targeted executable checks |
+| Arithmetic, units, signs, stochastic behaviour, scientific options | Independent reviews by Fable (`science-reviewer`, maximum effort) and Astra (Codex `gpt-6-astra`, maximum effort, read-only sandbox; the `astra-review` skill), each given the same code and requirements before seeing the other's view; one reconciliation pass; open scientific questions go to Chris or Andria as questions, not forced consensus |
+| Final integration (end of the migration) | Astra's review of all the migration code (`gpt-6-astra`, maximum effort), and the full-run gate |
 
 Findings carry file and line, consequence, evidence and a proposed check. Before designing
 anything, one sentence on its benefit to the paper or to Andria's use of the code; drop

@@ -55,6 +55,12 @@ the extractor's or the author's reasoning; if it does, read the source before yo
   was available. Never promote an abstract-only reading to `SUPPORTED`.
 - `WRONG-FILE`: the file is not the cited work.
 
+## The independent challenger
+
+Your verdicts are challenged by Astra (Codex, gpt-6-astra, maximum effort; the astra-review
+skill), given the same claim and source but not your verdict, as in the pilot of 2026-10-14.
+Disagreements go to Chris.
+
 ## Chris's rules for judgement calls (2026-10-15)
 
 From the claim-support pilot (`docs/cc/2026-10-14_research_tooling_decisions.md`):
