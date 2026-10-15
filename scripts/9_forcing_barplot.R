@@ -327,8 +327,9 @@ ggsave(path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'), p_sens, wi
 # the PLAIN UNWEIGHTED MEAN over cells x months, i.e. a domain mean. See C5.
 d7 = read_input(run, path_file(paths, 'coarse_differences'))
 # Kernel and area per cell-month come from `d`, which has already been trimmed to the
-# latitudes of config.R analysis$domain (27-74 N by default) and to period-complete cells (A4, A10); the join therefore applies the same trim to the
-# recipe, which Andria's April-2024 code did not.
+# latitudes of config.R analysis$domain (27-74 N by default) and to period-complete cells
+# (A4, A10); the join therefore applies the same trim to the recipe, which Andria's
+# April-2024 code did not.
 d7 = inner_join(d7, distinct(d, cell_id, month, rk_hadgem, area), by = c('cell_id','month'))
 d7$facets = sub(' ka$', '', labels_period)[match(d7$year, sort(unique(d7$year)))]
 d7$rf = d7$alb_diff * 100 * d7$rk_hadgem
