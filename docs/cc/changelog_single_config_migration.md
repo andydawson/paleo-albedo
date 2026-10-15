@@ -1042,8 +1042,17 @@ shorter than the original; Chris approved its five "do now" items.
 - **Anchor guard** (this merge): the default rule also fails when no file matched, after a
   renaming slip made a verification check an empty run folder and pass vacuously.
   Change-reviewer: approve with changes, made. Verified PASS (`anchor-guard-2`).
-- Still in progress: redundant reads and writes (scripts 5, 7, 8), the land-mean elevation
-  delivery and moving script 1's network elevation lookup into a preparation script.
+- **Redundant reads and writes** (this branch, simplify-redundant-io): script 5 wrote the same
+  selected-model file in three places, now once (in the first loop, for script 6); script 7
+  read the point predictions and the projected boundaries without using them and read the
+  lon/lat boundaries twice; script 7a read both boundary files and used neither; script 8
+  read both boundary files and used neither. All removed; no value, seed or simulation call
+  changes, only the run records lose the needless entries. Verified under the legacy
+  configuration: script 5 (the stats table MATCHes and the twelve selected-model files equal
+  the frozen inventory byte for byte), scripts 7 and 7a (seeded without the point
+  predictions, outputs MATCH the tail anchor), script 8. Change-reviewer: approve with
+  changes, made. README's input tables corrected.
+- Still in progress: moving script 1's network elevation lookup into a preparation script.
 
 ## I16c (first part): land-mean elevation, merged 2026-10-15
 
