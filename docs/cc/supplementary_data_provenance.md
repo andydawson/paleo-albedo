@@ -123,6 +123,35 @@ by MOD44W, following the practice of using land-only satellite albedo for coarse
 
 ---
 
+## 2. Elevation: GMTED2010 30-arc-second mean elevation (for the land-mean elevation)
+
+**What it is.** The Global Multi-resolution Terrain Elevation Data 2010, "mean elevation"
+aggregation at 30 arc-seconds (about 1 km), from the USGS: Danielson, J. J. and Gesch, D. B.
+(2011), Global multi-resolution terrain elevation data 2010 (GMTED2010), U.S. Geological Survey
+Open-File Report 2011-1073, 26 p., doi:10.3133/ofr20111073.
+
+**Download (2026-10-15, Claude Code, no login needed).** File `mn30_grd.zip` (ESRI ArcGrid,
+global), from
+https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/topo/downloads/GMTED/Grid_ZipFiles/mn30_grd.zip
+(server date 27 December 2011). 277,229,566 bytes; SHA-256
+`dfd0d6c6486f4da22109be6107c93a70ef9917a5b6f954cd82d87cf8b920149d`; archive test passed.
+Unzipped into `data/gmted2010/` (not committed). Grid: 43,200 x 20,880 pixels, edges at
+-180.000139 / 179.999860 E and -90.000139 / 83.999860 N: the "pixel centre" convention of its
+SRTM source (report p. 9, fig. 8), half a source arc-second (about 4 m) off whole degrees; the
+preparation tool places it on whole degrees.
+
+**How it is used.** `tools/prepare_land_elevation.R` averages it over each 1-degree cell's
+non-ocean area (ocean = MOD44W 2015 water in QA class 4, "Ocean Mask"; lakes kept), weighting
+each pixel by its area and non-ocean share, and writes `data/elev_land_mean_cells.csv`
+(committed). Precedents: New et al. (2002), Climate Research 21:1-25, doi:10.3354/cr021001,
+p. 7; ISLSCP II HYDRO1k (Verdin 2011, doi:10.3334/ORNLDAAC/1007, sec. 9.2.1). Run of
+2026-10-15: 2,870 cells, 3 to 3,018 m, 3.3 minutes.
+
+**Suggested wording.** "Elevation for each 1-degree cell is the mean of the GMTED2010
+30-arc-second mean-elevation product (Danielson and Gesch, 2011) over the cell's non-ocean
+area, ocean being defined by the MODIS MOD44W v6.1 2015 water mask (Carroll et al., 2017),
+following New et al. (2002)."
+
 ## Gaps in the provenance of the original data sets
 
 From the README's data table and general question 4, still to be obtained from Andria:
