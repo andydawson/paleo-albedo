@@ -53,7 +53,10 @@ install_hook = function() {
   hooks = git_lines('rev-parse', '--git-path', 'hooks')
   file = file.path(hooks, 'pre-merge-commit')
   rscript = file.path(R.home('bin'), 'Rscript')
+  # A branch that predates the check (e.g. the trunk before this tool is merged into it) has
+  # no checker in its tree: the hook then lets the merge go ahead and says so.
   writeLines(c('#!/bin/sh', '# Installed by tools/check_merge_evidence.R install: the merge check (see that file).',
+               'if [ ! -f tools/check_merge_evidence.R ]; then echo "merge check: not in this branch yet; skipped"; exit 0; fi',
                sprintf('exec "%s" tools/check_merge_evidence.R check', rscript)), file)
   Sys.chmod(file, '755')
   cat('installed', file, '\n')
