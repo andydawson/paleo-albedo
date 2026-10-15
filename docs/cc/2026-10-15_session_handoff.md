@@ -1,6 +1,8 @@
 # Session handoff, 2026-10-15
 
-**What this is.** The state of the work when the long session of 2026-10-08 to 2026-10-15 was
+**Superseded:** Chris decided on 2026-10-15 to keep long sessions, so this handoff was not used.
+
+**What this was.** The state of the work when the long session of 2026-10-08 to 2026-10-15 was to be
 closed, so a fresh session can continue (Chris agreed to try shorter sessions; this is the
 first switch). Read this, AGENTS.md, CONTRIBUTING.md and the memory index first.
 
