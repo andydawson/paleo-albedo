@@ -38,6 +38,9 @@ that includes version control:
 - Version control per `CONTRIBUTING.md`: topic branch off `chris-dev`, one
   atomic change per commit with a why-focused message, merge when finished,
   push at checkpoints, never commit to `legacy` or `main`.
+- Verify with `tools/verify_change.R` (a spec under `docs/cc/verification/`), never with
+  an ad hoc driver; it runs from its own worktree. Never switch branches in a checkout a
+  run is reading; use a worktree for other work.
 - Never edit a script while `Rscript` is executing it (R reads the file
   incrementally; the run is corrupted). Wait for the run to finish.
 - Never remove a `library()` call without a run proving nothing depended on it
