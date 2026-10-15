@@ -259,6 +259,8 @@ for (i in 1:N_cells){
 
 alb_diff_df =  alb_diff_df[which(!is.na(alb_diff_df$lat)),]
 
+# One row per cell, month and pair of consecutive slices (year is the younger slice); the
+# albedo differences are younger minus older (R/differences.R).
 write_output(run, alb_diff_df, path_file(paths, 'albedo_differences'))
 
 foo2 = alb_diff_df[which(alb_diff_df$ice_frac_young > alb_diff_df$ice_frac_old),]

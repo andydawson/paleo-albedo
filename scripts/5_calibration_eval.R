@@ -221,6 +221,7 @@ cal_diff
 
 colnames(cal_diff) = c('month', 'correlation', 'data in credible interval', 'diff lower (model - data; 2.5%)', 'diff upper (model - data; 97.5%)')
 
+# One row per month: correlation, interval coverage and error quantiles.
 write_output(run, cal_diff, path_file(paths, 'calibration_stats'), write.csv, row.names = FALSE)
 
 cal_sim_SPE = data.frame(x = numeric(0),

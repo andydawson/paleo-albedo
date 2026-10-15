@@ -197,6 +197,8 @@ ggplot(data=bar) +
 
 bar$alb_diff_ice_thresh
 
+# One row per cell, month and pair of slices within the domain's latitudes: the albedo
+# differences and the forcing of every variant with every kernel.
 write_output(run, alb_diff, path_file(paths, 'forcing'))
 
 run_finish(run)

@@ -95,10 +95,12 @@ lct_interp_modern = lct_interp_all[which(lct_interp_all$ages == 50), ]
 
 lct_interp_modern = lct_interp_modern[, which(!(colnames(lct_interp_modern) %in% c('ages')))]
 
+# One row per modern cell (x, y): elevation and the three land-cover fractions.
 write_output(run, lct_interp_modern, path_file(paths, 'lct_modern'))
 
 lct_interp_paleo = lct_interp_all
 
+# One row per cell and slice (x, y, ages).
 write_output(run, lct_interp_paleo, path_file(paths, 'lct_paleo'))
 
 ############################################################################################

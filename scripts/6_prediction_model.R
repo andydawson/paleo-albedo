@@ -48,6 +48,7 @@ for (month in months){
   paleo_interp_predict_gam = data.frame(lct_interp_paleo,
                                         alb_mean = paleo_interp_predict_gam_vec)
 
+  # One row per cell and slice (year): this month's point prediction (alb_mean).
   write_output(run, paleo_interp_predict_gam, path_file(paths, 'prediction_point_month', month = month))
 
   print(">>Simulate")
@@ -64,6 +65,7 @@ for (month in months){
 
   paleo_interp_sim_gam_melt$iter = draw_index(paleo_interp_sim_gam_melt$iter)
 
+  # One row per cell, slice and simulated draw (iter).
   write_output(run, paleo_interp_sim_gam_melt, path_file(paths, 'prediction_samples_month', month = month))
 
   print(">>Summarize")
@@ -76,6 +78,7 @@ for (month in months){
               alb_hi = quantile(value, c(0.975)),
               .groups = 'keep')
 
+  # One row per cell and slice: mean, sd and quantiles of the draws.
   write_output(run, paleo_interp_sim_gam_sum, path_file(paths, 'prediction_summary_month', month = month))
 
 }
@@ -101,6 +104,7 @@ for (month in months) {
                                    data.frame(alb_preds_summary_month, month = rep(month)))
 }
 
+# All months together: one row per cell, slice and month.
 write_output(run, alb_preds_months, path_file(paths, 'prediction_point'))
 write_output(run, alb_preds_summary_months, path_file(paths, 'prediction_summary'))
 

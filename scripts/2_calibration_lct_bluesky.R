@@ -164,6 +164,8 @@ bs_interp_df_coarse[bs_interp_df_coarse==0] = 1e-4
 lct_interp_bs = data.frame(lct_interp_modern, bs_interp_df)
 lct_interp_bs_coarse = data.frame(lct_interp_modern, bs_interp_df_coarse)
 
+# One row per modern cell: land cover, elevation and the twelve monthly albedos (the second
+# table at the coarser albedo resolution).
 write_output(run, lct_interp_bs, path_file(paths, 'calibration_table'))
 write_output(run, lct_interp_bs_coarse, path_file(paths, 'calibration_table_coarse'))
 

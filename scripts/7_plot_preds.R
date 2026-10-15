@@ -431,6 +431,7 @@ for (i in 1:N_cells){
 
 alb_diff_df =  alb_diff_df[which(!is.na(alb_diff_df$lat)),]
 
+# One row per cell, month and pair of consecutive coarse slices.
 write_output(run, alb_diff_df, path_file(paths, 'coarse_differences'))
 
 labels = period_labels(years)
