@@ -35,6 +35,14 @@ repository is branched, committed, merged and backed up. Agent sessions read
   `git add <path>` to `git add -A`.
 - Frozen outputs used to prove a refactor changed nothing live in
   `tests/anchors/`; see the README there for what is anchored and why.
+- Verification (Chris, 2026-10-15): every code change is verified with
+  `tools/verify_change.R` before it is merged, from a separate worktree at the
+  exact commit, never in a checkout a run is reading; the PASS/FAIL report and
+  its spec are committed under `docs/cc/verification/` (README there). Git
+  refuses a merge that changes code without a PASS report for that code (the
+  pre-merge-commit hook; install once per clone with
+  `Rscript tools/check_merge_evidence.R install`). `git merge --no-verify` is a
+  recorded exception, with the reason in the merge message.
 - Everything Claude Code generates that is not a script, a result or a data
   file with its own home (code maps, issue lists, schematics, reports,
   generators) lives under `docs/cc/`, with dated, descriptive file names

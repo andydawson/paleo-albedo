@@ -175,3 +175,18 @@ Against these rules, of the 9 disagreements: Astra matches Chris on the 4 framin
 (C03, C04, C05, C25); PaperTrace on the one-example claim (C22); neither on the methods
 citation (C15: PaperTrace "not addressed", Astra "partly"; Chris "supported"); the other 3
 (C13, C26, C27) are not covered by the rules and are left for the full run.
+
+## Zotero, set up headless (2026-10-15)
+
+Chris works remotely (SSH, no GUI), so Zotero was set up from the command line only:
+`~/.local/share/research-tools/zotero_headless_setup.sh` (safe to rerun) creates the profile
+without a window, turns on the local API, installs Better BibTeX by copying it into the
+profile, starts Zotero on the desktop session's display (`:1`; nobody needs to see it),
+creates the collection `paleo-RF` (Better BibTeX's AUX scan creates a missing collection)
+and an automatic export of it to `writing/references.bib` (not tracked). Helpers in
+`~/.local/share/research-tools/zotero_cli.sh`: `zstart` (start Zotero after a reboot),
+`zadd <DOI>` (add a paper to the collection by DOI; Better BibTeX's AUX scan replaces a
+collection's contents, so `zadd` lists the existing items too), `zkeys` (the collection's
+citation keys). Tested: four references added (MOD44W product, Carroll et al. 2016, Bright
+and O'Halloran 2019, Dalton et al. 2020), all in the export. Zotero 10.0.6, Better BibTeX
+9.0.71. Zotero must be running for the Claude Code Zotero tools and the export.

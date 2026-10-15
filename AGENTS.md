@@ -38,7 +38,24 @@ that includes version control:
 - Version control per `CONTRIBUTING.md`: topic branch off `chris-dev`, one
   atomic change per commit with a why-focused message, merge when finished,
   push at checkpoints, never commit to `legacy` or `main`.
+- Verify with `tools/verify_change.R` (a spec under `docs/cc/verification/`), never with
+  an ad hoc driver; it runs from its own worktree. Never switch branches in a checkout a
+  run is reading; use a worktree for other work.
 - Never edit a script while `Rscript` is executing it (R reads the file
   incrementally; the run is corrupted). Wait for the run to finish.
 - Never remove a `library()` call without a run proving nothing depended on it
   (`gratia` registers `simulate()` for GAMs; `terra` and `sf` set up PROJ).
+
+## Review in proportion to risk (Chris, 2026-10-14)
+
+| Change | Review |
+|---|---|
+| Documentation, comments, local naming | The implementer checks it; an independent check only where useful |
+| Paths, manifests, config plumbing, tools, tests | One independent reviewer (the `change-reviewer` role) plus targeted executable checks |
+| Arithmetic, units, signs, stochastic behaviour, scientific options | Independent reviews by Fable (`science-reviewer`) and Astra (Codex), each given the same code and requirements before seeing the other's view; one reconciliation pass; open scientific questions go to Chris or Andria as questions, not forced consensus |
+| Final integration (end of the migration) | Astra's review of all the migration code, and the full-run gate |
+
+Findings carry file and line, consequence, evidence and a proposed check. Before designing
+anything, one sentence on its benefit to the paper or to Andria's use of the code; drop
+speculative generality early. Verification of every code change: `tools/verify_change.R`
+(see CONTRIBUTING.md).
