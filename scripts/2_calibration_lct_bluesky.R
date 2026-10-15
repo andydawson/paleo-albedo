@@ -84,7 +84,7 @@ names(blue_all_months) = MONTHS
 names(blue_all_months_coarse) = MONTHS
 
 # crop albedo (I think this removes the ocean grid cells? not sure)
-# CM: this crop is not needed (and not doing anything - cropping the raster to a box that is bigger than itself) - line 123 samples the raster at the 2870 land cover cells.
+# CM: this crop is not needed (and not doing anything - cropping the raster to a box that is bigger than itself) - the extract() further down samples the raster at the modern land-cover cells only.
 blue_all_months_coarse = crop(blue_all_months_coarse, ext(pbs_ll))
 
 # some weirdness going on with these figures

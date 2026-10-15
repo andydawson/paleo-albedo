@@ -26,7 +26,8 @@ library(elevatr)
 # every time slice into figures/diagnostics/, and (4) compares the mean and the median of
 # the 200 posterior draws as summaries of land cover: how far apart they are, where the
 # difference concentrates, and whether the medians still sum to one across the three
-# classes (the pipeline uses the mean). Nothing in diagnostic mode changes the outputs.
+# classes (the pipeline uses config.R's analysis$land_cover$reduction, the mean by
+# default). Nothing in diagnostic mode changes the outputs.
 diagnostic = cfg$run$diagnostic
 
 # standard lat long projection
@@ -42,7 +43,7 @@ if (diagnostic) {
   ice_example = head(lct_interp[!is.na(lct_interp$ice) & lct_interp$iter == 1 & lct_interp$ages == 10000,
                                 c('cell_id', 'x', 'y', 'ages', 'LCT', 'value', 'ice')], 3)
   # Mean, median and spread of the 200 draws per cell-slice-class, to compare the two
-  # summaries (the pipeline uses the mean; see diagnostic 4).
+  # summaries (the pipeline uses config.R's choice, the mean by default; see diagnostic 4).
   draw_stats = lct_interp %>%
     group_by(cell_id, ages, LCT) %>%
     dplyr::summarize(mean = mean(value), median = median(value), sd = sd(value), .groups = 'drop')
@@ -125,8 +126,9 @@ if (diagnostic) {
   # ---- 2. Cell-slices absent from the input ----------------------------------------------
   # The product should hold every cell at every slice. Build that full cell x slice grid,
   # mark which combinations the input lacks, and report them by cell and by zone. The zones
-  # are the ones the pipeline cares about: script 8 keeps only 27-74 N, so anything absent
-  # outside that band never reaches the forcing. Question D3 has the interpretation.
+  # are the ones the pipeline cares about: script 8 keeps only the latitudes of config.R
+  # analysis$domain (27-74 N by default), so anything absent outside that band never
+  # reaches the forcing. Question D3 has the interpretation.
   cells = unique(lct_interp_all[, c('x', 'y')])
   slices = sort(unique(lct_interp_all$ages))
   full_grid = merge(cells, data.frame(ages = slices))

@@ -13,7 +13,9 @@
 # predictions are the same (tools/check_calibration_month.R).
 
 CALIBRATION_MODELS = list(
-  # The ladder: each model adds to the one before. Script 5 compares them.
+  # The ladder: from location alone to location, elevation and all three cover fractions.
+  # Models 2 to 5 each add one term; models 6 to 8 replace the separate cover terms with one
+  # joint smooth of the three, in three forms. Scripts 4 and 5 compare them.
   mod1 = list(label = 'model 1: (x,y)',
               rhs = ~ s(x, y, bs = "gp", k = 500)),
   mod2 = list(label = 'model 2: (x,y) + elevation',

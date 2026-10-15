@@ -62,8 +62,8 @@
 #     docs/cc/questions_for_andria_scientific.md. CACK is all-sky and gives
 #     roughly half the HadGEM3 answer.
 #
-# A4. Periods. The seven periods are script 8's own labels_period, bounded by
-#     ages_sub = 50, 500, 2000, 4000, 6000, 8000, 10000, 12000 yr BP.
+# A4. Periods. The seven periods are bounded by the coarse ages of config.R
+#     (analysis$coarse$ages; by default 50, 500, 2000, 4000, 6000, 8000, 10000, 12000 yr BP).
 #     CAVEAT: the oldest age in the data is 11,500 BP, so the bar labelled
 #     "10 - 12 ka" actually covers 10 to 11.5 ka.
 #
@@ -326,8 +326,8 @@ ggsave(path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'), p_sens, wi
 # are feb/may/aug/nov only; binary-flagged ice cells are masked; and the bar is
 # the PLAIN UNWEIGHTED MEAN over cells x months, i.e. a domain mean. See C5.
 d7 = read_input(run, path_file(paths, 'coarse_differences'))
-# Kernel and area per cell-month come from `d`, which has already been trimmed to 27-74 N
-# and to period-complete cells (A4, A10); the join therefore applies the same trim to the
+# Kernel and area per cell-month come from `d`, which has already been trimmed to the
+# latitudes of config.R analysis$domain (27-74 N by default) and to period-complete cells (A4, A10); the join therefore applies the same trim to the
 # recipe, which Andria's April-2024 code did not.
 d7 = inner_join(d7, distinct(d, cell_id, month, rk_hadgem, area), by = c('cell_id','month'))
 d7$facets = sub(' ka$', '', labels_period)[match(d7$year, sort(unique(d7$year)))]
