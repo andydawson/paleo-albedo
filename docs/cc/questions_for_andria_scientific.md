@@ -263,6 +263,12 @@ snow differently. **What we need, in addition:** the code or a description of ho
 monthly raster was built: who made it, mean or median over days and years, month order,
 snow and quality filters, gap filling, how water pixels were treated, and how ERA5 enters.
 
+**Decided 2026-10-15 (Chris):** ask you for any surviving code (or the account where the
+raster was made), and meanwhile design a rebuild from the public MODIS and ERA5 data,
+following published methods, with water removed at the satellite's 500 m scale using
+MOD44W, downloaded and processed on our workstation. Your raster stays as the legacy
+setting and the two are compared. Nothing is built until Chris approves the design.
+
 ### B2d. What the paper claims about past snow
 **Raised 2026-10-15** by Chris ("snow is perhaps the weakest point"), reviewed in Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch.
 **What the code does.** The calibration models have location, elevation and the three cover
@@ -284,6 +290,12 @@ degree-day snow model. (v) Report only snow-free months as the headline.
 **What we need from you.** Which claim the paper makes: land-cover effects under modern
 climate, or a reconstruction of past albedo including changing snow? And can monthly snow
 fields (cover or water equivalent) from the HadCM3 runs be shared?
+
+**Decided 2026-10-15 (Chris, to be reviewed by Andria):** do the simplest analysis first, in
+two steps: (1) a monthly and regional breakdown of where the forcing comes from, from the
+existing outputs; (2) a sensitivity test that shifts snow cover and melt timing a little
+from today's, using snowy and snow-free albedo by cover type. What the paper finally
+claims stays your call.
 
 ### B3. The spatial term cancels through time and may have absorbed the cover effect
 **What the code does.** Every prediction uses the same location and
