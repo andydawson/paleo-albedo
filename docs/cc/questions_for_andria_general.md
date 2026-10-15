@@ -185,3 +185,10 @@ migration branch. Line numbers are for `chris-dev`. Shall we fix them?
   trimmed in script 8, see the scientific file), but should 7a drop them,
   or should the filter and the warning go?
 
+*Added 2026-10-15, from the methods-from-code pilot on the calibration stage:*
+- Script 5 labels each month's panel with the correlation of the fitted mean, but the
+  statistics table reports the correlation of the median of the draws; they differ in April
+  (0.99 against 0.98). Which should the paper quote?
+- Script 5's November "model comparison" computes an AIC table and an analysis of deviance but
+  neither prints nor saves them (lines 348-354); script 4's analysis-of-deviance list (line 70)
+  is likewise computed and discarded. Keep and save them, or remove them?

@@ -259,7 +259,8 @@ window. Clouds and filtering can still drop short snow spells and melt. "Blue-sk
 mix of direct and diffuse light, not snow-free. A new finding: all twelve bands of
 `blue_sky_monthly_2000-2009.tif` are labelled `median` in the file's metadata, while the
 README says mean; the label may be inherited, but a median and a mean treat intermittent
-snow differently. **What we need, in addition:** the code or a description of how the
+snow differently. Nothing in the file confirms the band order either: script 2 assigns
+months by position, January first (methods-from-code pilot, 2026-10-15). **What we need, in addition:** the code or a description of how the
 monthly raster was built: who made it, mean or median over days and years, month order,
 snow and quality filters, gap filling, how water pixels were treated, and how ERA5 enters.
 
@@ -331,8 +332,8 @@ model 8 as the selected model for every month unconditionally.
 
 **What the interp data show.** The hard-coding turns out to encode the
 right answer. Model 8 has the lowest AIC in 11 of 12 months, losing
-narrowly to model 7 in May, and is never the worst. AIC decreases
-monotonically with model complexity in every month:
+narrowly to model 7 in May, and is never the worst. AIC falls from model 1 to
+model 8 in every month, though not at every step:
 
 | | jan | apr | jul | oct | dec |
 |---|---|---|---|---|---|
@@ -342,6 +343,12 @@ monotonically with model complexity in every month:
 This supersedes the worry raised from the non-interp May run, where AIC
 rose with complexity in a way correctly fitted nested models cannot. On
 the interp data the behaviour is orderly.
+
+**Correction 2026-10-15.** An earlier version of this entry said AIC "decreases
+monotonically with model complexity in every month". It does not: in the same table AIC
+rises by a few units at three steps, model 6 to 7 in April (-9500 to -9497), model 7 to 8
+in May (-10202 to -10199) and model 5 to 6 in June (-11796 to -11790). The overall fall from
+model 1 to model 8 holds in every month. Found by the methods-from-code pilot.
 
 **What is left of the question.** A formal one: the models are fitted by
 REML and compared across differing mean structures, which is not a valid
