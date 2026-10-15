@@ -12,7 +12,10 @@ alt  <- suppressMessages(pipeline_paths(cfg, redirected_paths(tmp)))
 # catalogued file of the pipeline is one of them, under exactly the name it had.
 frozen <- sub("^[0-9a-f]+ +", "", readLines("tests/frozen_inputs.md5"))
 cat_files <- catalogue_paths(base)
-missing <- setdiff(cat_files, frozen)
+# Products added to the pipeline since then: the REML fit used for prediction, one file
+# per month, in its own file once the ladder could be fitted by ML (issue I16).
+added_files <- grep("output/calibration/calibration_prediction_fit_", cat_files, value = TRUE, fixed = TRUE)
+missing <- setdiff(cat_files, c(frozen, added_files))
 if (length(missing)) cat("catalogued but not in the frozen inventory:\n ", paste(missing, collapse = "\n  "), "\n")
 
 # The anchors' map from anchor file name to the place the pipeline writes it.
@@ -32,8 +35,10 @@ alt_producers  <- vapply(alt_files, function(p) producer(alt, p), "", USE.NAMES 
 stopifnot(
   length(missing) == 0,
   all(live$path %in% cat_files),
-  # every product family on disk is covered: 192 fits, 12 selected, 5 prediction families
-  sum(grepl("^output/calibration/.*\\.RDS$", cat_files)) == 192,
+  # every product family on disk is covered: 192 fits, 12 selected, 5 prediction families;
+  # plus the 12 prediction fits added in I16
+  length(added_files) == 12,
+  sum(grepl("^output/calibration/.*\\.RDS$", cat_files)) == 192 + 12,
   sum(grepl("^output/prediction/", cat_files)) == 12 * 3 + 2,
 
   # the accessors give today's names exactly

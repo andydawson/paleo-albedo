@@ -22,13 +22,14 @@ for url in $(grep -Eo 'https?://[^[:space:]"'"'"']+' <<<"$command"); do
     || deny "URL not on the registry allowlist: $url"
 done
 
-# Any file written (-o, --output, >, >>) must be under the scratchpad.
+# Any file written (-o, --output, the reference checkers' --out, --report-file and
+# --output-file, >, >>) must be under the scratchpad.
 stripped=$(sed -E 's/[0-9]*>&[0-9]+//g' <<<"$command")
-for target in $(grep -Eo '(-o|--output|>>|>)[[:space:]]*[^[:space:]]+' <<<"$stripped" | sed -E 's/^(-o|--output|>>|>)[[:space:]]*//'); do
+for target in $(grep -Eo '(^|[[:space:]])(-o|--output|--out|--report-file|--output-file|>>|>)[[:space:]]*[^[:space:]]+' <<<"$stripped" | sed -E 's/^[[:space:]]*(-o|--output|--out|--report-file|--output-file|>>|>)[[:space:]]*//'); do
   [[ -n "$scratch" && "$target" == "$scratch"* ]] || deny "writes only under the scratchpad: $target"
 done
 
-allowed='^(curl|wget|zotero-cli[[:space:]]+(--json[[:space:]]+)?(search|s|get|g|read|outline|path|ann|notes|children)|Rscript[[:space:]]+tools/check_references\.R|ls|cat|head|tail|wc|grep|jq|sort|uniq|cut|tr|sed[[:space:]]+-n|awk|sleep|date|echo|printf|md5sum|find|basename|dirname)([[:space:]]|$)'
+allowed='^(curl|wget|zotero-cli[[:space:]]+(--json[[:space:]]+)?(search|s|get|g|read|outline|path|ann|notes|children)|([^[:space:]]*/)?\.local/share/research-tools/citecheck-venv/bin/(academic-refchecker|refchecker-webui|refaudit)|python3[[:space:]]+([^[:space:]]*/)?\.local/share/research-tools/combine_reference_checks\.py|ls|cat|head|tail|wc|grep|jq|sort|uniq|cut|tr|sed[[:space:]]+-n|awk|sleep|date|echo|printf|md5sum|find|basename|dirname)([[:space:]]|$)'
 IFS=$'\n'
 for seg in $(sed -E 's/\|\|/\n/g; s/&&/\n/g; s/;/\n/g; s/\|/\n/g' <<<"$command"); do
   seg=$(sed -E 's/^[[:space:]]+//; s/^([A-Z_]+=[^[:space:]]+[[:space:]]+)*//' <<<"$seg")

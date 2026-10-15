@@ -33,6 +33,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I17 Path readability | #20 | merged 2026-10-14 | 7abb45c |
 | I11 (slim) Script 7a's per-pair arithmetic as a tested function | #12 | merged 2026-10-14 | d772ea3 |
 | I16a Kernel variables; ice-advance method; legacy config | #19 (first part) | merged 2026-10-14 | c1f2d73 |
+| I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | MERGE_SHA |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -804,4 +805,61 @@ with two slices, wrong averages with more), and tests cover each (reviews:
   first wrote into the new run's directory, so its scripts 8 and 9 overwrote the new run's
   forcing outputs (the run manifests showed it). Both were rerun in their own directories;
   script 7a's output was not affected.
+
+## I16b: calibration choices (#19, second part), merged 2026-10-15
+
+**Purpose.** The calibration choices Chris took on 2026-10-14 (to be reviewed by Andria)
+as settings, with the original kept in `configs/legacy_config.R`.
+
+**Changed:**
+- **Comparison by ML** (question B4): `fit_calibration_model()` takes `method`;
+  `analysis$calibration$comparison_method = "ML"` (legacy `"REML"`). Script 4 fits the
+  eight-model ladder by it, prints whether each fit converged, and fits the model used for
+  prediction (`model_id`) by REML into a new file, `calibration_prediction_fit_{month}_{tag}.RDS`.
+  The original refitted model 8 a third time and saved it over the ladder's fit; with an ML
+  ladder the two must differ. Script 5 reads the new file at its three selected-model sites.
+- **Present-day ice caps out of the calibration** (question B8):
+  `analysis$calibration$ice_mask = "centre_in_1ka_polygon"` (legacy `"none"`). Script 2
+  leaves out the modern cells whose centre lies under the 1 ka ice polygons, using the new
+  tested `cells_in_polygons()`, and records them in its manifest. They stay in the
+  prediction domain.
+- **Fraction check** (question B1): `check_fractions()` stops script 1 if any land-cover
+  fraction is not finite, is negative, or a row departs from one by more than 1e-9;
+  otherwise the manifest records the largest departure. A check, not a setting.
+- Tests: the path test names the new product (204 calibration fits); config tests for the
+  two keys; unit tests for both helpers, including the 48 cells found on 2026-09-25.
+
+**Outputs changed (new configuration).**
+- Calibration table: 2,812 rows instead of 2,860; the 48 left out average 0.36 July albedo
+  against 0.13 for the rest; every kept row unchanged.
+- January AIC ladder (ML, ice caps out), against the anchored REML ladder:
+
+  | Model | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+  |---|---|---|---|---|---|---|---|---|
+  | REML, all cells (anchor) | -6583 | -6606 | -6606 | -6626 | -6631 | -6641 | -6656 | **-6669** |
+  | ML, ice caps out | -6566 | -6578 | -6574 | -6574 | -6583 | -6598 | **-6615** | -6608 |
+
+  Under ML, model 7 (a Gaussian-process smooth of the three fractions) has the lower AIC in
+  January, by 7; under REML model 8 did. A January ML ladder on the full table (ice caps kept,
+  `.rundirs/i16b_mlonly`) separates the causes: model 7 -6646, model 8 -6633. So the switch
+  to ML is what makes model 7 come out ahead (by 13); leaving out the ice caps narrows the
+  gap to 7. Model 8 stays the configured model; the choice is Andria's (question B4).
+
+**Verification** (`.rundirs/i16b_{legacy,new,mlonly}`; and the verification tool's report
+`docs/cc/verification/2026-10-15_i16b-legacy-seed1_report.md`, PASS: the seed-1 check below,
+rerun from its own worktree at 5deabac):
+- **Legacy configuration:** script 1 writes both land-cover tables, and script 2 both
+  calibration tables, byte-identical to the frozen ones. Scripts 5 and 6 with seed 1, the
+  prediction fit seeded from the frozen model 8 (what script 5 read before): all 26 files
+  of the seed-1 anchor match byte for byte (script 5: 11 min; script 6: 19 min).
+- **Registry REML refit**, January, through `tools/check_calibration_month.R` with
+  `fit_calibration_model(method = "REML")`: predictions within 1e-6 of the stored model,
+  AIC -6669 as anchored (21 min).
+- **ML smoke test** (model 1, January): ML and REML both converge (AIC -6582 and -6583).
+- **January pilot of script 4, new configuration** (150 min): all 9 fits converged; AIC
+  table above.
+- **A slip, without consequence:** the main checkout was switched to another branch for a
+  few seconds while script 4 ran from it. The running R kept reading the file it had opened
+  (git replaces files rather than editing them), as `/proc` confirmed; the runs not yet
+  started used the restored branch.
 

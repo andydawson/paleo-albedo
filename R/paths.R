@@ -65,6 +65,7 @@ PATH_CATALOGUE = data.frame(stringsAsFactors = FALSE, rbind(
   c('calibration_spatial',      'output/calibration/calibration_mod_{model}_{month}.RDS',             'product', '4_calibration_model'),
   c('calibration_spatial_elev_cover', 'output/calibration/calibration_mod_spatial_elev_cover{month}.RDS', 'product', '4_calibration_model'),
   c('aic_table',                'output/calibration/AIC_table.csv',                                   'product', '4_calibration_model'),
+  c('calibration_prediction_fit', 'output/calibration/calibration_prediction_fit_{month}_{tag}.RDS',  'product', '4_calibration_model'),
   c('calibration_selected',     'output/calibration/calibration_mod_interp_selected_{month}_{tag}.RDS', 'product', '5_calibration_eval'),
   c('calibration_stats',        'output/calibration/calibration_model_stats.csv',                     'product', '5_calibration_eval'),
   c('prediction_point_month',   'output/prediction/paleo_interp_predict_gam_{month}_{tag}.RDS',       'product', '6_prediction_model'),

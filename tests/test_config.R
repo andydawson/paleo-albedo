@@ -122,6 +122,13 @@ stopifnot(
   rejects("difference_method has 'fancy'", 'difference_method = "endpoint",', 'difference_method = "fancy",'),
   identical(load_config("configs/legacy_config.R")$analysis$kernels$cam5_variable, "FSNSC"),
   identical(load_config("configs/legacy_config.R")$analysis$draws$seed, 1),
+  # the ladder's comparison method (issue I16): ML, the original REML in the legacy file
+  identical(cfg$analysis$calibration$comparison_method, "ML"),
+  identical(load_config("configs/legacy_config.R")$analysis$calibration$comparison_method, "REML"),
+  rejects("comparison_method has 'GCV'", 'comparison_method = "ML"', 'comparison_method = "GCV"'),
+  identical(cfg$analysis$calibration$ice_mask, "centre_in_1ka_polygon"),
+  identical(load_config("configs/legacy_config.R")$analysis$calibration$ice_mask, "none"),
+  rejects("ice_mask has 'all'", 'ice_mask = "centre_in_1ka_polygon"', 'ice_mask = "all"'),
   # the stale-input override (issue I05): off by default, TRUE or FALSE only
   identical(cfg$run$allow_stale, FALSE),
   # script 1's diagnostic switch (issue I06)

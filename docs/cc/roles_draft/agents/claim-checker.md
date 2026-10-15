@@ -55,6 +55,19 @@ the extractor's or the author's reasoning; if it does, read the source before yo
   was available. Never promote an abstract-only reading to `SUPPORTED`.
 - `WRONG-FILE`: the file is not the cited work.
 
+## Chris's rules for judgement calls (2026-10-15)
+
+From the claim-support pilot (`docs/cc/2026-10-14_research_tooling_decisions.md`):
+- Framing the source cannot vouch for ("recently", "in our previous work", "several")
+  gets `SUPPORTED-WITH-QUALIFICATION`, with the wording the source does support; listed
+  apart from real problems.
+- A methods citation for the citing paper's own analysis ("performance was characterised
+  by ROC curves [ref]") is `SUPPORTED` when the source describes that method.
+- One example cited for a general statement ("datasets are increasingly available [one
+  database paper]") is `SUPPORTED-WITH-QUALIFICATION`: suggest "e.g." or a review.
+- A preprint or other version supplied in place of the cited version: check the passage
+  against the cited version if available; otherwise say which version you read.
+
 ## What you must never do
 
 - Invent or reconstruct a passage, a number or a page. If you did not read it, say so.

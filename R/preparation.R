@@ -47,3 +47,35 @@ close_fractions = function(wide, classes = c('ET', 'OL', 'ST')) {
   wide[, classes] = fractions / total
   wide
 }
+
+# Which points lie inside any of the polygons: TRUE or FALSE for each (x, y), in longitude and
+# latitude (WGS84). Used by script 2 to find the modern calibration cells whose centre is
+# under the 1 ka ice polygons: present-day ice caps, which the interpolation gave vegetation
+# fractions (question B8, issue I16). polygons is an sp or sf object, or a terra SpatVector;
+# the glacier shapes carry no coordinate system, so one without is taken to be WGS84.
+cells_in_polygons = function(x, y, polygons) {
+  if (!inherits(polygons, 'SpatVector')) polygons = terra::vect(polygons)
+  if (terra::crs(polygons) == '') terra::crs(polygons) = 'EPSG:4326'
+  points = terra::vect(cbind(x, y), crs = 'EPSG:4326')
+  inside = terra::relate(points, polygons, 'intersects')   # one row per point, one column per polygon
+  rowSums(inside) > 0
+}
+
+# Check that the land-cover fractions are usable as compositions: finite, not negative, and
+# ET + OL + ST = 1 in every cell and slice (within tolerance). Stops with the offending count
+# if not; otherwise returns a summary for the run manifest. Why: the calibration smooth
+# s(OL, ET, ST) is fitted on the sheet where the three sum to one and is unconstrained off
+# it, so a row off the sheet would be predicted by extrapolation (question B1; Chris chose
+# a check rather than a correction, 2026-10-14; issue I16).
+check_fractions = function(wide, tolerance = 1e-9) {
+  fractions = as.matrix(wide[, c('ET', 'OL', 'ST')])
+  off_sheet = abs(rowSums(fractions) - 1)
+  problems = c(not_finite = sum(!is.finite(fractions)),
+               negative   = sum(fractions < 0, na.rm = TRUE),
+               off_sheet  = sum(off_sheet > tolerance, na.rm = TRUE))
+  if (any(problems > 0)) {
+    stop('check_fractions: land-cover fractions unusable (', paste(names(problems), problems, sep = ' = ', collapse = ', '),
+         ' of ', nrow(fractions), ' rows; tolerance ', tolerance, ')')
+  }
+  list(rows = nrow(fractions), largest_departure_from_one = max(off_sheet), tolerance = tolerance)
+}

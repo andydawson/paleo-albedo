@@ -52,8 +52,8 @@ for (n in 1:length(months)){
 
   print(month)
 
-  # The selected model (model_id above), saved for script 6.
-  cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
+  # The selected model (model_id above), fitted by REML in script 4, saved for script 6.
+  cal_interp_model = read_input(run, path_file(paths, 'calibration_prediction_fit', month = month))
   summary(cal_interp_model)
 
   write_output(run, cal_interp_model, path_file(paths, 'calibration_selected', month = month))
@@ -122,8 +122,8 @@ for (n in 1:length(months)){
 
   print(month)
 
-  # The selected model (model_id above), saved for script 6.
-  cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
+  # The selected model (model_id above), fitted by REML in script 4, saved for script 6.
+  cal_interp_model = read_input(run, path_file(paths, 'calibration_prediction_fit', month = month))
   summary(cal_interp_model)
 
   write_output(run, cal_interp_model, path_file(paths, 'calibration_selected', month = month))
@@ -360,8 +360,8 @@ anova_gam_interp = anova.gam(mod1_interp, mod2_interp, mod3_interp, mod4_interp,
                              test = "Chisq")
 anova_gam_interp
 
-# The selected model (model_id above), saved again for November.
-cal_interp_model = read_input(run, path_calibration_model(paths, model_id, month))
+# The selected model (model_id above), fitted by REML in script 4, saved again for November.
+cal_interp_model = read_input(run, path_file(paths, 'calibration_prediction_fit', month = month))
 summary(cal_interp_model)
 
 write_output(run, cal_interp_model, path_file(paths, 'calibration_selected', month = month))
