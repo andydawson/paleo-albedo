@@ -51,6 +51,12 @@ centre or a bin edge?
   human-verification check, so it needs a manual download. Do you still
   have the file? Also: did you preprocess any of the three, or use them
   as downloaded? And which CACK band is band 3?
+- *Added 2026-10-15, from Astra's snow and water review:* the code (or the Earth Engine
+  script) that built `data/blue_sky_monthly_2000-2009.tif` from MCD43A3. Its band labels
+  say `median` where the README says mean, and how it treated snow, quality flags and
+  water decides whether the land-only albedo can be done exactly. See B2c and B5.
+- *Added 2026-10-15:* monthly snow fields (cover or water equivalent) from the Holocene
+  HadCM3 simulations of Hopcroft et al. (2026), if they can be shared. See B2d.
 
 ### 3a. For Chris: downloading the MODIS water mask (MOD44W) for the land-mean albedo (2026-10-15)
 

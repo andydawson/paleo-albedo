@@ -231,6 +231,15 @@ is. Worth fixing before the number is quoted.
 
 **Considered 2026-10-14 (Chris), not decided:** weighting the annual forcing by sunlight was dropped, because the monthly kernels already include sunlight and it would count it twice. How to treat the extrapolated winter cells remains your call.
 
+**Added 2026-10-15 (Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch).** Two refinements. Gaps south of the Arctic Circle cannot all be
+polar night: a low sun, the retrieval's thresholds and cloud filtering also remove values,
+and the product's quality flags would show which. And a large winter albedo error need not
+give a large forcing error, because little sunlight arrives then; snow lingering into
+spring (March to May in the boreal zone, May and June at northern and mountain margins)
+matters more. We checked one consequence in the September run: every cell has all 12
+months, dark months enter as zero forcing, not as missing, so the annual mean in script 9
+always divides by 12.
+
 ### B2c. How snow is treated in the satellite albedo
 **Raised 2026-10-15** while checking Oleson et al. (2003, GRL, doi:10.1029/2002GL016749), a
 reference for the land-only albedo. They note that the MODIS albedo product of their time
@@ -243,6 +252,38 @@ the cold-season part of the calibration, and so the forcing in those months.
 **What we need from you.** Does the blue-sky albedo product keep snow-covered retrievals
 (and in what proportion), or lean towards snow-free as described? Was this considered when
 it was built?
+
+**Added 2026-10-15 (Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch).** Oleson's warning should not be carried over unchanged:
+from Collection 6 the snow state is that of the target day, not the majority of the 16-day
+window. Clouds and filtering can still drop short snow spells and melt. "Blue-sky" means the
+mix of direct and diffuse light, not snow-free. A new finding: all twelve bands of
+`blue_sky_monthly_2000-2009.tif` are labelled `median` in the file's metadata, while the
+README says mean; the label may be inherited, but a median and a mean treat intermittent
+snow differently. **What we need, in addition:** the code or a description of how the
+monthly raster was built: who made it, mean or median over days and years, month order,
+snow and quality filters, gap filling, how water pixels were treated, and how ERA5 enters.
+
+### B2d. What the paper claims about past snow
+**Raised 2026-10-15** by Chris ("snow is perhaps the weakest point"), reviewed in Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch.
+**What the code does.** The calibration models have location, elevation and the three cover
+fractions, and no snow or climate term. Prediction applies today's relation between cover
+and albedo to past cover. So past snow seasons are in effect today's, and the snow-masking
+effect of forest is today's.
+**Why it matters.** Snow makes open ground bright and forest hides it, so the albedo gap
+between forest and open land grows with snow. A snowier or less snowy past would change the
+forcing of the same cover change; the sign of the overall bias is unknown. Near the
+retreating ice sheets, land newly exposed is given today's snow, which may be too little.
+**Options** (Astra's ranking, cheapest first). (i) State the result as land-cover effects
+under modern climatic relationships, with monthly and regional plots of where the forcing
+comes from, and stress tests that shift snow fraction and melt timing (for example by 0.1
+and 0.2), using snow-free and snowy albedo look-up maps (Gao et al. 2014); widen the work
+only if the conclusions change. (ii) Separate snowy and snow-free calibrations. (iii) Snow
+from paleo climate simulations: PMIP 6 ka, or transient runs (TraCE; HadCM3 as in Hopcroft
+et al. 2026, doi:10.1029/2025GL118518, on which you are a coauthor; iTRACE). (iv) A
+degree-day snow model. (v) Report only snow-free months as the headline.
+**What we need from you.** Which claim the paper makes: land-cover effects under modern
+climate, or a reconstruction of past albedo including changing snow? And can monthly snow
+fields (cover or water equivalent) from the HadCM3 runs be shared?
 
 ### B3. The spatial term cancels through time and may have absorbed the cover effect
 **What the code does.** Every prediction uses the same location and
@@ -261,6 +302,12 @@ Holocene forcing understated. The "spatial effects experiment" in scripts
 **What we need from you.** Was this examined, for example by comparing
 the cover effect with and without the spatial term, or by spatially
 blocked cross-validation? If not, would you like us to?
+
+**Correction added 2026-10-15 (Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch).** The location and elevation terms cancel on the
+logit scale only. Differences are taken after converting back to albedo, which is
+nonlinear, so they do not cancel exactly. And the spatial term could make the cover effect
+too small or too large; it is not necessarily biased towards zero. Spatially blocked
+cross-validation or a fit without the spatial term would show which.
 
 ### B4. Model selection: model 8 is fixed by hand, but the data support it
 **Updated 2026-09-20 with the interp AIC table**, which script 4 produced
@@ -372,6 +419,15 @@ fitting to the cell average instead? If the two calibrations differ, the
 cell average is the like-for-like match to the 1-degree predictors.
 
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Calibrate on the mean albedo over the land part of each 1-degree cell, with inland water (lakes, Hudson Bay) masked with MODIS MOD44W, instead of the centre pixel. **Still open:** the mask's version and year (v6.1, 2015 annual layer proposed), the DEM product and resolution for B9 (about 1 km via elevatr proposed), and whether a cell-month needs a minimum observed land coverage to enter the calibration (the original code has none; 50% was suggested, not decided).
+
+**Added 2026-10-15 (Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch).** A 250 m water mask cannot remove water already averaged into a
+0.25-degree albedo pixel: half land at 0.20 and half water at 0.05 gives 0.125, and masking
+afterwards still leaves 0.125. Weighting the 0.25-degree pixels by their land fraction is
+therefore an approximation that lowers, but does not remove, the influence of water. The
+exact route is to screen water at the satellite's native scale (500 m) before averaging,
+which needs the code that built the raster (B2c). **What we need from you:** do the
+0.25-degree values already average land retrievals only? Frozen lakes would stay excluded
+in winter, so lake ice and snow on lakes are outside the analysis; a stated limitation.
 
 ### B6. Albedo values of exactly zero are set to 0.0001
 *Checked 2026-09-19: no cell-month in the interp calibration table hits
@@ -832,6 +888,13 @@ land can produce, by its water share. Weighting by land area would be more exact
 ice covered places that are water today (Hudson Bay, the Great Lakes), which needs an
 explicit treatment of ice-to-water transitions. For now the whole-cell weighting is kept
 (Chris, 2026-10-14). **Should coastal and lake cells count only their land area?**
+
+**Added 2026-10-15 (Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch).** With land-only albedo, a land albedo change should be applied
+to land area, or converted to a whole-cell change by the land fraction, and only once.
+Two facts would settle how: what the `cell_area` field in the land-cover posterior means
+(the pipeline drops it), and whether the Dalton ice fraction is a share of the whole cell
+or of its land. Vegetated land, ice and water should form one partition of each cell
+without overlap. A modern mask also cannot show past coastlines or proglacial lakes.
 
 ## D. Land cover
 
