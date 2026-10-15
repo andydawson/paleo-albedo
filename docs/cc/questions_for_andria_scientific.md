@@ -366,6 +366,13 @@ comparison setting as the ladder (ML in the current configuration, REML in the l
 for the same reason: REML scores are not comparable between models with different fixed
 terms (mgcv 1.9.4 documentation, `gam.selection` and `AIC.gam`; Wood 2017, doi:10.1201/9781315370279;
 Zuur et al. 2009, doi:10.1007/978-0-387-87458-6).
+**Correction 2026-10-16 (Claude), decision reopened:** the question put to Chris said the
+spatial experiments are compared by AIC. They are not, in the original code or now: no AIC is
+computed for them anywhere. Script 5 only draws simulated predictions from them for the
+predicted-against-observed figures and error histograms (the off-pipeline
+`6_prediction_model_spatial_eval.R` also predicts from them). The reason given for ML does
+not apply, so the change (branch spatial-ml) is held unmerged and the question goes back to
+Chris.
 
 **What is left of the question.** A formal one: the models are fitted by
 REML and compared across differing mean structures, which is not a valid
