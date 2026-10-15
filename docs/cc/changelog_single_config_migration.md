@@ -36,7 +36,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
 | I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
-| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3, 1, 2, 5, 6 merged 2026-10-15 | |
+| I15c Readability: scripts, one branch per script | #18 | scripts merged 2026-10-15; two renames wait for I16c | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -999,4 +999,29 @@ new, and its outputs compared.
 - Verified with seed 1 on the code as merged (`docs/cc/verification/2026-10-15_i15c-script6_report.md`,
   PASS): all 25 script-6 files of the seed-1 anchor and the combined point predictions of the
   all-months anchor byte-identical.
+
+### Scripts 7 and 7a (merged 2026-10-15)
+- Script 7: removed, none of it used: the first `breaks`/`labels` (redefined identically before
+  any use), the bin-id labels and four colour scales built from them, the first `values` and
+  the first diverging fill scale (overwritten on the next lines), both diverging colour
+  scales, `ll_proj` and `lims`. `labels` (then the period labels) and the duplicate
+  `labels_period` are one name, `coarse_period_labels`; `breaks` is `albedo_bin_breaks`;
+  `thresh`/`values`, which set the diverging colour scale, are `diff_colour_limit`/
+  `diff_colour_positions`; the unused read of the point predictions is `point_predictions`
+  (the read stays). The merge that fills each cell's slices names its key, `by = 'year'`, the
+  only shared column.
+- Script 7a: renamed `x` (a layer name) to `layer_name`; `idx_ice`, used for two different
+  things, to `ice_layer_index` and `ice_rows` (and `idx_veg` to `vegetation_rows`); `spdf_2`/
+  `sf_data` to `grid_polygons_sp`/`_sf`; `foo2` to `higher_young_ice_fraction`.
+  `ice_status_veg` keeps its name: a diagnostic histogram takes its title from it. Removed,
+  52 lines whose results were never used: a coverage check that only printed counts; the
+  albedo, sd and cv bins and the facets column (the saved table takes named columns; the pair
+  arithmetic reads none of them); the label tables and bin breaks that fed only them;
+  `N_times`, `ll_proj`, the `alb_prod` line. The month factor stays.
+- Verified, old code and new code side by side under the legacy configuration
+  (`docs/cc/verification/2026-10-15_i15c-scripts7-{before,after}_report.md`, both PASS; script 7
+  73 min, 7a 53 min): all five tail-anchor tables byte-identical to the anchor and to the old
+  code's; all 17 figure files identical (PDF apart from the embedded dates).
+- **Still to do in I15c:** the renames in scripts 1 and 2 that wait for I16c (inventory rows 2
+  and 4), and the scripts outside the pipeline, which wait for Andria.
 
