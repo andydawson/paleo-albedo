@@ -21,6 +21,7 @@ and claim checkers and memory tidying), `2026-10-14_standing_roles_design_fable.
 | 4 | **Instruction and memory tidying**: adopt all three: Claude Code's built-in `/doctor prompt-audit` (run read-only: one user reported it editing without approval in auto mode); Anthropic's official `claude-md-management` plugin; our own approve-first skill `tidy-instructions-and-memory` (proposes, never deletes or edits without approval; also covers the auto-memory directory, which the built-in audit does not). | Decided |
 | 5 | **Standing roles** (Fable's seven): install **locally, not tracked in git** (this repository has no `.claude/` directory today). Chris will be asked again shortly before anything is installed. | Leaning; ask again |
 | 6 | Zotero MCP and paper-search MCP: the scope of `claude mcp add` (user or project) is still to be asked. Reuse across projects argues for user scope. | Open |
+| 7 | **Argument structure and methods from code** (requested 2026-10-14 with the writing tools; missed in this table until 2026-10-15): draft and extract a paper's argument at every level; generate checked methods bullets from code, configs and run records. Astra's survey and design: `docs/cc/2026-10-15_argument_structure_and_methods_tools_codex_gpt6astra.md`. | Open: Chris to decide |
 
 Rules that go with decisions 1 and 2 (from Astra's survey):
 - "Not found", "API unavailable", "skipped" and "DOI resolves" are never treated as verified.
