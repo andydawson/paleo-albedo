@@ -1025,3 +1025,22 @@ new, and its outputs compared.
 - **Still to do in I15c:** the renames in scripts 1 and 2 that wait for I16c (inventory rows 2
   and 4), and the scripts outside the pipeline, which wait for Andria.
 
+
+## Simplicity review follow-ups (Astra, 2026-10-15), tooling and documentation
+
+Chris asked Astra (maximum effort) whether the codebase was becoming over-engineered
+(`docs/cc/2026-10-15_simplicity_review_codex_gpt6astra.md`). The numbered pipeline is much
+shorter than the original; Chris approved its five "do now" items.
+
+- **Entry documentation** (merged 96e7b67): README and CONTRIBUTING now match the code
+  (layout, months setting, a portable way to run a script, run order, the superseded
+  wrapper plan marked). Documentation only.
+- **Anchor checks** (merged 8611e76): `tools/check_anchors.R` returns one table of results
+  (MATCH, DIFFER, NOT PRODUCED, SEEDED, NO MAPPING) and `anchors_ok()` is the single pass
+  rule, used by the command line (default) and by `tools/verify_change.R` (`require_all`),
+  instead of the tool parsing printed lines. Change-reviewer: approve with changes, made.
+- **Anchor guard** (this merge): the default rule also fails when no file matched, after a
+  renaming slip made a verification check an empty run folder and pass vacuously.
+  Change-reviewer: approve with changes, made. Verified PASS (`anchor-guard-2`).
+- Still in progress: redundant reads and writes (scripts 5, 7, 8), the land-mean elevation
+  delivery and moving script 1's network elevation lookup into a preparation script.

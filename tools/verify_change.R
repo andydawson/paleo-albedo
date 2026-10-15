@@ -186,9 +186,8 @@ check_record = function(worktree, run_dir, script, since) {
 check_anchor = function(worktree, run_dir, anchor) {
   env = new.env(); sys.source(file.path(worktree, 'tools/check_anchors.R'), envir = env)
   old = setwd(worktree); on.exit(setwd(old))
-  lines = utils::capture.output(env$check_anchors(anchor, run_dir))
-  status = sub('^\\S+\\s+', '', lines)
-  list(lines = lines, ok = length(lines) > 0 && all(status == 'MATCH'))
+  lines = utils::capture.output(results <- env$check_anchors(anchor, run_dir))
+  list(lines = lines, ok = env$anchors_ok(results, require_all = TRUE))
 }
 
 run_check = function(worktree, spec, command, log) {
