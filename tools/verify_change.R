@@ -117,30 +117,41 @@ write_run_config = function(worktree, spec, run_dir) {
   file.path(run_dir, 'config_used.R')
 }
 
-# Copy baseline products (by catalogue id) and further files into the run folder.
-seed_run = function(worktree, spec, run_dir, config_file) {
-  if (!length(spec$seed) && !length(spec$copy)) return(character())
-  old = setwd(worktree); on.exit(setwd(old))
+# The baseline files of some catalogue ids (every month and model id a template takes), as
+# paths relative to the checkout, and the path setups for copying them into a run folder.
+catalogue_files = function(checkout, config_file, ids, run_dir = tempfile()) {
+  old = setwd(checkout); on.exit(setwd(old))
   env = new.env()
   sys.source('R/config.R', envir = env); sys.source('R/paths.R', envir = env)
   cfg = env$load_config(config_file)
   base = suppressMessages(env$pipeline_paths(cfg, env$baseline_paths()))
   run  = suppressMessages(env$pipeline_paths(cfg, env$redirected_paths(run_dir)))
-  files = unlist(lapply(spec$seed, function(id) {
+  files = unlist(lapply(ids, function(id) {
     t = env$PATH_CATALOGUE[id, 'template']
     if (is.na(t)) stop('verify_change: no catalogue id ', id)
-    months = if (grepl('{month}', t, fixed = TRUE)) env$MONTHS else list(NULL)
+    # MONTHS comes from R/calendar.R, which R/paths.R sources into the global environment.
+    months = if (grepl('{month}', t, fixed = TRUE)) get('MONTHS', envir = env) else list(NULL)
     models = if (grepl('{model}', t, fixed = TRUE)) env$TEMPLATE_MODELS[[id]] else list(NULL)
-    unlist(lapply(months, function(m) lapply(models, function(k) env$path_file(base, id, month = m, model = k))))
+    files = unlist(lapply(months, function(m) lapply(models, function(k) env$path_file(base, id, month = m, model = k))))
+    if (!length(files)) stop('verify_change: catalogue id ', id, ' named no files')
+    files
   }))
-  if (length(files)) env$seed_run_dir(run, files)
+  list(files = files, run = run, seed_run_dir = env$seed_run_dir)
+}
+
+# Copy baseline products (by catalogue id) and further files into the run folder.
+seed_run = function(worktree, spec, run_dir, config_file) {
+  if (!length(spec$seed) && !length(spec$copy)) return(character())
+  found = catalogue_files(worktree, config_file, spec$seed, run_dir)
+  old = setwd(worktree); on.exit(setwd(old))
+  if (length(found$files)) found$seed_run_dir(found$run, found$files)
   for (pair in spec$copy) {
     target = file.path(run_dir, pair[2])
     dir.create(dirname(target), recursive = TRUE, showWarnings = FALSE)
     if (!file.copy(pair[1], target, overwrite = TRUE)) stop('verify_change: could not copy ', pair[1])
     cat(pair[2], '\n', file = file.path(run_dir, 'SEEDED.txt'), append = TRUE)
   }
-  c(files, vapply(spec$copy, `[`, '', 1))
+  c(found$files, vapply(spec$copy, `[`, '', 1))
 }
 
 # Run one R script in the worktree; its output goes to a log in the run folder.

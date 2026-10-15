@@ -87,4 +87,10 @@ writeLines('changed', file.path(fixture, 'data/frozen.txt'))
 r = run('frozen_changed', 'scripts/good.R')
 stopifnot(r$verdict == 'FAIL', has(r, 'frozen inputs changed'))
 
+# The products named by catalogue id, on the real catalogue: every month and model id of a
+# template (a bug once expanded the per-month ones to nothing).
+found = catalogue_files(repo_root, 'config.R', c('calibration_ladder', 'calibration_spatial', 'calibration_table'))
+stopifnot(length(found$files) == 12 * 8 + 12 * 6 + 1,
+          inherits(try(catalogue_files(repo_root, 'config.R', 'no_such_id'), silent = TRUE), 'try-error'))
+
 cat('test_verify_change: all tests passed\n')
