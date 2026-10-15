@@ -45,6 +45,10 @@ alb_interp_diff_full = read_input(run, path_file(paths, 'albedo_differences'))
 
 alb_diff = alb_interp_diff_full
 
+# Where each cell is found on the kernel grids. The kernels use longitude 0 to 360, so a
+# western longitude (all the cells are west of Greenwich) becomes 360 minus its absolute
+# value. CACK is read without geographic coordinates: once turned the right way round
+# (t(flip()) below) its 180 x 360 grid is indexed by that longitude and by latitude + 90.
 alb_diff$long360 = 180 + 180 - abs(alb_diff$long)
 alb_diff$lat180 = alb_diff$lat + 90
 
@@ -102,6 +106,7 @@ for (month in months){
                      band=month_number)
   }
 
+  # The CACK array comes in transposed and upside down relative to the map.
   rk_cack =  t(flip((rk_cack)))
 
   rk_cack_df = as.data.frame(rk_cack, xy=TRUE)
@@ -116,6 +121,12 @@ for (month in months){
 alb_diff = alb_diff[which(alb_diff$lat>cfg$analysis$domain$lat_min),]
 alb_diff = alb_diff[which(alb_diff$lat<cfg$analysis$domain$lat_max),]
 
+# Forcing (W/m2, per cell and month) = albedo change x kernel. The albedo changes are the
+# younger slice minus the older (R/differences.R), as fractions (0 to 1). HadGEM3 and CAM5
+# kernels are in W/m2 per 1% albedo and stored negative (brighter surface, less absorbed
+# sunlight), hence x 100; CACK is in W/m2 per unit albedo and stored positive, hence the
+# minus sign and no factor of 100. A brighter surface therefore gives a negative forcing
+# with every kernel (question C3).
 alb_diff$rf_hadgem_veg_thresh = alb_diff$alb_diff_veg_thresh*100 * alb_diff$rk_hadgem
 alb_diff$rf_hadgem_ice_thresh = alb_diff$alb_diff_ice_thresh*100 * alb_diff$rk_hadgem
 alb_diff$rf_hadgem_icesc_thresh = alb_diff$alb_diff_icesc_thresh*100 * alb_diff$rk_hadgem

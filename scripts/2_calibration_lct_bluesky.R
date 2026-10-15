@@ -156,6 +156,8 @@ for(i in 1:length(months)) {
 
 }
 
+# The calibration models (script 4) use a beta distribution, defined only strictly between
+# 0 and 1, so an albedo of exactly zero is set to a small positive value.
 bs_interp_df[bs_interp_df==0] = 1e-4
 bs_interp_df_coarse[bs_interp_df_coarse==0] = 1e-4
 
