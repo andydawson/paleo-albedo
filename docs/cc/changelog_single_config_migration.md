@@ -1044,3 +1044,42 @@ shorter than the original; Chris approved its five "do now" items.
   Change-reviewer: approve with changes, made. Verified PASS (`anchor-guard-2`).
 - Still in progress: redundant reads and writes (scripts 5, 7, 8), the land-mean elevation
   delivery and moving script 1's network elevation lookup into a preparation script.
+
+## I16c (first part): land-mean elevation, merged 2026-10-15
+
+**Decision** (Chris, 2026-10-14; method amended twice on 2026-10-15; question B9): the elevation
+beside each cell's land-cover fractions is the mean over the cell's land and lake area rather
+than the single point at its centre, which for coastal cells could be sea floor (minimum -28 m).
+
+**Published basis.** New et al. (2002, Climate Research 21:1-25, doi:10.3354/cr021001, p. 7)
+average their elevation model's own land points per cell; ISLSCP II HYDRO1k (Verdin 2011,
+doi:10.3334/ORNLDAAC/1007) averages "the non-ocean pixels". Neither removes lakes, so lakes stay.
+Literature check: `docs/cc/2026-10-15_land_mean_elevation_precedents.md`.
+
+**What changed.**
+- `tools/prepare_land_elevation.R` (new, stand-alone, run once): GMTED2010 30-arc-second mean
+  elevation (Danielson & Gesch 2011, doi:10.3133/ofr20111073), the sea being GMTED's own 0 m
+  pixels; area-weighted mean per 1-degree cell; writes `data/elev_land_mean_cells.csv`
+  (committed). 0.2 minutes.
+- `config.R` `analysis$elevation$method`: "land_mean" (current) or "centre_point" (legacy, the
+  original cached AWS lookup, unchanged); schema, path catalogue, script 1, README, path test.
+
+**How the method got there.** A first version took the sea from the MOD44W water mask's ocean
+class. Both independent reviews (Fable, Astra) found that class starts about 1 km offshore, so
+the coastal strip of sea counted as land at 0 m, and that it labels Nettilling Lake as ocean;
+Astra also found the coverage guard could not see gaps. Chris chose the elevation model's own
+sea. In the reconciliation round Fable judged the remaining inlet error acceptable; Astra
+rejected it and proposed the GSHHG shoreline database; Chris chose to state it.
+
+**Limitations (stated in the tool).** Four cells 31-179 m low where GMTED carries land heights
+over sea inlets (eastern Baffin Island twice, Wager Bay, Prince William Sound), 14 Arctic cells
+3-13 m low; land at exactly 0 m treated as sea (at most about 7% of a cell); coastal pixels that
+are part sea hold the mean of land and 0 m.
+
+**Effect.** Against the centre point: correlation 0.96; mountain cells change most (high
+Rockies 3,492 to 3,018 m); flat country barely (Kansas 439 to 433 m); the eight sub-sea-level
+centre points become land elevations.
+
+**Verification.** Legacy configuration: script 1 matches the anchors (both land-cover tables
+MATCH), path and config tests pass. Current configuration: only the elevation column changes.
+Reports `2026-10-15_i16c-elevation-{legacy,current}-4`.
