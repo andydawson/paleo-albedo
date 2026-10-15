@@ -63,27 +63,38 @@ run_record(run, 'land_cover_fractions', check_fractions(lct_interp_wide))
 
 locations_interp = lct_interp_wide[,c('x', 'y')]
 
-# Elevation at each cell centre, cached. The AWS terrain service is queried only when
-# data/elev_interp_cells.RDS is absent; the file holds one row per distinct cell (x, y,
-# elev) and is committed, so a fresh clone needs no network for this step. Delete the
-# file to force a fresh lookup. The lookup is made once per cell rather than once per
-# cell-slice, which returns the same values as the original per-row query.
-elev_file = path_file(paths, 'elevation_cache')
-if (file.exists(elev_file)) {
-  elev_lookup = read_input(run, elev_file)
+# Elevation of each cell (config.R analysis$elevation$method, question B9).
+# "land_mean": the GMTED2010 mean over the cell's non-ocean area, a table prepared once by
+# tools/prepare_land_elevation.R (committed).
+# "centre_point" (the original): the elevation at each cell centre, cached. The AWS terrain
+# service is queried only when data/elev_interp_cells.RDS is absent; the file holds one row
+# per distinct cell (x, y, elev) and is committed, so a fresh clone needs no network for
+# this step. Delete the file to force a fresh lookup. The lookup is made once per cell
+# rather than once per cell-slice, which returns the same values as the original per-row
+# query.
+if (cfg$analysis$elevation$method == 'land_mean') {
+  elev_lookup = read_input(run, path_file(paths, 'elevation_land_mean'), read.csv)
+  run_record(run, 'elevation', list(method = 'land_mean',
+                                    source = 'GMTED2010 30-arc-second mean over non-ocean area (MOD44W 2015)'))
 } else {
-  cells_unique = unique(locations_interp)
-  ele_get_cells = get_elev_point(cells_unique, 
-                                 prj = ll_proj, 
-                                 src = "aws")
-  elev_lookup = data.frame(cells_unique, elev = ele_get_cells$elevation)
-  # The lookup used the network, so record it.
-  run_record(run, 'elevation_lookup', list(source = 'AWS terrain tiles, elevatr::get_elev_point(src = "aws")',
-                                           cells = nrow(cells_unique), when = utc_time(Sys.time())))
-  write_output(run, elev_lookup, elev_file)
+  elev_file = path_file(paths, 'elevation_cache')
+  if (file.exists(elev_file)) {
+    elev_lookup = read_input(run, elev_file)
+  } else {
+    cells_unique = unique(locations_interp)
+    ele_get_cells = get_elev_point(cells_unique, 
+                                   prj = ll_proj, 
+                                   src = "aws")
+    elev_lookup = data.frame(cells_unique, elev = ele_get_cells$elevation)
+    # The lookup used the network, so record it.
+    run_record(run, 'elevation_lookup', list(source = 'AWS terrain tiles, elevatr::get_elev_point(src = "aws")',
+                                             cells = nrow(cells_unique), when = utc_time(Sys.time())))
+    write_output(run, elev_lookup, elev_file)
+  }
 }
 elev_interp = elev_lookup$elev[match(paste(locations_interp$x, locations_interp$y),
                                      paste(elev_lookup$x, elev_lookup$y))]
+if (anyNA(elev_interp)) stop('cells without an elevation in the elevation table: ', sum(is.na(elev_interp)))
 
 lct_interp_all = data.frame(lct_interp_wide[,c('ages', 'x', 'y')],
                      elev = elev_interp,

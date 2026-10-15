@@ -43,6 +43,7 @@ PATH_CATALOGUE = data.frame(stringsAsFactors = FALSE, rbind(
   # id                          template                                                              kind       producer
   c('veg_posts',                'data/veg_posts_interp_ice.RDS',                                      'input',   NA),
   c('elevation_cache',          'data/elev_interp_cells.RDS',                                         'input',   NA),
+  c('elevation_land_mean',      'data/elev_land_mean_cells.csv',                                      'input',   NA),
   c('grid',                     'data/grid.RDS',                                                      'input',   NA),
   c('bluesky_raster',           'data/blue_sky_monthly_2000-2009.tif',                                'input',   NA),
   c('boundaries_ll',            'data/map-data/geographic/pbs_ll.RDS',                                'input',   NA),
