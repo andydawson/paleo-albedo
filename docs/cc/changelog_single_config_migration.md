@@ -35,6 +35,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16a Kernel variables; ice-advance method; legacy config | #19 (first part) | merged 2026-10-14 | c1f2d73 |
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
+| I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | MERGE_SHA |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -897,4 +898,23 @@ easier for Andria to read without changing one executable expression.
 all 23 changed pipeline files parse to exactly the same code as before the first edit, and
 all 12 test files pass. A first run failed on the checker itself, which counted a
 verification spec in docs/ as code; fixed and tested.
+
+## I15b: readability, names in the R/ helpers (#22), merged 2026-10-15
+
+**Purpose.** The second readability issue split from #18: short scratch names in the shared
+helpers replaced by names that say what they hold, with no change in behaviour.
+
+**Changed.** Local variables only, in `R/calendar.R`, `R/config.R`, `R/config_schema.R`,
+`R/preparation.R`, `R/map_helpers.R`, `R/paths.R` and `scripts/make_grid.R` (renamed in
+place; the move into `R/preparation.R` was dropped). Examples: `dup` to `duplicate_months`,
+`bad` to `invalid_choices`, `top` to `path_components`, `span` to `longitude_span`, `rel` to
+`relative_path`, `ms`/`ks`/`m`/`k` to `template_months`/`template_models`/`month`/`model_id`,
+`done` to `recorded_files`. Public argument names unchanged. Renamed with R's parser, so
+strings, comments and named arguments of calls were not touched.
+
+**Outputs changed.** None.
+
+**Verification.** `docs/cc/verification/2026-10-15_i15b-helper-names_report.md`, PASS: all
+12 test files. Also, before and after the renames, `prepare_boundaries()` for all three map
+windows and `make_grid()` on the calibration table gave `identical()` results.
 
