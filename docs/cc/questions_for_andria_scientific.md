@@ -526,6 +526,11 @@ found for removing lakes from elevation, so the albedo (lakes removed, after Moo
 2005 and Helbig et al. 2016) and the elevation differ on that point. Record of the check:
 docs/cc/2026-10-15_land_mean_elevation_precedents.md on the migration branch.
 
+**Amended again 2026-10-15 (Chris), after the two independent reviews:** the sea is GMTED2010's own
+0 m pixels, as New et al. took their elevation model's own land points, rather than MOD44W's ocean
+class, which starts about 1 km offshore and labels Nettilling Lake as ocean. 116 coastal cells rise
+(median 12.7 m); four eastern Baffin Island cells, where GMTED does not resolve the fjords, fall.
+
 ### B10. The "modern" land cover is nominally AD 1900; the albedo is 2000-2009
 The calibration pairs the land cover of the 50 BP slice with a satellite
 albedo climatology for 2000-2009. If 50 BP means what it usually means

@@ -137,20 +137,22 @@ https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/topo/downloads/GMTED/Grid_Z
 `dfd0d6c6486f4da22109be6107c93a70ef9917a5b6f954cd82d87cf8b920149d`; archive test passed.
 Unzipped into `data/gmted2010/` (not committed). Grid: 43,200 x 20,880 pixels, edges at
 -180.000139 / 179.999860 E and -90.000139 / 83.999860 N: the "pixel centre" convention of its
-SRTM source (report p. 9, fig. 8), half a source arc-second (about 4 m) off whole degrees; the
-preparation tool places it on whole degrees.
+SRTM source (report pp. 8-9, fig. 8), half a source arc-second (1/7200 degree, about 15 m) off whole
+degrees; the preparation tool places it on whole degrees.
 
 **How it is used.** `tools/prepare_land_elevation.R` averages it over each 1-degree cell's
-non-ocean area (ocean = MOD44W 2015 water in QA class 4, "Ocean Mask"; lakes kept), weighting
-each pixel by its area and non-ocean share, and writes `data/elev_land_mean_cells.csv`
+non-ocean area, the sea being GMTED's own 0 m pixels as in New et al. (2002), lakes kept,
+weighting each pixel by its area, and writes `data/elev_land_mean_cells.csv`
 (committed). Precedents: New et al. (2002), Climate Research 21:1-25, doi:10.3354/cr021001,
 p. 7; ISLSCP II HYDRO1k (Verdin 2011, doi:10.3334/ORNLDAAC/1007, sec. 9.2.1). Run of
-2026-10-15: 2,870 cells, 3 to 3,018 m, 3.3 minutes.
+2026-10-15: 2,870 cells, 3 to 3,018 m, 0.3 minutes. (A first version took the sea from MOD44W's
+ocean class; both reviewers found it starts about 1 km offshore and labels Nettilling Lake as
+ocean, so Chris chose the DEM's own sea.) Limitation: in four cells of eastern Baffin Island
+GMTED does not resolve the fjords.
 
 **Suggested wording.** "Elevation for each 1-degree cell is the mean of the GMTED2010
-30-arc-second mean-elevation product (Danielson and Gesch, 2011) over the cell's non-ocean
-area, ocean being defined by the MODIS MOD44W v6.1 2015 water mask (Carroll et al., 2017),
-following New et al. (2002)."
+30-arc-second mean-elevation product (Danielson and Gesch, 2011) over the cell's land and
+lake area, the sea being the product's own sea-level pixels, following New et al. (2002)."
 
 ## Gaps in the provenance of the original data sets
 
