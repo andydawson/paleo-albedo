@@ -112,7 +112,9 @@ feasible, checked against `tests/anchors/`; version control as above. Chris,
   override the config setting `run$allow_stale`, with no run note); output
   paths unchanged so the
   anchors keep working; stages become functions in `R/` with the numbered
-  scripts as wrappers; the ensemble driver is parked. The work happens on
+  scripts as wrappers (superseded 2026-10-13/14: the scripts stay flat so Andria can run
+  them line by line, and the extraction issues were closed; see the migration changelog);
+  the ensemble driver is parked. The work happens on
   one long-lived feature branch off `chris-dev`, topic branches per issue,
   because Andria's review continues on `chris-dev`. Issues designed in
   `docs/cc/2026-10-08_migration_issues_single_config_codex_gpt6astra.md`,
