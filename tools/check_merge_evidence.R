@@ -5,7 +5,7 @@
 # pre-merge-commit hook, so it applies to every merge that makes a merge commit (the project
 # merges with --no-ff).
 #
-# The rule: if the merge changes the code (R/, scripts/, tools/, tests/, config.R or
+# The rule applies to merges into a trunk (TRUNKS below): if the merge changes the code (R/, scripts/, tools/, tests/, config.R or
 # configs/) of the branch merged into, the merged result must contain a report
 # docs/cc/verification/*_report.md, written by tools/verify_change.R with verdict PASS, for a
 # commit whose code is the same as the merge result's (later commits may change only
@@ -24,6 +24,10 @@
 # message): git merge --no-verify.
 
 CODE_PATHS = c('R', 'scripts', 'tools', 'tests', 'config.R', 'configs')
+
+# The branches the rule protects. Merging one of them into a topic branch (to bring it up to
+# date) needs no report: its code was verified when it was merged.
+TRUNKS = c('feature/single-config', 'chris-dev', 'main')
 
 git_lines = function(...) {
   out = suppressWarnings(system2('git', shQuote(c(...)), stdout = TRUE, stderr = FALSE))   # quoted: system2 passes text to the shell
@@ -73,6 +77,11 @@ if (sys.nframe() == 0L) {
   if (identical(a[1], 'install')) {
     install_hook()
   } else if (identical(a[1], 'check')) {
+    branch = git_lines('symbolic-ref', '--short', 'HEAD')
+    if (length(a) < 2 && !(length(branch) && branch %in% TRUNKS)) {
+      cat('merge check: merging into', if (length(branch)) branch else 'a detached HEAD', '(not a trunk); no report needed\n')
+      quit(status = 0)
+    }
     merged = if (length(a) >= 2) a[2] else git_lines('write-tree')   # the merge result in the index
     base   = if (length(a) >= 3) a[3] else 'HEAD'
     quit(status = if (check_merge(merged, base)) 0 else 1)

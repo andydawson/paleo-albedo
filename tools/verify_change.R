@@ -246,11 +246,12 @@ verify_change = function(spec_file, main = '.') {
   }
 
   note(''); note('## Checks'); note('')
-  for (command in spec$checks) {
+  for (k in seq_along(spec$checks)) {
+    command = spec$checks[[k]]
     if (length(failures)) { note('- `%s`: not run (an earlier step failed)', paste(command, collapse = ' ')); next }
-    log = file.path(worktree, run_dir, 'checks.log')
+    log = file.path(worktree, run_dir, sprintf('check_%02d.log', k))   # one log per check, kept
     status = run_check(worktree, spec, command, log)
-    note('- `%s`: exit status %d', paste(command, collapse = ' '), status)
+    note('- `%s`: exit status %d (log `%s`)', paste(command, collapse = ' '), status, basename(log))
     if (status != 0) failures = c(failures, sprintf('check failed: %s (log: %s)', paste(command, collapse = ' '), log))
   }
 
