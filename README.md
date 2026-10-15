@@ -171,7 +171,7 @@ What each input is and where it came from:
 | `blue_sky_monthly_2000-2009.tif` | 12-band monthly blue-sky albedo, 0.25 degree, 2000-2009 mean | MODIS MCD43A3 v061 + ERA5 as described in manuscript §2.1; <mark>unknown</mark> who built it and with what code |
 | `grid.RDS` | 1-degree lon/lat raster with cell ids (-172 to 127 E, 17 to 79 N) | <mark>unknown</mark> (committed 2023-05-16, no generating code) |
 | `pbs.RDS` | political boundaries, projected and lon/lat; includes ocean polygons | <mark>unknown</mark> |
-| `elev_interp_cells.RDS` | point elevation (m) at each of the 2,870 cell centres: x, y, elev | fetched once from AWS terrain tiles by `elevatr` on 2026-09-25 and committed, so no network is needed; delete the file to force a fresh lookup |
+| `elev_interp_cells.RDS` | point elevation (m) at each of the 2,870 cell centres: x, y, elev | fetched once from AWS terrain tiles by `elevatr` on 2026-09-25 and committed, so no network is needed; `tools/prepare_centre_elevation.R` remakes it if it is ever lost |
 | `elev_land_mean_cells.csv` | mean elevation (m) over each of the 2,870 cells' non-ocean area, lakes kept: x, y, elev, non_ocean_share (diagnostic) | `tools/prepare_land_elevation.R` on 2026-10-15 from GMTED2010 30-arc-second mean elevation (Danielson & Gesch 2011, doi:10.3133/ofr20111073; `mn30_grd.zip`, SHA-256 dfd0d6c6...149d) the sea being GMTED's own 0 m pixels; method after New et al. 2002 and ISLSCP II HYDRO1k. The raw input is not committed; the tool's header says how to obtain it |
 | `glacier_shapefiles_21-1k.RDS` | 21 ice-margin polygon sets, 1,000-year steps, 21 to 1 ka, lon/lat. **The project's ice chronology**: a point-in-polygon test reproduces the `ice` flag above exactly (69/69 cells at 6 ka, 213/213 at 8 ka, 596/596 at 10 ka, 780/780 at 11 ka), so the flag was derived from these | Andria, 2026-09-17; <mark>unknown</mark> original source of the margins, but pre-dates Dalton 2020 |
 | `albedo_glacier_monthly.csv` | monthly albedo assigned to ice-covered cells; three columns offering alternative conventions (`ice_albedo` seasonal 0.6-0.8, `ice_albedo_fixed` constant 0.68, `ice_albedo_sc` smoothly varying 0.56-0.80) | Andria, 2026-09-20; <mark>unknown</mark> literature source for the values and which column is preferred |
@@ -255,8 +255,8 @@ the EDI portal (link in the table above) and unzipped into
 
 R 4.5 (4.5.3 on the development machine) with `mgcv`, `terra`, `raster`, `sp`, `sf`, `dplyr`, `tidyr`,
 `reshape2`, `ggplot2`, `patchwork`, `gratia`, `tidyterra`, `scico`,
-`ggtern`, `tricolore`, `scatterpie`, `fields`, `brms`, `elevatr` (needs
-network). On the development machine there is no system R; a user-space
+`ggtern`, `tricolore`, `scatterpie`, `fields`, `brms`; `elevatr` (needs the network) only
+for `tools/prepare_centre_elevation.R`. On the development machine there is no system R; a user-space
 environment is used:
 
 ```
