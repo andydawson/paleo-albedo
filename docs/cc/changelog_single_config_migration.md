@@ -35,7 +35,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16a Kernel variables; ice-advance method; legacy config | #19 (first part) | merged 2026-10-14 | c1f2d73 |
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
-| I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | MERGE_SHA |
+| I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
