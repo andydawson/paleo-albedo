@@ -24,10 +24,6 @@ pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
 pbs = read_input(run, path_file(paths, 'boundaries'))
 
-breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
-
-labels = seq(1, length(breaks)-1)
-
 ages_sub = cfg$analysis$coarse$ages
 
 # The months analysed, from config.R (analysis$months); month names and
@@ -89,31 +85,9 @@ if (!is.null(slice_alias)) {
 pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 pbs = read_input(run, path_file(paths, 'boundaries'))
 
-breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
+albedo_bin_breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
-labels = seq(1, length(breaks)-1)
-
-sc_colour <- scale_colour_manual(values = c(tim.colors(length(breaks)), "grey"), labels = labels,
-                                 na.value="white", name="Percent", drop=FALSE)
-
-sc_fill <- scale_fill_manual(values = c(tim.colors(length(breaks)), "grey"), labels = labels,
-                             na.value="white", name="Percent", drop=FALSE)
-
-sc_fill_seq <- scale_fill_brewer(type = "seq",
-                                 palette = "Greens",#"BrBG",#"YlGnBu",#
-                                 labels = labels,
-                                 na.value="grey",
-                                 direction=-1,
-                                 name="Albedo")
-
-sc_colour_seq <- scale_colour_brewer(type = "seq",
-                                     palette = "YlGnBu",#"BrBG",
-                                     labels = labels,
-                                     direction=-1,
-                                     na.value="grey",
-                                     name="Albedo")
-
-alb_interp_preds$alb_bin = cut(alb_interp_preds$alb_mean, breaks, labels=FALSE)
+alb_interp_preds$alb_bin = cut(alb_interp_preds$alb_mean, albedo_bin_breaks, labels=FALSE)
 
 alb_interp_preds$ice = NA
 
@@ -138,7 +112,6 @@ for (i in 1:length(alb_preds_ages)){
 
 }
 
-ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 years = cfg$analysis$coarse$ages
 
@@ -147,7 +120,7 @@ labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "6
 
 grid_NA <- read_input(run, path_file(paths, 'grid'))
 
-paleo_interp_sim_gam = read_input(run, path_file(paths, 'prediction_point'))
+point_predictions = read_input(run, path_file(paths, 'prediction_point'))
 
 cell_id <- raster::extract(grid_NA, alb_interp_preds[,c('x', 'y')])
 
@@ -340,7 +313,6 @@ for (year in ages_sub){
 }
 dev.off()
 
-lims = c(0, round(max(alb_grid_sub$alb_sd),2))
 
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
@@ -415,7 +387,7 @@ for (i in 1:N_cells){
       next
     }
 
-    alb_cell_filled = merge(years_df, alb_cell, all.x=TRUE)
+    alb_cell_filled = merge(years_df, alb_cell, by = 'year', all.x=TRUE)
 
     alb_diff_df = rbind(alb_diff_df,
                         data.frame(subset(alb_cell_filled[1:(nrow(alb_cell_filled)-1), ],
@@ -434,7 +406,7 @@ alb_diff_df =  alb_diff_df[which(!is.na(alb_diff_df$lat)),]
 # One row per cell, month and pair of consecutive coarse slices.
 write_output(run, alb_diff_df, path_file(paths, 'coarse_differences'))
 
-labels = period_labels(years)
+coarse_period_labels = period_labels(years)
 
 ice_fort_diff_young = data.frame(matrix(NA, nrow=0, ncol=10))
 ice_fort_diff_old = data.frame(matrix(NA, nrow=0, ncol=10))
@@ -457,71 +429,46 @@ for (i in 1:(length(ages_sub)-1)){
 
   ice_fort_age_old = ice_fort[which(ice_fort$ages == ice_years[idx_ice_match_old]),]
 
-  print(labels[i])
+  print(coarse_period_labels[i])
 
   ice_fort_diff_young = rbind(ice_fort_diff_young,
                               data.frame(ice_fort_age_young,
-                                         facets = rep(labels[i],  nrow(ice_fort_age_young))
+                                         facets = rep(coarse_period_labels[i],  nrow(ice_fort_age_young))
                               ))
 
   ice_fort_diff_old = rbind(ice_fort_diff_old,
                             data.frame(ice_fort_age_old,
-                                       facets = rep(labels[i],  nrow(ice_fort_age_old))
+                                       facets = rep(coarse_period_labels[i],  nrow(ice_fort_age_old))
                             ))
 
 }
 
-labels_period = period_labels(years)
-
 ice_fort_diff_old$facets = factor(ice_fort_diff_old$facets,
-                                  levels = labels_period,
-                                  labels = labels_period)
+                                  levels = coarse_period_labels,
+                                  labels = coarse_period_labels)
 
 ice_fort_diff_young$facets = factor(ice_fort_diff_young$facets,
-                                    levels = labels_period,
-                                    labels = labels_period)
+                                    levels = coarse_period_labels,
+                                    labels = coarse_period_labels)
 
 write_output(run, ice_fort_diff_young, path_file(paths, 'ice_fort_diff_young'))
 write_output(run, ice_fort_diff_old, path_file(paths, 'ice_fort_diff_old'))
 
 diff_years = years[-length(years)]
-alb_diff_df$facets = labels[match(alb_diff_df$year, diff_years)]
-alb_diff_df$facets = factor(alb_diff_df$facets, levels =  labels)
+alb_diff_df$facets = coarse_period_labels[match(alb_diff_df$year, diff_years)]
+alb_diff_df$facets = factor(alb_diff_df$facets, levels =  coarse_period_labels)
 
 max_diff = max(abs(alb_diff_df$alb_diff), na.rm=TRUE)
-thresh = ceiling(max_diff*100)/100
+diff_colour_limit = ceiling(max_diff*100)/100
 
-values = c(0, 0.4, 0.45, 0.5, 0.55, 0.6, 1)
-values = c(0, 0.45, 0.48, 0.5, 0.52, 0.55, 1)
-
-sc_fill_diverge <- scale_fill_distiller(type = "div",
-                                        palette = "BrBG",
-                                        na.value="grey",
-                                        name="Albedo change",
-                                        limits = c(-thresh,thresh),
-                                        values = values)
+diff_colour_positions = c(0, 0.45, 0.48, 0.5, 0.52, 0.55, 1)
 
 sc_fill_diverge <- scale_fill_distiller(type = "div",
                                         palette = "RdYlBu",#"BrBG",
                                         na.value="grey",
                                         name="Albedo change",
-                                        limits = c(-thresh,thresh),
-                                        values = values)
-
-sc_colour_diverge <- scale_colour_distiller(type = "div",
-                                            palette = "RdYlBu",#"BrBG",
-                                            direction=1,
-                                            na.value="transparent",#grey",
-                                            name="Albedo change",
-                                            limits = c(-thresh,thresh),
-                                            values = values)
-
-sc_colour_diverge <- scale_colour_distiller(type = "div",
-                                            palette = "BrBG",
-                                            na.value="transparent",#grey",
-                                            name="Albedo change",
-                                            limits = c(-thresh,thresh),
-                                            values = values)
+                                        limits = c(-diff_colour_limit,diff_colour_limit),
+                                        values = diff_colour_positions)
 
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
