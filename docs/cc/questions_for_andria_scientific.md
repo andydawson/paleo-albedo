@@ -492,6 +492,16 @@ cell) considered, and should offshore centres be clipped to zero?
 
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Elevation is the DEM mean over the land part of each cell (water excluded), instead of the centre point.
 
+**Amended 2026-10-15 (Chris), after a literature check:** the mean excludes the **ocean**
+only; lakes stay in. This follows the two verified precedents, which average elevation over
+a cell's non-ocean pixels and keep lake surfaces: New et al. (2002), Climate Research 21:1-25,
+doi:10.3354/cr021001, p. 7 (each land cell's elevation is the average of 100-400 GLOBE 1 km
+points); ISLSCP II HYDRO1k elevation products (Verdin 2011, doi:10.3334/ORNLDAAC/1007, sec.
+9.2.1: "mean elevation value within each cell" over "the non-ocean pixels"). No precedent was
+found for removing lakes from elevation, so the albedo (lakes removed, after Moody et al.
+2005 and Helbig et al. 2016) and the elevation differ on that point. Record of the check:
+docs/cc/2026-10-15_land_mean_elevation_precedents.md on the migration branch.
+
 ### B10. The "modern" land cover is nominally AD 1900; the albedo is 2000-2009
 The calibration pairs the land cover of the 50 BP slice with a satellite
 albedo climatology for 2000-2009. If 50 BP means what it usually means
