@@ -16,8 +16,10 @@ library(elevatr)
 
 OUT_FILE = 'data/elev_interp_cells.RDS'
 posts = readRDS('data/veg_posts_interp_ice.RDS')
-cells = unique(data.frame(x = posts$x, y = posts$y))
+cells = unique(posts[, c('x', 'y')])
 lookup = get_elev_point(cells, prj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0", src = "aws")
 out = data.frame(cells, elev = lookup$elevation)
 saveRDS(out, OUT_FILE)
-cat(OUT_FILE, ':', nrow(out), 'cells, queried', format(Sys.time(), '%Y-%m-%d %H:%M %Z'), '\n')
+cat(OUT_FILE, ':', nrow(out), 'cells, queried', format(Sys.time(), '%Y-%m-%d %H:%M %Z'),
+    'with elevatr', as.character(packageVersion('elevatr')), '\n',
+    'Record this date and version in the README input table (elev_interp_cells.RDS).\n')

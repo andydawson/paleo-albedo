@@ -1042,8 +1042,15 @@ shorter than the original; Chris approved its five "do now" items.
 - **Anchor guard** (this merge): the default rule also fails when no file matched, after a
   renaming slip made a verification check an empty run folder and pass vacuously.
   Change-reviewer: approve with changes, made. Verified PASS (`anchor-guard-2`).
-- Still in progress: redundant reads and writes (scripts 5, 7, 8), the land-mean elevation
-  delivery and moving script 1's network elevation lookup into a preparation script.
+- **Elevation lookup out of script 1** (branch centre-elevation-tool): the original network
+  lookup of the centre-point elevation (elevatr, AWS terrain tiles), which script 1 ran
+  whenever its cached file was missing, is now `tools/prepare_centre_elevation.R`, the same
+  query, run by hand only if `data/elev_interp_cells.RDS` is lost; script 1 only reads the file
+  and stops with that instruction if it is missing; `library(elevatr)` and the projection
+  string used only by the lookup left script 1. Verified under the legacy configuration
+  (both land-cover tables MATCH; path and config tests pass), which shows nothing else in
+  script 1 depended on them. Change-reviewer: approve with changes, made.
+- Still in progress: redundant reads and writes (scripts 5, 7, 7a, 8).
 
 ## I16c (first part): land-mean elevation, merged 2026-10-15
 
