@@ -521,6 +521,27 @@ to the present (say 150 BP to -60 BP), the mismatch is small. What does
 the slice actually cover, and was the pairing with 2000-2009 albedo
 considered acceptable on that basis?
 
+**Added 2026-10-15 (Fable's review, docs/cc/2026-10-15_albedo_route_and_modern_slice_gap_fable.md
+on the migration branch).** Dawson et al. (2025), Clim. Past 21:2031, doi:10.5194/cp-21-2031-2025,
+Sect. 2.3, define the youngest interval as 0.1 to -0.074 ka, AD 1850 to 2024, following the
+LandCover6k protocol (Githumbi et al. 2022); the file's 25 ages match the paper's intervals. If
+so, the gap is a blurred bin (clearance peak and regrowth averaged together) rather than a
+century's offset. The posterior shows the clearance: open land in the north-eastern US is 0.16
+at 50 BP against 0.07-0.09 before 1600, Midwest 0.39 against 0.28-0.31; Plains, Pacific
+north-west and boreal unchanged. Every published albedo-change study found calibrates on land
+cover from the satellite years. Two cheap tests would show whether the blur matters: refit on
+cells with little land-use change since 1850 (HYDE 3.2), and compare the 50 BP fractions with
+satellite land cover (MODIS MCD12). **What we need from you:**
+1. Is the 50 BP slice the AD 1850-2024 interval of Dawson et al. 2025, with pollen counts
+   summed per record within it, and are the other labels the paper's bins?
+2. Within that interval, how are records weighted: do most contribute many twentieth-century
+   samples (core tops), or one or two near 1850-1900? Is there a per-record sample count?
+3. Was the pairing of this window with 2000-2009 albedo considered, and has the group compared
+   the youngest REVEALS window with satellite land cover for North America?
+4. Would a modern-pollen REVEALS layer be feasible as the calibration land cover?
+5. If the tests show the blur matters, would you prefer restricting the calibration to
+   low-land-use-change cells, or re-pairing on satellite land cover?
+
 
 ## C. Differencing, ice and forcing
 
