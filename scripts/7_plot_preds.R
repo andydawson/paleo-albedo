@@ -120,8 +120,6 @@ labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "6
 
 grid_NA <- read_input(run, path_file(paths, 'grid'))
 
-point_predictions = read_input(run, path_file(paths, 'prediction_point'))
-
 cell_id <- raster::extract(grid_NA, alb_interp_preds[,c('x', 'y')])
 
 alb_grid <- data.frame(cell_id, alb_interp_preds)

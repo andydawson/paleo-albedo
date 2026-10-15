@@ -26,11 +26,6 @@ months = cfg$analysis$months
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
-
-
-pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
-pbs = read_input(run, path_file(paths, 'boundaries'))
-
 # The kernel variables read are set in config.R (analysis$kernels; R/kernels.R says what
 # each is: clear-sky or all-sky, TOA or surface; questions C3, C4).
 rk_hadgem = read_input(run, path_file(paths, 'kernel_hadgem'), brick, level=1, varname=cfg$analysis$kernels$hadgem_variable)
