@@ -25,9 +25,12 @@
 # and stay in. Chris chose this on 2026-10-15 over an earlier version that took the sea from
 # the MODIS MOD44W water mask: both reviewers found that mask's ocean class starts about 1 km
 # offshore (so the coastal strip of sea counted as land, at 0 m) and that it labels one large
-# lake, Nettilling on Baffin Island, as ocean. Two limitations, shared by the precedents: a
-# coastal 1 km pixel that is part sea holds the mean of land and 0 m, and the rare land pixel
-# whose mean is exactly 0 m is treated as sea.
+# lake, Nettilling on Baffin Island, as ocean. Against that mask this raised 116 coastal cells
+# (median 12.7 m). Three limitations: a coastal 1 km pixel that is part sea holds the mean of
+# land and 0 m, and the rare land pixel whose mean is exactly 0 m is treated as sea (both
+# shared by the precedents); and in four cells of eastern Baffin Island (65-70 N) GMTED's
+# source data do not resolve the fjords, so sea there carries land heights and those cells
+# come out 7 to 179 m lower than the mask-based version gave.
 #
 # Input (not in git): GMTED2010 30-arc-second mean elevation, mn30_grd (Danielson & Gesch 2011,
 # USGS Open-File Report 2011-1073, doi:10.3133/ofr20111073), downloaded as mn30_grd.zip from
