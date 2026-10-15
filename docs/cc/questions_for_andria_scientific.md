@@ -284,6 +284,22 @@ selection can be defended as stated?**
 
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Compare the ladder after fitting by ML; fit the model used for prediction by REML; check rank and fit diagnostics before selection.
 
+**Found 2026-10-15, January only (the ML ladder of issue I16, one month so far).** The
+expectation above, that ML would confirm model 8, does not hold for January: refitted by
+ML, model 7 (a Gaussian-process smooth of the three cover fractions) has the lower AIC.
+
+| January AIC | model 7 | model 8 | lower |
+|---|---|---|---|
+| REML, all cells (the original) | -6656 | -6669 | model 8, by 13 |
+| ML, all cells | -6646 | -6633 | model 7, by 13 |
+| ML, present-day ice caps left out (the new configuration) | -6615 | -6608 | model 7, by 7 |
+
+So the switch to ML is what reverses the order; leaving out the ice caps narrows it. Model 8
+remains the configured model (`analysis$calibration$model_id`). The other eleven months by
+ML come with the final full run (27 hours). **If model 7 wins in most months by ML, should
+the prediction model change to model 7, or stay model 8 for continuity with your earlier
+results?**
+
 ### B4a. Land cover matters most in autumn, least in midwinter
 **Found 2026-09-20 in the interp AIC table.**
 
