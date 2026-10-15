@@ -41,5 +41,9 @@ odd <- file.path(tempdir(), "anchor_unmapped"); dir.create(odd, showWarnings = F
 writeLines("0123456789abcdef0123456789abcdef  not_in_live_paths.csv", file.path(odd, "MD5SUMS.txt"))
 out <- capture.output(res <- check_anchors(odd, run))
 stopifnot(identical(res$result, "NO MAPPING"), !anchors_ok(res))
+# A run directory with nothing in it (for example a mistyped one) fails: nothing was compared.
+out <- capture.output(res <- check_anchors(anchor, file.path(tempdir(), "no_such_run_dir")))
+stopifnot(all(res$result == "NOT PRODUCED"), !anchors_ok(res),
+          status(anchor, file.path(tempdir(), "no_such_run_dir")) == 1)
 unlink(c(run, odd), recursive = TRUE)
 cat("test_tools: all tests passed\n")

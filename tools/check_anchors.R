@@ -12,7 +12,10 @@
 # seed_run_dir(), listed in its SEEDED.txt: reporting it as MATCH would claim a
 # reproduction that did not happen) or NO MAPPING (missing from live_paths.tsv).
 # anchors_ok() turns the results into pass or fail, the one rule used everywhere:
-#   default  fail on DIFFER or NO MAPPING (a run of some scripts checks what it produced);
+#   default  fail on DIFFER or NO MAPPING, or if no file at all MATCHes (a SEEDED file is not
+#            a MATCH; a run of some
+#            scripts checks what it produced, but must have produced something: a wrong
+#            run directory would otherwise pass with every file NOT PRODUCED);
 #   --all    fail unless every file is MATCH (the run must reproduce the whole anchor).
 # Exit status 1 on fail. Plain R, replacing tools/check_anchors.sh (I07, 2026-10-13).
 
@@ -49,7 +52,7 @@ check_anchors <- function(anchor, root = NULL) {
 
 anchors_ok <- function(results, require_all = FALSE) {
   if (require_all) nrow(results) > 0 && all(results$result == "MATCH")
-  else !any(results$result %in% c("DIFFER", "NO MAPPING"))
+  else any(results$result == "MATCH") && !any(results$result %in% c("DIFFER", "NO MAPPING"))
 }
 
 if (sys.nframe() == 0) {
