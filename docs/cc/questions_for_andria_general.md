@@ -125,9 +125,12 @@ answers let us delete code rather than carry it.
   Inherited, not chosen; on the migration branch they are now the three
   `presentation$map_windows` in config.R. One window for the paper, or keep
   the two?
-- **Model 8 is fitted three times** in script 4 (lines 98, 154 and 234, the
-  same formula each time, saved under three names). Can the second and
-  third fits go, with the selected model read from one file everywhere?
+- **Model 8 is fitted twice with the same formula** in script 4: once in the
+  model comparison and once as the spatial experiment "elevation and cover
+  with location" (`spatial_elev_cover`). Can the second go, with script 5
+  reading model 8 from the comparison? (Updated 2026-10-15: the third fit,
+  which overwrote the comparison's copy, is now the separate REML fit used
+  for prediction, since the comparison is fitted by ML; issue I16.)
 - **The model-structure sensitivity check** (`6_prediction_model_spatial_eval.R`)
   cannot run at present: it needs the `SemiPar` and `pwiser` packages, which
   are not installed, uses an undefined variable at line 278, and its tail
