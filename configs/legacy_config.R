@@ -11,6 +11,7 @@
 #   ice$difference_method     "legacy_components"                  config.R: "endpoint"
 #   calibration$comparison_method "REML"                           config.R: "ML"
 #   calibration$ice_mask      "none"                               config.R: "centre_in_1ka_polygon"
+#   elevation$method          "centre_point"                       config.R: "land_mean"
 #   draws$seed                1   (the original was unseeded; seed 1 reproduces the seeded
 #                                  anchor and meets the unseeded anchor's tolerances; Chris)
 #   run$dir                   ".rundirs/legacy"
@@ -35,6 +36,12 @@ list(
     # rescaled so that ET + OL + ST = 1 in every cell and slice. Andria's note in script 1
     # ("not sure if should use median") is question A1.
     land_cover = list(reduction = "mean"),
+
+    # Script 1: the elevation beside each cell's land-cover fractions (question B9).
+    # "centre_point" (the original): the AWS terrain tiles at the cell's centre point,
+    # data/elev_interp_cells.RDS. "land_mean": the GMTED2010 mean over the cell's
+    # non-ocean area, data/elev_land_mean_cells.csv.
+    elevation = list(method = "centre_point"),
 
     # Script 5: the model, by id, that is saved as the selected calibration model and used
     # by script 6 for prediction. One of the ladder mod1 ... mod8; their formulas are in

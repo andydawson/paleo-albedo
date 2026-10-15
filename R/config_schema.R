@@ -117,6 +117,8 @@ CONFIG_SCHEMA = list(
     ages = function(v) check_numbers(v, min_len = 2, increasing = TRUE, range = c(0, 100000)),
     land_cover = list(
       reduction = function(v) check_choice(v, c('mean', 'median'), single = TRUE)),
+    elevation = list(
+      method = function(v) check_choice(v, c('land_mean', 'centre_point'), single = TRUE)),
     calibration = list(
       model_id = function(v) check_choice(v, LADDER_MODELS, single = TRUE),
       comparison_method = function(v) check_choice(v, c('ML', 'REML'), single = TRUE),

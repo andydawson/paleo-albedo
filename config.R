@@ -38,6 +38,14 @@ list(
     # ("not sure if should use median") is question A1.
     land_cover = list(reduction = "mean"),
 
+    # Script 1: the elevation beside each cell's land-cover fractions (question B9).
+    # "land_mean" (decided by Chris on 2026-10-14 and 2026-10-15): the mean of the GMTED2010
+    # 30-arc-second DEM over the cell's non-ocean area, lakes kept, as in New et al. (2002)
+    # and ISLSCP II HYDRO1k; read from data/elev_land_mean_cells.csv, which
+    # tools/prepare_land_elevation.R makes. "centre_point" (the original): the AWS terrain
+    # tiles at the cell's centre point, data/elev_interp_cells.RDS.
+    elevation = list(method = "land_mean"),
+
     # Script 4 fits model_id by REML for prediction (the file script 5 saves as the selected
     # model and script 6 uses). One of the ladder mod1 ... mod8; their formulas are in
     # R/model_registry.R. Model 8 was chosen by hand (question B4).

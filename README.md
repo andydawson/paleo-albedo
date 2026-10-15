@@ -85,7 +85,7 @@ into `data/`.
 
 | Script | Does |
 |---|---|
-| `1_veg_lct_prep.R` | mean over the 200 posterior draws; ET/ST/OL per cell and slice; elevation from a committed cache (first built from AWS terrain tiles); modern (age 50) vs paleo split. With `diagnostic = TRUE` in the run section of `config.R` it also reports on the discarded ice flag, the absent cell-slices and mean-versus-median, and maps the ice flag at every slice into `figures/diagnostics/`
+| `1_veg_lct_prep.R` | mean over the 200 posterior draws; ET/ST/OL per cell and slice; elevation per cell, by default the land mean from `data/elev_land_mean_cells.csv` (made once by `tools/prepare_land_elevation.R`; the original centre point from a committed cache is the legacy setting); modern (age 50) vs paleo split. With `diagnostic = TRUE` in the run section of `config.R` it also reports on the discarded ice flag, the absent cell-slices and mean-versus-median, and maps the ice flag at every slice into `figures/diagnostics/`
 | `2_calibration_lct_bluesky.R` | monthly blue-sky albedo at the modern cells, native pixel and 1-degree mean |
 | `3_plot_cal_lct_albedo.R` | diagnostic plots of the calibration data (optional) |
 | `4_calibration_model.R` | model ladder mod1-mod8 for every month; AIC table; spatial-effects experiment |
@@ -152,7 +152,8 @@ input is missing as of 2026-09-21.
 | `data/blue_sky_monthly_2000-2009.tif` | input to 2 (`2:38`) | present |
 | `data/grid.RDS` | input to 2, 7, 7a (`2:15`, `7:148`, `7a:98`) | present |
 | `data/map-data/geographic/pbs.RDS`, `pbs_ll.RDS`, `PoliticalBoundaries/` | input to 2 (`pbs_ll` only), 3, 7, 7a, 8 (`2:36-37`, `3:39-40`, `7:27-28`, `7a:77-78`, `8:54-55`) | present |
-| `data/elev_interp_cells.RDS` | input to 1 (`1:57`) | present (16 KB, committed) |
+| `data/elev_interp_cells.RDS` | input to 1 (legacy setting) | present (16 KB, committed) |
+| `data/elev_land_mean_cells.csv` | input to 1 (current setting) | present (59 KB, committed; made by `tools/prepare_land_elevation.R`) |
 | `data/map-data/ice/glacier_shapefiles_21-1k.RDS` | input to 7 (`7:46`) | present |
 | `data/albedo_glacier_monthly.csv` | input to 7, 7a (`7:163`, `7a:121`) | present |
 | `data/Dalton_QSR_2020_Ice/dalton_interpolated_LC6k.tif` | input to 7a (`7a:44`) | present |
@@ -171,6 +172,7 @@ What each input is and where it came from:
 | `grid.RDS` | 1-degree lon/lat raster with cell ids (-172 to 127 E, 17 to 79 N) | <mark>unknown</mark> (committed 2023-05-16, no generating code) |
 | `pbs.RDS` | political boundaries, projected and lon/lat; includes ocean polygons | <mark>unknown</mark> |
 | `elev_interp_cells.RDS` | point elevation (m) at each of the 2,870 cell centres: x, y, elev | fetched once from AWS terrain tiles by `elevatr` on 2026-09-25 and committed, so no network is needed; delete the file to force a fresh lookup |
+| `elev_land_mean_cells.csv` | mean elevation (m) over each of the 2,870 cells' non-ocean area, lakes kept: x, y, elev, non_ocean_share (diagnostic) | `tools/prepare_land_elevation.R` on 2026-10-15 from GMTED2010 30-arc-second mean elevation (Danielson & Gesch 2011, doi:10.3133/ofr20111073; `mn30_grd.zip`, SHA-256 dfd0d6c6...149d) the sea being GMTED's own 0 m pixels; method after New et al. 2002 and ISLSCP II HYDRO1k. The raw input is not committed; the tool's header says how to obtain it |
 | `glacier_shapefiles_21-1k.RDS` | 21 ice-margin polygon sets, 1,000-year steps, 21 to 1 ka, lon/lat. **The project's ice chronology**: a point-in-polygon test reproduces the `ice` flag above exactly (69/69 cells at 6 ka, 213/213 at 8 ka, 596/596 at 10 ka, 780/780 at 11 ka), so the flag was derived from these | Andria, 2026-09-17; <mark>unknown</mark> original source of the margins, but pre-dates Dalton 2020 |
 | `albedo_glacier_monthly.csv` | monthly albedo assigned to ice-covered cells; three columns offering alternative conventions (`ice_albedo` seasonal 0.6-0.8, `ice_albedo_fixed` constant 0.68, `ice_albedo_sc` smoothly varying 0.56-0.80) | Andria, 2026-09-20; <mark>unknown</mark> literature source for the values and which column is preferred |
 | `dalton_interpolated_LC6k.tif` | continuous ice **fraction** per cell and slice, used to mix vegetation and ice albedo by area; needed because the polygons above are binary. 26 layers named `yr<n>bp`, 12,000 to 50 BP, 116 x 62 cells, lon/lat WGS84, values 0 to 1; every one of the 25 pipeline ages matches a layer | Dalton et al. 2020 margins interpolated to the slices; Andria, 2026-09-20; <mark>unknown</mark> who did the interpolation and by what method |
