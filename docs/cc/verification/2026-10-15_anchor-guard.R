@@ -1,5 +1,7 @@
-# Anchor-check simplification: unit tests of the checker and the verification tool, and a
-# real run (script 8 under the legacy configuration) checked through the command line.
+# Anchor guard: the default rule now fails when nothing was produced to compare. The negative
+# case (an empty run directory fails) is in tests/test_tools.R; the positive case is a real
+# partial run, script 8 under the legacy configuration (1 MATCH, the rest SEEDED or NOT
+# PRODUCED), which must still pass.
 list(
   name    = 'anchor-guard',
   commit  = 'anchor-guard',

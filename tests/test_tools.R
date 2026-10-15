@@ -43,6 +43,7 @@ out <- capture.output(res <- check_anchors(odd, run))
 stopifnot(identical(res$result, "NO MAPPING"), !anchors_ok(res))
 # A run directory with nothing in it (for example a mistyped one) fails: nothing was compared.
 out <- capture.output(res <- check_anchors(anchor, file.path(tempdir(), "no_such_run_dir")))
-stopifnot(all(res$result == "NOT PRODUCED"), !anchors_ok(res))
+stopifnot(all(res$result == "NOT PRODUCED"), !anchors_ok(res),
+          status(anchor, file.path(tempdir(), "no_such_run_dir")) == 1)
 unlink(c(run, odd), recursive = TRUE)
 cat("test_tools: all tests passed\n")

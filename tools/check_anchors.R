@@ -12,7 +12,8 @@
 # seed_run_dir(), listed in its SEEDED.txt: reporting it as MATCH would claim a
 # reproduction that did not happen) or NO MAPPING (missing from live_paths.tsv).
 # anchors_ok() turns the results into pass or fail, the one rule used everywhere:
-#   default  fail on DIFFER or NO MAPPING, or if no file at all MATCHes (a run of some
+#   default  fail on DIFFER or NO MAPPING, or if no file at all MATCHes (a SEEDED file is not
+#            a MATCH; a run of some
 #            scripts checks what it produced, but must have produced something: a wrong
 #            run directory would otherwise pass with every file NOT PRODUCED);
 #   --all    fail unless every file is MATCH (the run must reproduce the whole anchor).
