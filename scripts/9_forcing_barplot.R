@@ -123,12 +123,10 @@ library(dplyr)
 library(tidyr)
 library(patchwork)
 
-# Albedo product tag; Earth's surface area for the global-equivalent normalisation (A8);
-# the forcing column to use per kernel, named by kernel (A1, A3); the variants to
-# compare (A2). All but the tag come from config.R.
-alb_prod   = paths$tag
+# From config.R: Earth's surface area for the global-equivalent normalisation (A8); the
+# forcing column to use per kernel, named by kernel (A1, A3); the variants to compare (A2).
 EARTH_AREA = cfg$analysis$forcing$earth_area_m2          # m^2
-KERNELS    = setNames(paste0('rf_', cfg$analysis$forcing$report_kernels, '_', cfg$analysis$forcing$variant),
+FORCING_COLUMNS    = setNames(paste0('rf_', cfg$analysis$forcing$report_kernels, '_', cfg$analysis$forcing$variant),
                       cfg$analysis$forcing$report_kernels)
 VARIANTS   = cfg$analysis$forcing$sensitivity_variants
 
@@ -137,64 +135,65 @@ ages_sub      = cfg$analysis$coarse$ages
 labels_period = period_labels(ages_sub)
 
 # The per-cell forcing table from script 8.
-d = read_input(run, path_file(paths, 'forcing'))
+forcing_by_cell = read_input(run, path_file(paths, 'forcing'))
 
 # --- A4/A5: assign each slice-pair to a period -------------------------------
 # A row's `year` is the YOUNGER end of the pair; the pair spans year -> next age.
-ages      = sort(unique(c(d$year, 11500)))
-d$age_old = ages[match(d$year, ages) + 1]
-d$period  = cut(d$year, breaks = ages_sub, right = FALSE, labels = labels_period)
-d         = d[!is.na(d$period), ]
+ages      = sort(unique(c(forcing_by_cell$year, 11500)))
+forcing_by_cell$age_old = ages[match(forcing_by_cell$year, ages) + 1]
+forcing_by_cell$period  = cut(forcing_by_cell$year, breaks = ages_sub, right = FALSE, labels = labels_period)
+forcing_by_cell         = forcing_by_cell[!is.na(forcing_by_cell$period), ]
 
 # How many pairs fall in each period (2, 3, 4, 4, 4, 4, 3).
-cat('slice-pairs per period:\n'); print(table(unique(d[, c('year','period')])$period))
+cat('slice-pairs per period:\n'); print(table(unique(forcing_by_cell[, c('year','period')])$period))
 
 # --- A10: keep only cells complete within a period ---------------------------
-n_pairs = d %>% group_by(period) %>% summarise(np = n_distinct(year), .groups='drop')
-keep = d %>%
+pairs_per_period = forcing_by_cell %>% group_by(period) %>% summarise(n_pairs = n_distinct(year), .groups='drop')
+complete_cell_month_periods = forcing_by_cell %>%
   group_by(period, cell_id, month) %>%
-  summarise(np = n_distinct(year), .groups = 'drop') %>%
-  left_join(n_pairs, by = 'period', suffix = c('', '_full')) %>%
-  filter(np == np_full) %>%
+  summarise(n_pairs = n_distinct(year), .groups = 'drop') %>%
+  left_join(pairs_per_period, by = 'period', suffix = c('', '_full')) %>%
+  filter(n_pairs == n_pairs_full) %>%
   select(period, cell_id, month)
 cat('cell-month-period combinations dropped as incomplete:',
-    nrow(distinct(d[, c('period','cell_id','month')])) - nrow(keep), '\n')
-d = inner_join(d, keep, by = c('period','cell_id','month'))
+    nrow(distinct(forcing_by_cell[, c('period','cell_id','month')])) - nrow(complete_cell_month_periods), '\n')
+forcing_by_cell = inner_join(forcing_by_cell, complete_cell_month_periods, by = c('period','cell_id','month'))
 
 # --- aggregate ---------------------------------------------------------------
-# A5 sum over slice-pairs -> A6 mean over months -> A7 area-weighted over cells
-aggregate_forcing <- function(col) {
-  d %>%
+# A5 sum over slice-pairs -> A6 mean over months -> A7 area-weighted over cells.
+# Takes the per-cell table, the forcing column to aggregate and Earth's area (A8).
+aggregate_forcing <- function(forcing_by_cell, forcing_column, earth_area) {
+  forcing_by_cell %>%
     group_by(period, cell_id, month, area) %>%
-    summarise(rf = sum(.data[[col]], na.rm = FALSE), .groups = 'drop') %>%   # A5
+    summarise(rf = sum(.data[[forcing_column]], na.rm = FALSE), .groups = 'drop') %>%   # A5
     group_by(period, cell_id, area) %>%
     summarise(rf = mean(rf, na.rm = TRUE), .groups = 'drop') %>%             # A6
     group_by(period) %>%
     summarise(domain_mean  = weighted.mean(rf, area, na.rm = TRUE),          # A7
-              global_equiv = sum(rf * area, na.rm = TRUE) / EARTH_AREA,      # A8
+              global_equiv = sum(rf * area, na.rm = TRUE) / earth_area,      # A8
               area_m2      = sum(area), .groups = 'drop')
 }
 
 # Run the aggregation once per kernel and stack the results; order the periods.
-main = bind_rows(lapply(names(KERNELS), function(k)
-  aggregate_forcing(KERNELS[[k]]) %>% mutate(kernel = k)))
-main$period = factor(main$period, levels = labels_period)
+forcing_by_period = bind_rows(lapply(names(FORCING_COLUMNS), function(kernel_id)
+  aggregate_forcing(forcing_by_cell, FORCING_COLUMNS[[kernel_id]], EARTH_AREA) %>% mutate(kernel = kernel_id)))
+forcing_by_period$period = factor(forcing_by_period$period, levels = labels_period)
 
 # The study area comes to 3.8% of Earth's surface; print it and the main table.
 cat('\nstudy area as a fraction of Earth:',
-    signif(unique(main$area_m2)[1] / EARTH_AREA, 3), '\n\n')
-print(as.data.frame(main %>% select(kernel, period, domain_mean, global_equiv)), digits = 3)
+    signif(unique(forcing_by_period$area_m2)[1] / EARTH_AREA, 3), '\n\n')
+print(as.data.frame(forcing_by_period %>% select(kernel, period, domain_mean, global_equiv)), digits = 3)
 
 # --- A2: sensitivity to the forcing variant, HadGEM3 only --------------------
-sens = bind_rows(lapply(VARIANTS, function(v) {
-  col = paste0('rf_hadgem_', v)
-  if (!col %in% names(d)) return(NULL)
-  aggregate_forcing(col) %>% mutate(variant = v)
+variant_sensitivity = bind_rows(lapply(VARIANTS, function(variant_id) {
+  forcing_column = paste0('rf_hadgem_', variant_id)
+  if (!forcing_column %in% names(forcing_by_cell)) return(NULL)
+  aggregate_forcing(forcing_by_cell, forcing_column, EARTH_AREA) %>% mutate(variant = variant_id)
 }))
-sens$period = factor(sens$period, levels = labels_period)
+variant_sensitivity$period = factor(variant_sensitivity$period, levels = labels_period)
 
 # --- modern IPCC agents ------------------------------------------------------
-read_erf <- function(p) { x = read_input(run, p, read.csv); x[x$year == 2019, ] }
+read_erf <- function(path) { erf_history = read_input(run, path, read.csv); erf_history[erf_history$year == 2019, ] }
 erf    = read_erf(path_file(paths, 'ipcc_erf'))
 erf_lo = read_erf(path_file(paths, 'ipcc_erf_pc05'))
 erf_hi = read_erf(path_file(paths, 'ipcc_erf_pc95'))
@@ -226,33 +225,34 @@ POS = '#F8766D'; NEG = '#00BFC4'   # ggplot default hue palette for two levels
 
 # Holocene panel data (HadGEM3, global-equivalent), and IPCC panel data, in one shape:
 # a label, a value, and which panel. Labels are reversed so the first appears at the top.
-hol = main %>%
+holocene_panel = forcing_by_period %>%
   filter(kernel == 'hadgem') %>%
   transmute(panel = 'Holocene',
             label = sub(' ka$', '', as.character(period)),
             value = global_equiv)
-hol$label = factor(hol$label, levels = rev(sub(' ka$', '', labels_period)))
+holocene_panel$label = factor(holocene_panel$label, levels = rev(sub(' ka$', '', labels_period)))
 
 ipcc = modern %>%
   transmute(panel = 'IPCC', label = as.character(agent), value = erf)
 ipcc$label = factor(ipcc$label, levels = rev(as.character(modern$agent)))
 
-both = bind_rows(hol, ipcc)
-both$panel = factor(both$panel, levels = c('Holocene', 'IPCC'))
-both$sign  = ifelse(both$value >= 0, 'pos', 'neg')
+forcing_panels = bind_rows(holocene_panel, ipcc)
+forcing_panels$panel = factor(forcing_panels$panel, levels = c('Holocene', 'IPCC'))
+forcing_panels$sign  = ifelse(forcing_panels$value >= 0, 'pos', 'neg')
 
 # One panel per block so each can carry its own y-axis title, as on the slide.
 # Heights are set to the row counts (7 Holocene periods, 5 IPCC agents) so the
 # bars are the same thickness in both, which is what facet_grid(space='free_y')
 # would have given.
-panel_plot <- function(dat, ytitle, striplab, keep_x) {
-  ggplot(dat, aes(x = label, y = value, fill = sign)) +
+# axis_limits: the forcing axis range, shared by the panels stacked together.
+panel_plot <- function(panel_data, ytitle, striplab, keep_x, axis_limits) {
+  ggplot(panel_data, aes(x = label, y = value, fill = sign)) +
     geom_col(width = 0.75) +
     geom_hline(yintercept = 0, linewidth = 0.3, colour = 'grey20') +
     coord_flip() +
     facet_grid(striplab ~ .) +
     scale_fill_manual(values = c(pos = POS, neg = NEG), guide = 'none') +
-    scale_y_continuous(limits = rng, expand = expansion(mult = c(0.02, 0.02))) +
+    scale_y_continuous(limits = axis_limits, expand = expansion(mult = c(0.02, 0.02))) +
     labs(x = ytitle, y = if (keep_x) expression('radiative forcing ('*W/m^2*')') else NULL) +
     theme_bw(base_size = 13) +
     theme(panel.grid.minor = element_blank(),
@@ -264,29 +264,29 @@ panel_plot <- function(dat, ytitle, striplab, keep_x) {
 }
 
 # Common x range with a little margin; strip labels and sign flags on both tables.
-rng = range(c(both$value, 0)) + c(-0.12, 0.12)
-hol$striplab  = 'Holocene'
+forcing_axis_limits = range(c(forcing_panels$value, 0)) + c(-0.12, 0.12)
+holocene_panel$striplab  = 'Holocene'
 ipcc$striplab = 'IPCC'
-hol$sign  = ifelse(hol$value  >= 0, 'pos', 'neg')
+holocene_panel$sign  = ifelse(holocene_panel$value  >= 0, 'pos', 'neg')
 ipcc$sign = ifelse(ipcc$value >= 0, 'pos', 'neg')
 
 # Stack the two panels, heights proportional to their row counts, and save.
-p_slide_lab = panel_plot(hol,  'time period (k years)', 'Holocene', FALSE) /
-              panel_plot(ipcc, 'forcing agent',         'IPCC',     TRUE) +
-              plot_layout(heights = c(nrow(hol), nrow(ipcc)))
+p_slide_lab = panel_plot(holocene_panel,  'time period (k years)', 'Holocene', FALSE, forcing_axis_limits) /
+              panel_plot(ipcc, 'forcing agent',         'IPCC',     TRUE, forcing_axis_limits) +
+              plot_layout(heights = c(nrow(holocene_panel), nrow(ipcc)))
 
 ggsave(path_figure(paths, 'forcing_barplot_slide18.pdf'), p_slide_lab, width = 8, height = 6)
 ggsave(path_figure(paths, 'forcing_barplot_slide18.png'), p_slide_lab, width = 8, height = 6, dpi = 150)
 
 # kernel spread, same layout, Holocene panel only
-hol3 = main %>%
+kernel_comparison = forcing_by_period %>%
   transmute(kernel, label = sub(' ka$', '', as.character(period)), value = global_equiv)
-hol3$label = factor(hol3$label, levels = rev(sub(' ka$', '', labels_period)))
+kernel_comparison$label = factor(kernel_comparison$label, levels = rev(sub(' ka$', '', labels_period)))
 # Labels say which kernel variable was read (R/kernels.R). The 'factor of two'
 # title holds only when the kernels mix clear-sky and all-sky, as in the original analysis.
 kernel_rows = kernels_read(cfg)
 mixed_sky = length(unique(kernel_rows$sky)) > 1
-p_kern = ggplot(hol3, aes(x = label, y = value, fill = kernel)) +
+p_kern = ggplot(kernel_comparison, aes(x = label, y = value, fill = kernel)) +
   geom_col(position = position_dodge(0.8), width = 0.7) +
   geom_hline(yintercept = 0, linewidth = 0.3) +
   coord_flip() +
@@ -301,7 +301,7 @@ ggsave(path_figure(paths, 'forcing_barplot_kernel_spread.pdf'), p_kern, width = 
 
 # The domain-mean version, kept separate because it is not comparable with the IPCC
 # global means (A8).
-p_dom = ggplot(main %>% filter(kernel=='hadgem'), aes(x = period, y = domain_mean)) +
+p_dom = ggplot(forcing_by_period %>% filter(kernel=='hadgem'), aes(x = period, y = domain_mean)) +
   geom_col(fill = 'grey55') + geom_hline(yintercept = 0, linewidth = 0.3) +
   labs(title = 'Domain mean over the study area',
        subtitle = 'NOT comparable with global-mean IPCC ERF; see assumption A8',
@@ -310,7 +310,7 @@ p_dom = ggplot(main %>% filter(kernel=='hadgem'), aes(x = period, y = domain_mea
 ggsave(path_figure(paths, 'forcing_barplot_domain_mean.pdf'), p_dom, width = 9, height = 5)
 
 # Sensitivity of the answer to the forcing variant (A1/A2).
-p_sens = ggplot(sens, aes(x = period, y = global_equiv, fill = variant)) +
+p_sens = ggplot(variant_sensitivity, aes(x = period, y = global_equiv, fill = variant)) +
   geom_col(position = position_dodge(0.85), width = 0.8) +
   geom_hline(yintercept = 0, linewidth = 0.3) +
   labs(title = 'Sensitivity to the forcing variant (HadGEM3 kernel)',
@@ -325,26 +325,26 @@ ggsave(path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'), p_sens, wi
 # script 7's 7 coarse slice-pairs (one per period, so nothing to sum); months
 # are feb/may/aug/nov only; binary-flagged ice cells are masked; and the bar is
 # the PLAIN UNWEIGHTED MEAN over cells x months, i.e. a domain mean. See C5.
-d7 = read_input(run, path_file(paths, 'coarse_differences'))
+coarse_differences = read_input(run, path_file(paths, 'coarse_differences'))
 # Kernel and area per cell-month come from `d`, which has already been trimmed to the
 # latitudes of config.R analysis$domain (27-74 N by default) and to period-complete cells
 # (A4, A10); the join therefore applies the same trim to the recipe, which Andria's
 # April-2024 code did not.
-d7 = inner_join(d7, distinct(d, cell_id, month, rk_hadgem, area), by = c('cell_id','month'))
-d7$facets = sub(' ka$', '', labels_period)[match(d7$year, sort(unique(d7$year)))]
-d7$rf = d7$alb_diff * 100 * d7$rk_hadgem
-d7$rf[!is.na(d7$ice_young) | !is.na(d7$ice_old)] = NA
+coarse_differences = inner_join(coarse_differences, distinct(forcing_by_cell, cell_id, month, rk_hadgem, area), by = c('cell_id','month'))
+coarse_differences$facets = sub(' ka$', '', labels_period)[match(coarse_differences$year, sort(unique(coarse_differences$year)))]
+coarse_differences$rf = coarse_differences$alb_diff * 100 * coarse_differences$rk_hadgem
+coarse_differences$rf[!is.na(coarse_differences$ice_young) | !is.na(coarse_differences$ice_old)] = NA
 # CM: the recipe needs all four of its months; it is skipped, never computed on a subset,
 # when any is missing. It is compared with the slide's seven periods, so it is
 # skipped too when the coarse ages in config.R are not the slide's.
 egu_months = c('feb','may','aug','nov')
 slide_ages = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)   # slide 18's periods, a fact of the slide
-if (!all(egu_months %in% unique(d7$month))) {
+if (!all(egu_months %in% unique(coarse_differences$month))) {
   message('EGU 2024 recipe skipped: needs ', paste(egu_months, collapse = '/'), ' in the data')
 } else if (!identical(ages_sub, slide_ages)) {
   message('EGU 2024 recipe skipped: the coarse ages in config.R are not the periods of slide 18')
 } else {
-  egu = d7 %>% filter(month %in% c('feb','may','aug','nov')) %>%
+  egu = coarse_differences %>% filter(month %in% c('feb','may','aug','nov')) %>%
     group_by(facets) %>%
     summarise(mean_forcing  = mean(rf, na.rm = TRUE),
               mean_weighted = sum(rf * area, na.rm = TRUE) / sum(area[!is.na(rf)]),
@@ -353,9 +353,9 @@ if (!all(egu_months %in% unique(d7$month))) {
   hol_egu = egu %>% transmute(panel = 'Holocene', label = facets, value = mean_forcing,
                               striplab = 'Holocene', sign = ifelse(mean_forcing >= 0, 'pos', 'neg'))
   hol_egu$label = factor(hol_egu$label, levels = rev(sub(' ka$', '', labels_period)))
-  rng = range(c(hol_egu$value, ipcc$value, 0)) + c(-0.3, 0.3)
-  p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE) /
-          panel_plot(ipcc,    'forcing agent',         'IPCC',     TRUE) +
+  forcing_axis_limits = range(c(hol_egu$value, ipcc$value, 0)) + c(-0.3, 0.3)
+  p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE, forcing_axis_limits) /
+          panel_plot(ipcc,    'forcing agent',         'IPCC',     TRUE, forcing_axis_limits) +
           plot_layout(heights = c(nrow(hol_egu), nrow(ipcc))) +
           plot_annotation(title = "Slide 18 recipe recovered from git 383002d, on today's data",
                           subtitle = 'domain mean, feb/may/aug/nov, ice masked, HadGEM3; NOT global-equivalent')
@@ -365,8 +365,8 @@ if (!all(egu_months %in% unique(d7$month))) {
 } # CM: end of the EGU 2024 recipe
 
 # --- numbers out -------------------------------------------------------------
-write_output(run, main, path_file(paths, 'forcing_by_period'), write.csv, row.names = FALSE)
-write_output(run, sens, path_file(paths, 'forcing_variant_sensitivity'), write.csv, row.names = FALSE)
+write_output(run, forcing_by_period, path_file(paths, 'forcing_by_period'), write.csv, row.names = FALSE)
+write_output(run, variant_sensitivity, path_file(paths, 'forcing_variant_sensitivity'), write.csv, row.names = FALSE)
 write_output(run, modern, path_file(paths, 'modern_erf'), write.csv, row.names = FALSE)
 
 # Close the run manifest: closes the plot devices and records the figures written.
