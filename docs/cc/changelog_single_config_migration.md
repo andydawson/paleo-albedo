@@ -36,7 +36,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
 | I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
-| I15c Readability: scripts, one branch per script | #18 | in progress: script 8 merged 2026-10-15 | |
+| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9 merged 2026-10-15 | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -936,4 +936,17 @@ new, and its outputs compared.
 - Verified (`docs/cc/verification/2026-10-15_i15c-script8-{before,after}_report.md`, both
   PASS): the forcing table byte-identical to the anchor and to the old code's; Rplots.pdf
   identical to the old code's apart from the embedded dates.
+
+### Script 9 (merged 2026-10-15)
+- Names for what each table holds: `forcing_by_cell` (was `d`), `coarse_differences` (`d7`),
+  `FORCING_COLUMNS` (`KERNELS`), `complete_cell_month_periods` (`keep`), `forcing_by_period`
+  (`main`), `variant_sensitivity` (`sens`), `holocene_panel`, `forcing_panels`,
+  `kernel_comparison`, `forcing_axis_limits` (`hol`, `both`, `hol3`, `rng`), and the
+  function locals. The per-period pair counts: table `pairs_per_period`, column `n_pairs`.
+- `aggregate_forcing()` and `panel_plot()` take the table, Earth's area and the axis limits
+  as arguments instead of reading global variables (the limits were reassigned before the
+  EGU figure; each call passes the values it used before). Dead `alb_prod` line removed.
+- Verified (`docs/cc/verification/2026-10-15_i15c-script9-{before,after}_report.md`, PASS):
+  the four forcing CSVs byte-identical to the anchors; all seven figures identical to the
+  old code's (PNG byte for byte, PDF apart from the embedded dates).
 
