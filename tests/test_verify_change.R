@@ -79,6 +79,11 @@ stopifnot(r$verdict == 'FAIL', has(r, 'anchor not matched'))
 r = run('failing_check', 'scripts/good.R', checks = list(c('-e', 'quit(status = 3)')))
 stopifnot(r$verdict == 'FAIL', has(r, 'check failed'), any(grepl('exit status 3', readLines(r$report))))
 
+# Each check keeps its own log.
+r = run('two_checks', 'scripts/good.R', checks = list(c('-e', 'cat("first\\n")'), c('-e', 'cat("second\\n")')))
+logs = file.path(r$worktree, '.rundirs/two_checks', c('check_01.log', 'check_02.log'))
+stopifnot(r$verdict == 'PASS', all(file.exists(logs)), readLines(logs[1]) == 'first', readLines(logs[2]) == 'second')
+
 # A run folder name is never reused: a second verification must not mix with the first.
 stopifnot(inherits(try(run('good', 'scripts/good.R'), silent = TRUE), 'try-error'))
 
