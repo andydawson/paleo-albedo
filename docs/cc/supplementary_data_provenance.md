@@ -22,17 +22,22 @@ for Andria to confirm.
 **Product.** MOD44W MODIS/Terra Land Water Mask Derived from MODIS and SRTM L3 Global 250m
 SIN Grid, Version 6.1 (`MOD44W.061`), annual, 250 m, sinusoidal grid. Layers `water_mask`
 (land / water) and `water_mask_QA` (per-pixel quality).
-Citation: Carroll, M., Gill, R.L., Strong, S.L., Burke, A.L., Blanco-Rojas, M., Frost, M.J.
-(2024). MOD44W MODIS/Terra Land Water Mask Derived from MODIS and SRTM L3 Global 250m SIN
-Grid V061. NASA EOSDIS Land Processes Distributed Active Archive Center.
-https://doi.org/10.5067/MODIS/MOD44W.061
+Citation (as given in the README AppEEARS delivered with the data): Carroll, M., DiMiceli, C.,
+Townshend, J., Sohlberg, R., Hubbard, A., Wooten, M., Spradlin, C., Gill, R., Strong, S.,
+Burke, A., Blanco-Rojas, M., & Frost, M. (2024). MODIS/Terra Land Water Mask Derived from
+MODIS and SRTM L3 Global 250m SIN Grid V061. NASA Land Processes Distributed Active Archive
+Center. https://doi.org/10.5067/MODIS/MOD44W.061. Accessed October 15, 2026.
 Algorithm and purpose (masking water in downstream MODIS land products): MOD44W user guide
 and ATBD, https://lpdaac.usgs.gov/documents/1915/MOD44W_User_Guide_ATBD_V61.pdf
 
 **Access route.** NASA AppEEARS (Application for Extracting and Exploring Analysis Ready
 Samples), https://appeears.earthdatacloud.nasa.gov/, with a NASA Earthdata Login account
-(https://urs.earthdata.nasa.gov/users/new; free). AppEEARS version and its recommended
-citation: to be copied from the README delivered with the request.
+(https://urs.earthdata.nasa.gov/users/new; free). The request was processed by AppEEARS
+version 3.131; its citation (from the README): AppEEARS Team. (2026). Application for
+Extracting and Exploring Analysis Ready Samples (AppEEARS). Ver. 3.131. NASA EOSDIS Land
+Processes Distributed Active Archive Center (LP DAAC), USGS/Earth Resources Observation and
+Science (EROS) Center, Sioux Falls, South Dakota, USA. Accessed October 15, 2026.
+https://appeears.earthdatacloud.nasa.gov
 
 **Request** (submitted by Chris McWilliams from the AppEEARS web page, 2026-10-15 09:04 BST):
 
@@ -45,7 +50,7 @@ citation: to be copied from the README delivered with the request.
 | Product, layers | `MOD44W.061`: `water_mask`, `water_mask_QA` |
 | Output format | GeoTIFF |
 | Projection | Native Projection (MODIS sinusoidal), so the 250 m pixels are not resampled |
-| Calendar-date file names | as submitted (to be read from the request's `*-request.json`) |
+| Calendar-date file names | not used: the files are named by year and day of year (`doy2015001`) |
 
 **The area file.** `data/mod44w/paleo_rf_area.geojson` (committed; MD5
 `270cf1d829ac389658e4759a684aaa71`): one GeoJSON polygon (RFC 7946, WGS84 longitude and
@@ -69,10 +74,28 @@ json.dump({"type": "FeatureCollection", "features": [{"type": "Feature",
           open("paleo_rf_area.geojson", "w"))
 ```
 
-**Delivery** (to be completed): date the request finished (the measured turnaround), the
-files received with their sizes and MD5 checksums, where they were put
-(`data/mod44w/2015/`, not committed because of size; the checksums identify them), the
-AppEEARS version and citation from the README.
+**Delivery.** Downloaded by Chris from the request's page and copied to the workstation on
+2026-10-15 (files time-stamped 11:13 BST; submitted 09:04 BST, so the request took at most
+about two hours). Unzipped unrenamed into `data/mod44w/2015/` (not committed because of
+size; the checksums identify them). AppEEARS records the request itself in
+`paleo-rf-mod44w-2015-request.json` and the 52 source tiles (MODIS sinusoidal grid,
+MOD44W.A2015001, collection 6.1 files of 2024) in `paleo-rf-mod44w-2015-granule-list.txt`.
+
+| File | Bytes | MD5 |
+|---|---|---|
+| `MOD44W.061_water_mask_doy2015001000000_aid0001.tif` | 21,368,608 | `40093e9d2eee5557a2e4843306f7616e` |
+| `MOD44W.061_water_mask_QA_doy2015001000000_aid0001.tif` | 28,351,072 | `0ced9907316fdf74e36a32b4ab4a1c2f` |
+| `README.md` (AppEEARS) | 36,696 | `e86a9f9bb6fc02330e9b92a18737efe9` |
+| `paleo-rf-mod44w-2015-request.json` | 12,479 | `327084034e4b2833dd1eaec7a8546e7a` |
+| `paleo-rf-mod44w-2015-granule-list.txt` | 8,427 | `f042911ac2df83a18483b22e485e1b34` |
+| `MOD44W-061-water-mask-Statistics.csv` | 114 | `3d303ae10049ecf70b1617c0090e29f0` |
+| `MOD44W-061-water-mask-QA-lookup.csv` | 244 | `8a360cb836e81dc94f04eef027caa240` |
+
+The water mask as received: one layer, 29,761 x 74,191 pixels of 231.66 m in the MODIS
+sinusoidal projection (`+proj=sinu +R=6371007.181`), value 0 land, 1 water (379,133,327 land
+and 448,023,863 water pixels within the rectangle, which includes ocean); the QA layer's
+codes are listed in the QA lookup file (1 high-confidence observation ... 9 model-predicted
+water where the DEM slope says no water).
 
 **Preparation before the pipeline** (to be completed with issue I16c): how the 250 m mask
 is turned into each cell's land fraction and land-mean albedo and elevation, in a committed
