@@ -3,7 +3,7 @@
 # read and written through the run manifest; comments marked '# CM:' are notes on
 # changes from the original analysis.
 # The draws are reduced by reduce_land_cover() and the fractions checked by
-# check_fractions() (R/preparation.R); the elevation lookup is cached on disk; a
+# check_fractions() (R/preparation.R); the elevation is read from a prepared table; a
 # diagnostic switch (config.R run$diagnostic) adds checks and plots at the end.
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
@@ -17,7 +17,6 @@ paths = run$paths
 # Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(dplyr)
 library(tidyr)
-library(elevatr)
 
 # Diagnostic mode. Off by default. Switch on with `diagnostic = TRUE` in the run section of
 # config.R (or of the file given with --config).
@@ -29,9 +28,6 @@ library(elevatr)
 # classes (the pipeline uses config.R's analysis$land_cover$reduction, the mean by
 # default). Nothing in diagnostic mode changes the outputs.
 diagnostic = cfg$run$diagnostic
-
-# standard lat long projection
-ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 
 lct_interp = read_input(run, path_file(paths, 'veg_posts'))
@@ -66,31 +62,17 @@ locations_interp = lct_interp_wide[,c('x', 'y')]
 # Elevation of each cell (config.R analysis$elevation$method, question B9).
 # "land_mean": the GMTED2010 mean over the cell's non-ocean area, a table prepared once by
 # tools/prepare_land_elevation.R (committed).
-# "centre_point" (the original): the elevation at each cell centre, cached. The AWS terrain
-# service is queried only when data/elev_interp_cells.RDS is absent; the file holds one row
-# per distinct cell (x, y, elev) and is committed, so a fresh clone needs no network for
-# this step. Delete the file to force a fresh lookup. The lookup is made once per cell
-# rather than once per cell-slice, which returns the same values as the original per-row
-# query.
+# "centre_point" (the original): the elevation at each cell centre from the AWS terrain
+# tiles, data/elev_interp_cells.RDS (committed; one row per cell: x, y, elev). If it is
+# missing, tools/prepare_centre_elevation.R remakes it with the original query.
 if (cfg$analysis$elevation$method == 'land_mean') {
   elev_lookup = read_input(run, path_file(paths, 'elevation_land_mean'), read.csv)
   run_record(run, 'elevation', list(method = 'land_mean',
                                     source = 'GMTED2010 30-arc-second mean over non-sea area (sea = GMTED 0 m)'))
 } else {
   elev_file = path_file(paths, 'elevation_cache')
-  if (file.exists(elev_file)) {
-    elev_lookup = read_input(run, elev_file)
-  } else {
-    cells_unique = unique(locations_interp)
-    ele_get_cells = get_elev_point(cells_unique, 
-                                   prj = ll_proj, 
-                                   src = "aws")
-    elev_lookup = data.frame(cells_unique, elev = ele_get_cells$elevation)
-    # The lookup used the network, so record it.
-    run_record(run, 'elevation_lookup', list(source = 'AWS terrain tiles, elevatr::get_elev_point(src = "aws")',
-                                             cells = nrow(cells_unique), when = utc_time(Sys.time())))
-    write_output(run, elev_lookup, elev_file)
-  }
+  if (!file.exists(elev_file)) stop(elev_file, ' is missing: run tools/prepare_centre_elevation.R once')
+  elev_lookup = read_input(run, elev_file)
 }
 elev_interp = elev_lookup$elev[match(paste(locations_interp$x, locations_interp$y),
                                      paste(elev_lookup$x, elev_lookup$y))]
