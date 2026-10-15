@@ -12,15 +12,14 @@
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I06).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('3_plot_cal_lct_albedo')
 cfg   = run$cfg
 paths = run$paths
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(ggplot2)
 library(ggtern)
 library(scales)
@@ -37,7 +36,7 @@ pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
 # CM: boundaries prepared by the shared helper (see R/map_helpers.R for why the raw file
 # cannot be drawn as-is). The original drew pbs_ll with geom_polygon and coord_fixed.
-# The map window is the calibration window in config.R (issue I03).
+# The map window is the calibration window in config.R.
 map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
 pbs_land = prepare_boundaries(pbs_ll, map_window)
@@ -122,17 +121,16 @@ tric_lct$key +
 ggsave(path_figure(paths, 'LCT_tricolore_key_interp.png'))
 ggsave(path_figure(paths, 'LCT_tricolore_key_interp.pdf'))
 
-# add the vector of colors to the `euro_example` data
+# each calibration cell's colour, from its mix of the three land-cover classes
 cal_data_pie$lct_rgb <- tric_lct$rgb
 
 plot_lct <-
-  # using data sf data `euro_example`...
+  # the calibration cells...
   ggplot() +
   boundary_layers(pbs_land, map_window, colour = "grey", fill = "grey") +
-  # ...draw a choropleth map
+  # ...drawn as tiles
   geom_tile(data=cal_data_pie, aes(x, y, fill = lct_rgb)) +
-  # ...and color each region according to the color-code
-  # in the variable `educ_rgb`
+  # ...each coloured by its land-cover mix (lct_rgb)
   theme_bw() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
@@ -212,21 +210,22 @@ ggplot(data=subset(cal_long, variable == 'OVL'), aes(x=value, y=albedo)) +
   facet_wrap(~month)
 
 
-# albedo versus land cover & snow
+# albedo versus land cover, by month
 
 # CM: the original re-melted cal_long here and then plotted columns OL, ST and ET, which
 # no longer exist once the table is melted (they are 'variable' and 'value'). Those three
 # plots duplicate the per-class scatters above, so the block is dropped; cal_lct_melt from
 # the gridded-maps section is what the plots below use.
 
-# relationship between land cover type and albedo in month 5; weak but there
+# albedo against each land-cover fraction, one panel per month, with a linear fit
+# (Andria's note on May: the relationship is weak but there)
 ggplot(data=cal_lct_melt, aes(x=value, y=albedo, colour=variable)) +
   geom_point(alpha=0.6) +
   geom_smooth(se = TRUE, method = lm, fullrange=TRUE)+
   facet_wrap(~month)
 
 
-# relationship between land cover type and albedo in month 5; weak but there
+# each land-cover fraction against latitude, with a linear fit
 ggplot(data=cal_lct_melt, aes(x=lat, y=value, colour=variable)) +
   geom_point(alpha=0.6) +
   geom_smooth(se = TRUE, method = lm, fullrange=TRUE)

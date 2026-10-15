@@ -11,8 +11,7 @@
 # missing keys and illegal values stop the script with a message naming every problem.
 # Each run manifest records the settings as evaluated. (Until 2026-10-14 the file was read
 # by a restricted parser that allowed only list(), c(), seq() and literal values; Chris
-# replaced it with plain source() for readability, issue I06.) Single-config migration,
-# issue I03, 2026-10-13.
+# replaced it with plain source() for readability.)
 
 source('R/config_schema.R')
 
@@ -42,7 +41,7 @@ config_schema_errors = function(value, schema, path = 'cfg') {
 #   Rscript scripts/6_prediction_model.R --config configs/median.R
 # An alternative run is then described completely by one file (its settings and its run
 # directory), which can be committed like config.R, and runs with different config files
-# can go side by side from one checkout (issue I07, 2026-10-13).
+# can go side by side from one checkout.
 config_path = function(args = commandArgs(trailingOnly = TRUE)) {
   i = which(args == '--config' | startsWith(args, '--config='))
   if (!length(i)) return('config.R')

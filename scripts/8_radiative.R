@@ -1,41 +1,32 @@
 # 8_radiative.R: turn albedo change into radiative forcing
-# Interp (spatially complete) path only: the point-based code and its guards are
-# removed. Every remaining line is unchanged from the original.
+# Interp (spatially complete) path only. Settings come from config.R, and every file is
+# read and written through the run manifest; comments marked '# CM:' are notes on
+# changes from the original analysis.
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07; it creates the product
-# directories) and starts the run's manifest; files are then read and written through it
-# (issue I05).
+# given with --config), sets up the paths of R/paths.R (it creates the product
+# directories) and starts the run's manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('8_radiative')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(sp)
 library(ggplot2)
 library(raster)
 library(sf)
 library(dplyr)
 
-# The months analysed, from config.R (analysis$months, issue I04b); month names and
-# numbers come from the shared calendar, R/calendar.R (issue I02).
+# The months analysed, from config.R (analysis$months); month names and
+# numbers come from the shared calendar, R/calendar.R.
 source('R/calendar.R')
 months = cfg$analysis$months
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
-
-# CM: script 7's three ice-outline tables (ice_fort, ice_fort_diff_young, ice_fort_diff_old)
-# were read here but never used, which made script 8 depend on script 7 for nothing;
-# removed (issue I06). Script 8 needs only script 7a's differences.
-
-# CM: the period labels (labels_period), the coarse ages (ages_sub) and the tail map window
-# (xlim, ylim) were defined here but never used in this script; removed so config.R holds
-# their only definition (issue I03). Likewise the fine time slices (ages, N_times; I04b).
 
 ice_fill = 'gainsboro'
 ice_colour = 'gray60'
@@ -47,13 +38,17 @@ pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 pbs = read_input(run, path_file(paths, 'boundaries'))
 
 # The kernel variables read are set in config.R (analysis$kernels; R/kernels.R says what
-# each is: clear-sky or all-sky, TOA or surface; questions C3, C4; issue I16).
+# each is: clear-sky or all-sky, TOA or surface; questions C3, C4).
 rk_hadgem = read_input(run, path_file(paths, 'kernel_hadgem'), brick, level=1, varname=cfg$analysis$kernels$hadgem_variable)
 
 alb_interp_diff_full = read_input(run, path_file(paths, 'albedo_differences'))
 
 alb_diff = alb_interp_diff_full
 
+# Where each cell is found on the kernel grids. The kernels use longitude 0 to 360, so a
+# western longitude (all the cells are west of Greenwich) becomes 360 minus its absolute
+# value. CACK is read without geographic coordinates: once turned the right way round
+# (t(flip()) below) its 180 x 360 grid is indexed by that longitude and by latitude + 90.
 alb_diff$long360 = 180 + 180 - abs(alb_diff$long)
 alb_diff$lat180 = alb_diff$lat + 90
 
@@ -105,12 +100,13 @@ for (month in months){
                      level=month_number,
                      band=cfg$analysis$kernels$cack_year - 2000)
   } else {
-    # The 2001-2016 climatological mean: 'CACK CM' is [row, col, Month] (C3b; issue I16).
+    # The 2001-2016 climatological mean: 'CACK CM' is [row, col, Month] (C3b).
     rk_cack = read_input(run, path_file(paths, 'kernel_cack'), raster,
                      varname='CACK CM',
                      band=month_number)
   }
 
+  # The CACK array comes in transposed and upside down relative to the map.
   rk_cack =  t(flip((rk_cack)))
 
   rk_cack_df = as.data.frame(rk_cack, xy=TRUE)
@@ -121,10 +117,16 @@ for (month in months){
 
 }
 
-# Keep cells strictly between config.R analysis$domain$lat_min and lat_max (issue I04b).
+# Keep cells strictly between config.R analysis$domain$lat_min and lat_max.
 alb_diff = alb_diff[which(alb_diff$lat>cfg$analysis$domain$lat_min),]
 alb_diff = alb_diff[which(alb_diff$lat<cfg$analysis$domain$lat_max),]
 
+# Forcing (W/m2, per cell and month) = albedo change x kernel. The albedo changes are the
+# younger slice minus the older (R/differences.R), as fractions (0 to 1). HadGEM3 and CAM5
+# kernels are in W/m2 per 1% albedo and stored negative (brighter surface, less absorbed
+# sunlight), hence x 100; CACK is in W/m2 per unit albedo and stored positive, hence the
+# minus sign and no factor of 100. A brighter surface therefore gives a negative forcing
+# with every kernel (question C3).
 alb_diff$rf_hadgem_veg_thresh = alb_diff$alb_diff_veg_thresh*100 * alb_diff$rk_hadgem
 alb_diff$rf_hadgem_ice_thresh = alb_diff$alb_diff_ice_thresh*100 * alb_diff$rk_hadgem
 alb_diff$rf_hadgem_icesc_thresh = alb_diff$alb_diff_icesc_thresh*100 * alb_diff$rk_hadgem
@@ -195,6 +197,8 @@ ggplot(data=bar) +
 
 bar$alb_diff_ice_thresh
 
+# One row per cell, month and pair of slices within the domain's latitudes: the albedo
+# differences and the forcing of every variant with every kernel.
 write_output(run, alb_diff, path_file(paths, 'forcing'))
 
 run_finish(run)

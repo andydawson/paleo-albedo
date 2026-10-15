@@ -5,7 +5,7 @@
 # took "model 8" as the selected model in three separate places. Each model is now defined
 # once here, by its id; script 4 fits them in a loop, and the model used for prediction is
 # chosen by id in config.R (analysis$calibration$model_id, question B4). A formula changes
-# only by a reviewed change to this file (issue I04a, 2026-10-14).
+# only by a reviewed change to this file.
 #
 # The formulas, smoothing bases and basis sizes (k) are exactly script 4's. The fitted
 # response is the month's column itself (jan ~ ...) rather than the original get(month) ~
@@ -13,7 +13,9 @@
 # predictions are the same (tools/check_calibration_month.R).
 
 CALIBRATION_MODELS = list(
-  # The ladder: each model adds to the one before. Script 5 compares them.
+  # The ladder: from location alone to location, elevation and all three cover fractions.
+  # Models 2 to 5 each add one term; models 6 to 8 replace the separate cover terms with one
+  # joint smooth of the three, in three forms. Scripts 4 and 5 compare them.
   mod1 = list(label = 'model 1: (x,y)',
               rhs = ~ s(x, y, bs = "gp", k = 500)),
   mod2 = list(label = 'model 2: (x,y) + elevation',
@@ -65,8 +67,8 @@ calibration_terms = function(model_id) paste(deparse(CALIBRATION_MODELS[[model_i
 
 # Fit one model for one month to the calibration table. method is "REML" (the default, for
 # the fit used to predict) or "ML" (for comparing models that differ in their fixed terms,
-# as the ladder does: REML likelihoods are not comparable across such models; question B4,
-# issue I16).
+# as the ladder does: REML likelihoods are not comparable across such models;
+# question B4).
 fit_calibration_model = function(model_id, month, data, method = "REML") {
   mgcv::bam(calibration_formula(model_id, month),
             data      = data,

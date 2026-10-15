@@ -1,4 +1,4 @@
-# Run manifests: one record of every run of a pipeline script (issue I05, #6).
+# Run manifests: one record of every run of a pipeline script.
 #
 # Why: a number in the paper can only be trusted if we can say which code, which settings
 # and which input files made it. Each run of a script writes runs/<script>/<time>_<pid>.md

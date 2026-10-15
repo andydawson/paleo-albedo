@@ -1,4 +1,4 @@
-# The ORIGINAL analysis, as Andria ran it, in this pipeline's settings (issue I16).
+# The ORIGINAL analysis, as Andria ran it, in this pipeline's settings.
 #
 # A complete copy of config.R with every method choice set back to the original analysis,
 # so that the pipeline can still reproduce it (and the regression anchors in tests/anchors).
@@ -154,12 +154,12 @@ list(
     # that the file is the one that script's latest run wrote and that the run used the
     # same analysis settings as this one; if not, it stops and says what differs. TRUE
     # lets the run go on regardless, and every such file is listed in its run manifest.
-    # Meant for checks against products made before run manifests existed (issue I05).
+    # Meant for checks against products made before run manifests existed.
     allow_stale = FALSE,
 
     # Script 1's diagnostic mode: TRUE adds checks and plots of the land-cover input (the
     # discarded ice flag, absent cell-slices, mean versus median) into figures/diagnostics/.
-    # Changes no output (issue I06; was the DIAGNOSTIC environment variable).
+    # Changes no output.
     diagnostic = FALSE
   )
 )

@@ -1,26 +1,26 @@
 # 2_calibration_lct_bluesky.R: attach modern satellite albedo to the modern land cover
-# Interp (spatially complete) path only: the point-based code and its guards are
-# removed. Every remaining line is unchanged from the original.
+# Interp (spatially complete) path only. Settings come from config.R, and every file is
+# read and written through the run manifest; comments marked '# CM:' are notes on
+# changes from the original analysis.
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I06).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('2_calibration_lct_bluesky')
 cfg   = run$cfg
 paths = run$paths
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(terra)
 library(ggplot2)
 library(reshape2)
 library(tidyterra)
 
-# All twelve months from the shared calendar (R/calendar.R; issue I02). Deliberately not
+# All twelve months from the shared calendar (R/calendar.R). Deliberately not
 # config.R's month selection: the calibration table keeps every month, so scripts 4 onward
-# can run on any selection without rebuilding it (issue I04b).
+# can run on any selection without rebuilding it.
 source('R/calendar.R')
 months = MONTHS
 
@@ -28,7 +28,7 @@ pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
 # Boundaries for the maps, prepared by the shared helper (see R/map_helpers.R for why the
 # raw file cannot be drawn as-is: the "weirdness" noted on 2026-09-24). Fix added 2026-09-25.
-# The map window is the calibration window in config.R (issue I03).
+# The map window is the calibration window in config.R.
 map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
 pbs_land = prepare_boundaries(pbs_ll, map_window)
@@ -39,7 +39,7 @@ grid <- rast(read_input(run, path_file(paths, 'grid')))
 lct_interp_modern = read_input(run, path_file(paths, 'lct_modern'))
 
 # Present-day ice caps out of the calibration (config.R analysis$calibration$ice_mask,
-# question B8, issue I16): cells whose centre lies under the 1 ka ice polygons (the first of
+# question B8): cells whose centre lies under the 1 ka ice polygons (the first of
 # the glacier shapes) carry interpolated vegetation fractions but the satellite's ice albedo.
 # They stay in the prediction domain; only the calibration table loses them. The cells left
 # out are recorded in the run manifest.
@@ -84,7 +84,7 @@ names(blue_all_months) = MONTHS
 names(blue_all_months_coarse) = MONTHS
 
 # crop albedo (I think this removes the ocean grid cells? not sure)
-# CM: this crop is not needed (and not doing anything - cropping the raster to a box that is bigger than itself) - line 123 samples the raster at the 2870 land cover cells.
+# CM: this crop is not needed (and not doing anything - cropping the raster to a box that is bigger than itself) - the extract() further down samples the raster at the modern land-cover cells only.
 blue_all_months_coarse = crop(blue_all_months_coarse, ext(pbs_ll))
 
 # some weirdness going on with these figures
@@ -156,12 +156,16 @@ for(i in 1:length(months)) {
 
 }
 
+# The calibration models (script 4) use a beta distribution, defined only strictly between
+# 0 and 1, so an albedo of exactly zero is set to a small positive value.
 bs_interp_df[bs_interp_df==0] = 1e-4
 bs_interp_df_coarse[bs_interp_df_coarse==0] = 1e-4
 
 lct_interp_bs = data.frame(lct_interp_modern, bs_interp_df)
 lct_interp_bs_coarse = data.frame(lct_interp_modern, bs_interp_df_coarse)
 
+# One row per modern cell: land cover, elevation and the twelve monthly albedos (the second
+# table at the coarser albedo resolution).
 write_output(run, lct_interp_bs, path_file(paths, 'calibration_table'))
 write_output(run, lct_interp_bs_coarse, path_file(paths, 'calibration_table_coarse'))
 

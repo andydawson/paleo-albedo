@@ -13,10 +13,10 @@
 #   run           where this run writes its files, and whether stale inputs are allowed
 #
 # A key appears here only once a script reads it. The remaining migration issues move code
-# into functions without adding keys (issue I06, 2026-10-14); the method options decided on
+# into functions without adding keys; the method options decided on
 # 2026-10-14 will be added by their own issue. Where a value is a choice nobody has yet
 # confirmed, the comment gives its question id in docs/cc/questions_for_andria_scientific.md (C*) or
-# questions_for_andria_general.md (section number). Created 2026-10-13 (issue I03).
+# questions_for_andria_general.md (section number). Created 2026-10-13.
 
 list(
   analysis = list(
@@ -163,12 +163,12 @@ list(
     # that the file is the one that script's latest run wrote and that the run used the
     # same analysis settings as this one; if not, it stops and says what differs. TRUE
     # lets the run go on regardless, and every such file is listed in its run manifest.
-    # Meant for checks against products made before run manifests existed (issue I05).
+    # Meant for checks against products made before run manifests existed.
     allow_stale = FALSE,
 
     # Script 1's diagnostic mode: TRUE adds checks and plots of the land-cover input (the
     # discarded ice flag, absent cell-slices, mean versus median) into figures/diagnostics/.
-    # Changes no output (issue I06; was the DIAGNOSTIC environment variable).
+    # Changes no output.
     diagnostic = FALSE
   )
 )

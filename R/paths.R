@@ -23,8 +23,7 @@
 #                never overwrite the baseline. Original inputs are still read from the
 #                repository. Products of earlier steps are read only from that directory;
 #                seed_run_dir() puts there the baseline products a run should reuse.
-# Single-config migration, issue I07, 2026-10-13. Plain R, no external tools, so it works
-# the same on Linux, macOS and Windows.
+# Plain R, no external tools, so it works the same on Linux, macOS and Windows.
 
 source('R/calendar.R')
 
@@ -33,7 +32,7 @@ source('R/calendar.R')
 ALBEDO_TAG = 'bluesky'
 
 # The fits of script 4, by model id (LADDER_MODELS, SPATIAL_MODELS): defined with their
-# formulas in R/model_registry.R (issue I04a).
+# formulas in R/model_registry.R.
 source('R/model_registry.R')
 
 # One row per file or family of files. `template` is the path relative to the repository
@@ -168,7 +167,7 @@ path_calibration_model = function(paths, model_id, month) {
 
 # A figure file, under figures/ in the run's root. Every figure path handed out is noted, so
 # a run manifest lists the figures this run wrote and not those another run (scripts 7 and
-# 7a run side by side) wrote into the same figures/ meanwhile (issue I05).
+# 7a run side by side) wrote into the same figures/ meanwhile.
 FIGURES_REQUESTED = new.env(parent = emptyenv())
 FIGURES_REQUESTED$paths = character()
 path_figure = function(paths, ...) {
@@ -182,7 +181,7 @@ path_runs = function(paths) under_root(paths, 'runs')
 
 # A path as it is written in the catalogue ('data/x.RDS'): relative to the run's root,
 # with / separators. Lets paths given under a run directory, or with \ separators, be
-# matched to the catalogue and compared between runs (the run manifests, issue I05).
+# matched to the catalogue and compared between runs (the run manifests).
 root_relative = function(paths, path) {
   rel = gsub('\\\\', '/', path)
   if (!is.null(paths$root)) {

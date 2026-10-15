@@ -1,7 +1,6 @@
 # The schema of config.R: every key the pipeline accepts and the rule its value must meet.
 #
-# A key is added here only when a script reads it (single-config migration, issue I03 and
-# later). The tree mirrors the config: a list node lists its keys, and the config must
+# A key is added here only when a script reads it. The tree mirrors the config: a list node lists its keys, and the config must
 # have exactly those keys, no more and no fewer; a function node checks one value and
 # returns NULL if it is acceptable or a sentence saying what is wrong. Rules that involve
 # more than one key are in config_combination_errors() at the end.

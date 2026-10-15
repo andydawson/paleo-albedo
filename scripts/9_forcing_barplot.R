@@ -37,7 +37,7 @@
 # ASSUMPTIONS
 #
 # The settings below (A1 variant, A2 variants, A3 kernels, A4 periods, A8 Earth's
-# area) are read from config.R, analysis$forcing and analysis$coarse (issue I03).
+# area) are read from config.R, analysis$forcing and analysis$coarse.
 #
 # A1. Forcing variant. Uses rf_<kernel>_veg_ice_thresh: the vegetation plus ice
 #     albedo change, threshold method. Chosen because it combines the vegetation
@@ -62,8 +62,8 @@
 #     docs/cc/questions_for_andria_scientific.md. CACK is all-sky and gives
 #     roughly half the HadGEM3 answer.
 #
-# A4. Periods. The seven periods are script 8's own labels_period, bounded by
-#     ages_sub = 50, 500, 2000, 4000, 6000, 8000, 10000, 12000 yr BP.
+# A4. Periods. The seven periods are bounded by the coarse ages of config.R
+#     (analysis$coarse$ages; by default 50, 500, 2000, 4000, 6000, 8000, 10000, 12000 yr BP).
 #     CAVEAT: the oldest age in the data is 11,500 BP, so the bar labelled
 #     "10 - 12 ka" actually covers 10 to 11.5 ka.
 #
@@ -107,13 +107,13 @@
 
 source('R/calendar.R')
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# given with --config), sets up the paths of R/paths.R and starts the run's
 # manifest, which records the inputs with checksums and the whole configuration; files are
-# then read and written through it (issue I05).
+# then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('9_forcing_barplot')
 cfg   = run$cfg
-paths = run$paths   # every file read or written (issue I07)
+paths = run$paths   # every file read or written
 
 # ggplot2 and patchwork draw the charts (patchwork stacks two panels with their own
 # y-axis titles); dplyr and tidyr do the aggregation; run_manifest logs provenance.
@@ -282,7 +282,7 @@ ggsave(path_figure(paths, 'forcing_barplot_slide18.png'), p_slide_lab, width = 8
 hol3 = main %>%
   transmute(kernel, label = sub(' ka$', '', as.character(period)), value = global_equiv)
 hol3$label = factor(hol3$label, levels = rev(sub(' ka$', '', labels_period)))
-# Labels say which kernel variable was read (R/kernels.R, issue I16). The 'factor of two'
+# Labels say which kernel variable was read (R/kernels.R). The 'factor of two'
 # title holds only when the kernels mix clear-sky and all-sky, as in the original analysis.
 kernel_rows = kernels_read(cfg)
 mixed_sky = length(unique(kernel_rows$sky)) > 1
@@ -326,16 +326,17 @@ ggsave(path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'), p_sens, wi
 # are feb/may/aug/nov only; binary-flagged ice cells are masked; and the bar is
 # the PLAIN UNWEIGHTED MEAN over cells x months, i.e. a domain mean. See C5.
 d7 = read_input(run, path_file(paths, 'coarse_differences'))
-# Kernel and area per cell-month come from `d`, which has already been trimmed to 27-74 N
-# and to period-complete cells (A4, A10); the join therefore applies the same trim to the
-# recipe, which Andria's April-2024 code did not.
+# Kernel and area per cell-month come from `d`, which has already been trimmed to the
+# latitudes of config.R analysis$domain (27-74 N by default) and to period-complete cells
+# (A4, A10); the join therefore applies the same trim to the recipe, which Andria's
+# April-2024 code did not.
 d7 = inner_join(d7, distinct(d, cell_id, month, rk_hadgem, area), by = c('cell_id','month'))
 d7$facets = sub(' ka$', '', labels_period)[match(d7$year, sort(unique(d7$year)))]
 d7$rf = d7$alb_diff * 100 * d7$rk_hadgem
 d7$rf[!is.na(d7$ice_young) | !is.na(d7$ice_old)] = NA
 # CM: the recipe needs all four of its months; it is skipped, never computed on a subset,
-# when any is missing (issue I02). It is compared with the slide's seven periods, so it is
-# skipped too when the coarse ages in config.R are not the slide's (issue I03).
+# when any is missing. It is compared with the slide's seven periods, so it is
+# skipped too when the coarse ages in config.R are not the slide's.
 egu_months = c('feb','may','aug','nov')
 slide_ages = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)   # slide 18's periods, a fact of the slide
 if (!all(egu_months %in% unique(d7$month))) {
@@ -343,24 +344,24 @@ if (!all(egu_months %in% unique(d7$month))) {
 } else if (!identical(ages_sub, slide_ages)) {
   message('EGU 2024 recipe skipped: the coarse ages in config.R are not the periods of slide 18')
 } else {
-egu = d7 %>% filter(month %in% c('feb','may','aug','nov')) %>%
-  group_by(facets) %>%
-  summarise(mean_forcing  = mean(rf, na.rm = TRUE),
-            mean_weighted = sum(rf * area, na.rm = TRUE) / sum(area[!is.na(rf)]),
-            n_rows = sum(!is.na(rf)), .groups = 'drop')
-egu$slide18 = c(-0.38, -0.17, 0.22, 0.00, 0.36, 0.37, 0.72)[match(egu$facets, sub(' ka$','',labels_period))]
-hol_egu = egu %>% transmute(panel = 'Holocene', label = facets, value = mean_forcing,
-                            striplab = 'Holocene', sign = ifelse(mean_forcing >= 0, 'pos', 'neg'))
-hol_egu$label = factor(hol_egu$label, levels = rev(sub(' ka$', '', labels_period)))
-rng = range(c(hol_egu$value, ipcc$value, 0)) + c(-0.3, 0.3)
-p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE) /
-        panel_plot(ipcc,    'forcing agent',         'IPCC',     TRUE) +
-        plot_layout(heights = c(nrow(hol_egu), nrow(ipcc))) +
-        plot_annotation(title = "Slide 18 recipe recovered from git 383002d, on today's data",
-                        subtitle = 'domain mean, feb/may/aug/nov, ice masked, HadGEM3; NOT global-equivalent')
-ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.pdf'), p_egu, width = 8, height = 6.5)
-ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.png'), p_egu, width = 8, height = 6.5, dpi = 150)
-write_output(run, egu, path_file(paths, 'forcing_egu2024_recipe'), write.csv, row.names = FALSE)
+  egu = d7 %>% filter(month %in% c('feb','may','aug','nov')) %>%
+    group_by(facets) %>%
+    summarise(mean_forcing  = mean(rf, na.rm = TRUE),
+              mean_weighted = sum(rf * area, na.rm = TRUE) / sum(area[!is.na(rf)]),
+              n_rows = sum(!is.na(rf)), .groups = 'drop')
+  egu$slide18 = c(-0.38, -0.17, 0.22, 0.00, 0.36, 0.37, 0.72)[match(egu$facets, sub(' ka$','',labels_period))]
+  hol_egu = egu %>% transmute(panel = 'Holocene', label = facets, value = mean_forcing,
+                              striplab = 'Holocene', sign = ifelse(mean_forcing >= 0, 'pos', 'neg'))
+  hol_egu$label = factor(hol_egu$label, levels = rev(sub(' ka$', '', labels_period)))
+  rng = range(c(hol_egu$value, ipcc$value, 0)) + c(-0.3, 0.3)
+  p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE) /
+          panel_plot(ipcc,    'forcing agent',         'IPCC',     TRUE) +
+          plot_layout(heights = c(nrow(hol_egu), nrow(ipcc))) +
+          plot_annotation(title = "Slide 18 recipe recovered from git 383002d, on today's data",
+                          subtitle = 'domain mean, feb/may/aug/nov, ice masked, HadGEM3; NOT global-equivalent')
+  ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.pdf'), p_egu, width = 8, height = 6.5)
+  ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.png'), p_egu, width = 8, height = 6.5, dpi = 150)
+  write_output(run, egu, path_file(paths, 'forcing_egu2024_recipe'), write.csv, row.names = FALSE)
 } # CM: end of the EGU 2024 recipe
 
 # --- numbers out -------------------------------------------------------------

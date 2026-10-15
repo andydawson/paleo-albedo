@@ -1,20 +1,19 @@
 # 6_prediction_model.R: hindcast albedo for every Holocene slice
-# Interp (spatially complete) path only: the point-based code and its guards are
-# removed. Since issue I04a the draw count and random seed come from config.R and files
-# are read and written through the run manifest; the computation is unchanged.
+# Interp (spatially complete) path only. Settings come from config.R, and every file is
+# read and written through the run manifest; comments marked '# CM:' are notes on
+# changes from the original analysis.
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I04a).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('6_prediction_model')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(dplyr)
 library(mgcv)
 library(gratia)
@@ -28,8 +27,8 @@ seed_base = run_record(run, 'random_seed', list(setting = cfg$analysis$draws$see
                                                 base = base_seed(cfg$analysis$draws$seed)))$base
 
 
-# The months analysed, from config.R (analysis$months, issue I04b); month names and
-# numbers come from the shared calendar, R/calendar.R (issue I02).
+# The months analysed, from config.R (analysis$months); month names and
+# numbers come from the shared calendar, R/calendar.R.
 source('R/calendar.R')
 months = cfg$analysis$months
 
@@ -49,6 +48,7 @@ for (month in months){
   paleo_interp_predict_gam = data.frame(lct_interp_paleo,
                                         alb_mean = paleo_interp_predict_gam_vec)
 
+  # One row per cell and slice (year): this month's point prediction (alb_mean).
   write_output(run, paleo_interp_predict_gam, path_file(paths, 'prediction_point_month', month = month))
 
   print(">>Simulate")
@@ -65,6 +65,7 @@ for (month in months){
 
   paleo_interp_sim_gam_melt$iter = draw_index(paleo_interp_sim_gam_melt$iter)
 
+  # One row per cell, slice and simulated draw (iter).
   write_output(run, paleo_interp_sim_gam_melt, path_file(paths, 'prediction_samples_month', month = month))
 
   print(">>Summarize")
@@ -77,6 +78,7 @@ for (month in months){
               alb_hi = quantile(value, c(0.975)),
               .groups = 'keep')
 
+  # One row per cell and slice: mean, sd and quantiles of the draws.
   write_output(run, paleo_interp_sim_gam_sum, path_file(paths, 'prediction_summary_month', month = month))
 
 }
@@ -102,6 +104,7 @@ for (month in months) {
                                    data.frame(alb_preds_summary_month, month = rep(month)))
 }
 
+# All months together: one row per cell, slice and month.
 write_output(run, alb_preds_months, path_file(paths, 'prediction_point'))
 write_output(run, alb_preds_summary_months, path_file(paths, 'prediction_summary'))
 

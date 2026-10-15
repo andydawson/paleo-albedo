@@ -2,7 +2,7 @@
 #
 # Why a function: this is the arithmetic behind every forcing variant, and where the ice
 # rules act, so it is tested on small hand-made cases in tests/test_differences.R. The
-# lines are script 7a's, moved unchanged (issue I11, 2026-10-14).
+# lines are script 7a's, moved unchanged.
 #
 # Input: one cell and month, one row per configured slice in ascending age (years BP), as
 # script 7a builds it: ice_frac (Dalton ice fraction), alb_veg (vegetation albedo),
@@ -24,7 +24,7 @@
 #     "endpoint" this follows because the glacier albedo depends on the month only);
 #   - where an ice fraction is missing, the ice and combined differences are NA.
 #
-# difference_method (config.R analysis$ice$difference_method, issue I16) chooses how the
+# difference_method (config.R analysis$ice$difference_method) chooses how the
 # threshold variants are computed. "legacy_components" is the original arithmetic: a
 # vegetation term, NA where either end is ice by the ADJUSTED fraction, plus an ice term
 # that subtracts alb_ice_thresh, chosen by the UNADJUSTED fraction, summed with na.rm. Where
