@@ -1,38 +1,37 @@
 # 4_calibration_model.R: fit the models that turn land cover into albedo
 # Interp (spatially complete) path only: the point-based code and its guards are
-# removed. The fits are now made in loops over R/model_registry.R (issue I04a); the
+# removed. The fits are now made in loops over R/model_registry.R; the
 # models, their order and the files written are unchanged.
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I06).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('4_calibration_model')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(gam)
 library(mgcv)
 # The model formulas and fitting controls (LADDER_MODELS, SPATIAL_MODELS,
-# fit_calibration_model) come with R/paths.R from R/model_registry.R (issue I04a).
+# fit_calibration_model) come with R/paths.R from R/model_registry.R.
 
 cal_interp_data = read_input(run, path_file(paths, 'calibration_table'))
 
 cal_data2 = data.frame(site=seq(1,nrow(cal_interp_data)), cal_interp_data)
 cal_data3 = cal_data2[,c('site', 'ET', 'OL', 'ST')]
 
-# The months analysed, from config.R (analysis$months, issue I04b); month names and
-# numbers come from the shared calendar, R/calendar.R (issue I02).
+# The months analysed, from config.R (analysis$months); month names and
+# numbers come from the shared calendar, R/calendar.R.
 source('R/calendar.R')
 months = cfg$analysis$months
 
 # The eight-model ladder for every month, fitted by config.R's comparison method ("ML" or
-# the original "REML"; question B4, issue I16) because the ladder is compared by AIC below
-# and in script 5. The formulas are in R/model_registry.R (issue I04a).
+# the original "REML"; question B4) because the ladder is compared by AIC below
+# and in script 5. The formulas are in R/model_registry.R.
 comparison_method = cfg$analysis$calibration$comparison_method
 for (month in months) {
 
@@ -88,7 +87,7 @@ for (month in months) {
 # The model used for prediction (config.R analysis$calibration$model_id), fitted by REML
 # into its own file, which script 5 saves as the selected model for script 6. The original
 # fitted model 8 a third time here and saved it over the ladder's fit; with an ML ladder the
-# two must differ, so the prediction fit now has its own file (question B4, issue I16).
+# two must differ, so the prediction fit now has its own file (question B4).
 # (Whether the spatial_elev_cover fit of the same formula can go is general question 7.)
 prediction_model_id = cfg$analysis$calibration$model_id
 for (month in months) {

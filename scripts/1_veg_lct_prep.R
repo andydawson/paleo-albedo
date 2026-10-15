@@ -1,26 +1,24 @@
 # 1_veg_lct_prep.R: turn the land-cover posterior into two plain tables
 # Interp (spatially complete) path only: the point-based code and its guards are
 # removed. The pipeline lines are unchanged from the original except the reduction of the
-# draws, now reduce_land_cover() (issue I04a); the elevation lookup is cached on disk, and
+# draws, now reduce_land_cover(); the elevation lookup is cached on disk, and
 # a diagnostic switch (config.R run$diagnostic) adds checks and plots at the end.
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I06).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('1_veg_lct_prep')
 cfg   = run$cfg
 paths = run$paths
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(dplyr)
 library(tidyr)
 library(elevatr)
 
 # Diagnostic mode. Off by default. Switch on with `diagnostic = TRUE` in the run section of
-# config.R (or of the file given with --config; issue I06, replacing the DIAGNOSTIC
-# environment variable).
+# config.R (or of the file given with --config).
 # In diagnostic mode the script additionally (1) reports on the ice flag it discards,
 # (2) characterises the cell-slices absent from the input, (3) draws the ice extent at
 # every time slice into figures/diagnostics/, and (4) compares the mean and the median of
@@ -50,13 +48,13 @@ if (diagnostic) {
 
 #  not sure if should use median
 # CM: the draws are summarised by reduce_land_cover() (R/preparation.R): the mean, as here
-# before, or the median, chosen in config.R (analysis$land_cover$reduction, question A1;
-# issue I04a).
+# before, or the median, chosen in config.R (analysis$land_cover$reduction,
+# question A1).
 source('R/preparation.R')
 lct_interp_wide = reduce_land_cover(lct_interp, cfg$analysis$land_cover$reduction)
 
 # The fractions must sum to one in every cell and slice: the calibration smooth of the
-# three is fitted on that sheet only (question B1, issue I16). Stops otherwise; the result
+# three is fitted on that sheet only (question B1). Stops otherwise; the result
 # is recorded in the run manifest.
 run_record(run, 'land_cover_fractions', check_fractions(lct_interp_wide))
 
@@ -76,7 +74,7 @@ if (file.exists(elev_file)) {
                                  prj = ll_proj, 
                                  src = "aws")
   elev_lookup = data.frame(cells_unique, elev = ele_get_cells$elevation)
-  # The lookup used the network, so record it (issue I06).
+  # The lookup used the network, so record it.
   run_record(run, 'elevation_lookup', list(source = 'AWS terrain tiles, elevatr::get_elev_point(src = "aws")',
                                            cells = nrow(cells_unique), when = utc_time(Sys.time())))
   write_output(run, elev_lookup, elev_file)
@@ -132,7 +130,7 @@ if (diagnostic) {
   full_grid = merge(cells, data.frame(ages = slices))
   present = paste(lct_interp_all$x, lct_interp_all$y, lct_interp_all$ages)
   full_grid$absent = !(paste(full_grid$x, full_grid$y, full_grid$ages) %in% present)
-  # Zones from config.R analysis$domain (issue I04b); at the defaults the labels read
+  # Zones from config.R analysis$domain; at the defaults the labels read
   # 'south of 27N', 'north of 74N' and 'west of 170W'.
   dom = cfg$analysis$domain
   full_grid$zone = ifelse(full_grid$y < dom$lat_min, paste0('south of ', dom$lat_min, 'N'),
@@ -179,7 +177,7 @@ if (diagnostic) {
                   ifelse(paste(status$cell_id, status$ages) %in% key_ice, 'ice', 'land'))
   status$status = factor(status$status, levels = c('land', 'ice', 'absent'))
   status_cols = c(land = 'grey80', ice = 'steelblue', absent = 'firebrick')
-  # The map window is the diagnostics window in config.R (issue I03).
+  # The map window is the diagnostics window in config.R.
   diag_window = cfg$presentation$map_windows$diagnostics
   for (a in slices) {
     p = ggplot(status[status$ages == a, ]) +

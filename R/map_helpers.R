@@ -19,7 +19,7 @@
 # The window, list(x = c(lon_min, lon_max), y = c(lat_min, lat_max)), is always passed in
 # by the calling script and has no default here: the maps use three different windows
 # (config.R, presentation$map_windows), and a helper that picked one itself would hide
-# which (issue I03, 2026-10-13).
+# which.
 
 library(sf)
 

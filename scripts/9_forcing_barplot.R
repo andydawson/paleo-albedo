@@ -37,7 +37,7 @@
 # ASSUMPTIONS
 #
 # The settings below (A1 variant, A2 variants, A3 kernels, A4 periods, A8 Earth's
-# area) are read from config.R, analysis$forcing and analysis$coarse (issue I03).
+# area) are read from config.R, analysis$forcing and analysis$coarse.
 #
 # A1. Forcing variant. Uses rf_<kernel>_veg_ice_thresh: the vegetation plus ice
 #     albedo change, threshold method. Chosen because it combines the vegetation
@@ -107,13 +107,13 @@
 
 source('R/calendar.R')
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
+# given with --config), sets up the paths of R/paths.R and starts the run's
 # manifest, which records the inputs with checksums and the whole configuration; files are
-# then read and written through it (issue I05).
+# then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('9_forcing_barplot')
 cfg   = run$cfg
-paths = run$paths   # every file read or written (issue I07)
+paths = run$paths   # every file read or written
 
 # ggplot2 and patchwork draw the charts (patchwork stacks two panels with their own
 # y-axis titles); dplyr and tidyr do the aggregation; run_manifest logs provenance.
@@ -282,7 +282,7 @@ ggsave(path_figure(paths, 'forcing_barplot_slide18.png'), p_slide_lab, width = 8
 hol3 = main %>%
   transmute(kernel, label = sub(' ka$', '', as.character(period)), value = global_equiv)
 hol3$label = factor(hol3$label, levels = rev(sub(' ka$', '', labels_period)))
-# Labels say which kernel variable was read (R/kernels.R, issue I16). The 'factor of two'
+# Labels say which kernel variable was read (R/kernels.R). The 'factor of two'
 # title holds only when the kernels mix clear-sky and all-sky, as in the original analysis.
 kernel_rows = kernels_read(cfg)
 mixed_sky = length(unique(kernel_rows$sky)) > 1
@@ -334,8 +334,8 @@ d7$facets = sub(' ka$', '', labels_period)[match(d7$year, sort(unique(d7$year)))
 d7$rf = d7$alb_diff * 100 * d7$rk_hadgem
 d7$rf[!is.na(d7$ice_young) | !is.na(d7$ice_old)] = NA
 # CM: the recipe needs all four of its months; it is skipped, never computed on a subset,
-# when any is missing (issue I02). It is compared with the slide's seven periods, so it is
-# skipped too when the coarse ages in config.R are not the slide's (issue I03).
+# when any is missing. It is compared with the slide's seven periods, so it is
+# skipped too when the coarse ages in config.R are not the slide's.
 egu_months = c('feb','may','aug','nov')
 slide_ages = c(50, 500, 2000, 4000, 6000, 8000, 10000, 12000)   # slide 18's periods, a fact of the slide
 if (!all(egu_months %in% unique(d7$month))) {

@@ -5,7 +5,7 @@
 # subset or reordering of months would have read the wrong band (a four-month run would
 # have given November the January kernel). Defining the calendar once, and mapping a
 # month to its number by name, makes month selections safe before they become a setting
-# (issue I02, #3). Written 2026-10-12.
+#. Written 2026-10-12.
 
 # The twelve months, in calendar order, as the scripts and data name them.
 MONTHS <- tolower(month.abb)
@@ -29,7 +29,7 @@ check_months <- function(months) {
 month_to_number <- function(month) match(check_months(month), MONTHS)
 
 # Labels for the coarse time slices, built from their ages in years BP so a change of
-# ages cannot leave the labels behind (issue I03, 2026-10-13). Scripts 7, 8 and 9 had the
+# ages cannot leave the labels behind. Scripts 7, 8 and 9 had the
 # same seven period labels typed out five times.
 #   ages_ka(c(50, 500, 2000))        "0.05" "0.5" "2"
 #   period_labels(c(50, 500, 2000))  "0.05 - 0.5 ka" "0.5 - 2 ka"

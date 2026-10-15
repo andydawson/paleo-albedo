@@ -4,17 +4,15 @@
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07; it creates the product
-# directories) and starts the run's manifest; files are then read and written through it
-# (issue I05).
+# given with --config), sets up the paths of R/paths.R (it creates the product
+# directories) and starts the run's manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('7a_alb_diff_full')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(sp)
 library(raster)
 library(dplyr)
@@ -22,15 +20,15 @@ library(terra)
 library(sf)
 library(ggplot2)
 
-# The time slices to pair, from config.R (analysis$ages, issue I04b); they must be slices
+# The time slices to pair, from config.R (analysis$ages); they must be slices
 # of the prediction table, which is checked once it is read.
 ages = cfg$analysis$ages
 N_times = length(ages)
 # CM: the coarse ages (ages_sub) and the tail map window (xlim, ylim) were defined here but
-# never used in this script; removed so config.R holds their only definition (issue I03).
+# never used in this script; removed so config.R holds their only definition.
 
-# The months analysed, from config.R (analysis$months, issue I04b); month names and
-# numbers come from the shared calendar, R/calendar.R (issue I02).
+# The months analysed, from config.R (analysis$months); month names and
+# numbers come from the shared calendar, R/calendar.R.
 source('R/calendar.R')
 months = cfg$analysis$months
 
@@ -43,7 +41,7 @@ alb_interp_preds = read_input(run, path_file(paths, 'prediction_summary'))
 alb_interp_preds$alb_bin = cut(alb_interp_preds$alb_mean, breaks_alb, labels=FALSE)
 
 # CM: every configured slice must exist in the data, or the differences below would be
-# taken across a missing slice (issue I04b).
+# taken across a missing slice.
 missing_slices = setdiff(ages, alb_interp_preds$year)
 if (length(missing_slices)) {
   stop('config.R analysis$ages has slice(s) not in the prediction table: ', paste(missing_slices, collapse = ', '),
@@ -79,7 +77,7 @@ for (i in 1:length(alb_preds_ages)){
 
 }
 
-# Cells west of config.R analysis$domain$lon_min are dropped (issue I04b).
+# Cells west of config.R analysis$domain$lon_min are dropped.
 alb_interp_preds = alb_interp_preds[which(alb_interp_preds$x > cfg$analysis$domain$lon_min),]
 
 alb_interp_preds = alb_interp_preds[which(!is.na(alb_interp_preds$ice_frac)),]
@@ -101,7 +99,7 @@ labels_period_full$period_id = seq(1, nrow(labels_period_full))
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 # CM: the coarse ages (years) were typed out again here but never used in this script;
-# removed so config.R holds their only definition (issue I04b).
+# removed so config.R holds their only definition.
 
 breaks_alb = c(0, 5, 10, 20, 30, 40, 60, 80, 100)/100
 labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "60 - 80", "80 - 100")
@@ -132,7 +130,7 @@ alb_grid_full = alb_grid
 alb_glacier = read_input(run, path_file(paths, 'glacier_albedo'), read.csv, header=TRUE)
 
 # The glacier-albedo columns for the fixed and scaled ice variants: config.R
-# analysis$ice$albedo_fixed and albedo_scaled (question C0a; issue I04b).
+# analysis$ice$albedo_fixed and albedo_scaled (question C0a).
 alb_grid_full$ice_albedo_fixed = alb_glacier[match(alb_grid_full$month, alb_glacier$month), cfg$analysis$ice$albedo_fixed]
 alb_grid_full$ice_albedo_sc = alb_glacier[match(alb_grid_full$month, alb_glacier$month), cfg$analysis$ice$albedo_scaled]
 
@@ -147,9 +145,9 @@ alb_grid_full$alb_veg_ice_parts = alb_grid_full$alb_ice_part + alb_grid_full$alb
 alb_grid_full$alb_veg_icesc_parts = alb_grid_full$alb_icesc_part + alb_grid_full$alb_veg_part
 
 # A cell is ice when its ice fraction exceeds config.R analysis$ice$threshold (questions
-# C0, C2; issue I04b).
+# C0, C2).
 ice_threshold = cfg$analysis$ice$threshold
-source('R/differences.R')   # pair_albedo_differences(), the per-pair arithmetic (issue I11)
+source('R/differences.R')   # pair_albedo_differences(), the per-pair arithmetic
 # Per-slice ice/vegetation albedo by the UNADJUSTED ice fraction. Only the
 # "legacy_components" method in pair_albedo_differences() reads alb_ice_thresh and
 # alb_icesc_thresh; its readvance adjustment can disagree with this classification
@@ -209,8 +207,7 @@ alb_grid_full$alb_cv_bin = factor(alb_grid_full$alb_cv_bin,
                                   levels=seq(1, length(labels_cv)),
                                   labels = labels_cv)
 
-# CM: coarse slice labels (labels_year) were typed out here but never used; removed
-# (issue I04b).
+# CM: coarse slice labels (labels_year) were typed out here but never used; removed.
 
 alb_grid_full$facets = labels_ages_full[match(alb_grid_full$year/1000, labels_ages_full$age), 'facets']
 alb_grid_full$facets = factor(alb_grid_full$facets, levels = labels_ages_full$facets)
@@ -254,7 +251,7 @@ for (i in 1:N_cells){
 
     alb_cell_filled = merge(years_df, alb_cell, all.x=TRUE)
 
-    # The albedo differences of each consecutive pair of slices (R/differences.R, issue I11).
+    # The albedo differences of each consecutive pair of slices (R/differences.R).
     alb_diff_df = rbind(alb_diff_df,
                         data.frame(subset(alb_cell_filled[1:(nrow(alb_cell_filled)-1), ],
                                           select=alb_diff_colnames),

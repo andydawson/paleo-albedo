@@ -3,7 +3,7 @@
 # Why: which variable of each kernel file is read decides whether the forcing is clear-sky
 # or all-sky, and at the top of the atmosphere or the surface (questions C3, C4). config.R
 # names the variable (analysis$kernels); this table gives the legal names, and the labels
-# script 9 puts on its kernel figure, so the labels always match what was read (issue I16).
+# script 9 puts on its kernel figure, so the labels always match what was read.
 KERNEL_VARIABLES = data.frame(stringsAsFactors = FALSE, rbind(
   #  kernel    variable        sky      level      label
   c('hadgem', 'albedo_sw_cs', 'clear', 'TOA',     'HadGEM3 (clear, TOA)'),

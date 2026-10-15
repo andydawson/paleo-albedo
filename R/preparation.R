@@ -3,7 +3,7 @@
 # Why: script 1 reduced the 200 posterior draws of land cover to their mean, with Andria's
 # note "not sure if should use median" (question A1). The summary is now a setting
 # (config.R, analysis$land_cover$reduction), and the reduction a function with a stated
-# contract, so the median can be run without editing the script (issue I04a, 2026-10-14).
+# contract, so the median can be run without editing the script.
 # Issue I08 adds the other preparation steps of scripts 1 to 3 here.
 
 # One value per cell, slice and land-cover class from the posterior draws, as one row per
@@ -51,7 +51,7 @@ close_fractions = function(wide, classes = c('ET', 'OL', 'ST')) {
 # Which points lie inside any of the polygons: TRUE or FALSE for each (x, y), in longitude and
 # latitude (WGS84). Used by script 2 to find the modern calibration cells whose centre is
 # under the 1 ka ice polygons: present-day ice caps, which the interpolation gave vegetation
-# fractions (question B8, issue I16). polygons is an sp or sf object, or a terra SpatVector;
+# fractions (question B8). polygons is an sp or sf object, or a terra SpatVector;
 # the glacier shapes carry no coordinate system, so one without is taken to be WGS84.
 cells_in_polygons = function(x, y, polygons) {
   if (!inherits(polygons, 'SpatVector')) polygons = terra::vect(polygons)
@@ -66,7 +66,7 @@ cells_in_polygons = function(x, y, polygons) {
 # if not; otherwise returns a summary for the run manifest. Why: the calibration smooth
 # s(OL, ET, ST) is fitted on the sheet where the three sum to one and is unconstrained off
 # it, so a row off the sheet would be predicted by extrapolation (question B1; Chris chose
-# a check rather than a correction, 2026-10-14; issue I16).
+# a check rather than a correction, 2026-10-14).
 check_fractions = function(wide, tolerance = 1e-9) {
   fractions = as.matrix(wide[, c('ET', 'OL', 'ST')])
   off_sheet = abs(rowSums(fractions) - 1)

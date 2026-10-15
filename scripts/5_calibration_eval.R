@@ -1,21 +1,19 @@
 # 5_calibration_eval.R: how well do the calibration models fit the modern albedo?
 # Interp (spatially complete) path only: the point-based code and its guards are
-# removed. Since issue I04a the selected model, the draw count and the random seed come
-# from config.R and files are read and written through the run manifest; the evaluation
-# itself is unchanged.
+# removed. The selected model, the draw count and the random seed come from config.R, and
+# files are read and written through the run manifest.
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I04a).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('5_calibration_eval')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(ggplot2)
 library(mgcv)
 library(gratia)
@@ -38,8 +36,8 @@ seed_base = run_record(run, 'random_seed', list(setting = cfg$analysis$draws$see
                                                 base = base_seed(cfg$analysis$draws$seed)))$base
 
 
-# The months analysed, from config.R (analysis$months, issue I04b); month names and
-# numbers come from the shared calendar, R/calendar.R (issue I02).
+# The months analysed, from config.R (analysis$months); month names and
+# numbers come from the shared calendar, R/calendar.R.
 source('R/calendar.R')
 months = cfg$analysis$months
 
@@ -244,9 +242,9 @@ for (n in 1:length(months)){
 
   # CM: these seven were read from output/calibration/spatial_experiment/, a directory
   # script 4 never writes, so the script always stopped here. They are now read from where
-  # script 4 writes them (issue I07). SP_ELEV_LC is script 4's spatial_elev_cover fit, the
-  # same formula as model 8; until issue I04a it was the selected model, which would be
-  # mislabelled once the selected model is a setting (the repeated fits of model 8 are a
+  # script 4 writes them. SP_ELEV_LC is script 4's spatial_elev_cover fit, the
+  # same formula as model 8; it used to be read as the selected model, which would be
+  # mislabelled now that the selected model is a setting (the repeated fits of model 8 are a
   # question for Andria, general 7).
   model_SP_ELEV_LC = read_input(run, path_file(paths, 'calibration_spatial_elev_cover', month = month))
 
@@ -339,7 +337,7 @@ print(p)
 
 # CM: November-only block (model comparison, re-save of the November selected model, and its
 # figures), to the end of the script. It runs only when November is among the selected
-# months; not re-indented, to keep the diff against Andria's lines small (issue I02).
+# months; not re-indented, to keep the diff against Andria's lines small.
 if ('nov' %in% months) {
 month = "nov"
 

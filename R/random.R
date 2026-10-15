@@ -1,4 +1,4 @@
-# Random draws in the pipeline: gratia's simulate() in scripts 5 and 6 (issue I04a).
+# Random draws in the pipeline: gratia's simulate() in scripts 5 and 6.
 #
 # Why: the draws were unseeded, so no run could be repeated exactly. config.R's
 # analysis$draws$seed is now either a whole number, which makes the draws repeatable, or

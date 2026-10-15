@@ -4,23 +4,22 @@
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I06).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('2_calibration_lct_bluesky')
 cfg   = run$cfg
 paths = run$paths
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(terra)
 library(ggplot2)
 library(reshape2)
 library(tidyterra)
 
-# All twelve months from the shared calendar (R/calendar.R; issue I02). Deliberately not
+# All twelve months from the shared calendar (R/calendar.R). Deliberately not
 # config.R's month selection: the calibration table keeps every month, so scripts 4 onward
-# can run on any selection without rebuilding it (issue I04b).
+# can run on any selection without rebuilding it.
 source('R/calendar.R')
 months = MONTHS
 
@@ -28,7 +27,7 @@ pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
 # Boundaries for the maps, prepared by the shared helper (see R/map_helpers.R for why the
 # raw file cannot be drawn as-is: the "weirdness" noted on 2026-09-24). Fix added 2026-09-25.
-# The map window is the calibration window in config.R (issue I03).
+# The map window is the calibration window in config.R.
 map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
 pbs_land = prepare_boundaries(pbs_ll, map_window)
@@ -39,7 +38,7 @@ grid <- rast(read_input(run, path_file(paths, 'grid')))
 lct_interp_modern = read_input(run, path_file(paths, 'lct_modern'))
 
 # Present-day ice caps out of the calibration (config.R analysis$calibration$ice_mask,
-# question B8, issue I16): cells whose centre lies under the 1 ka ice polygons (the first of
+# question B8): cells whose centre lies under the 1 ka ice polygons (the first of
 # the glacier shapes) carry interpolated vegetation fractions but the satellite's ice albedo.
 # They stay in the prediction domain; only the calibration table loses them. The cells left
 # out are recorded in the run manifest.

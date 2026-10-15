@@ -12,15 +12,14 @@
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I06).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('3_plot_cal_lct_albedo')
 cfg   = run$cfg
 paths = run$paths
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(ggplot2)
 library(ggtern)
 library(scales)
@@ -37,7 +36,7 @@ pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
 # CM: boundaries prepared by the shared helper (see R/map_helpers.R for why the raw file
 # cannot be drawn as-is). The original drew pbs_ll with geom_polygon and coord_fixed.
-# The map window is the calibration window in config.R (issue I03).
+# The map window is the calibration window in config.R.
 map_window = cfg$presentation$map_windows$calibration
 source('R/map_helpers.R')
 pbs_land = prepare_boundaries(pbs_ll, map_window)

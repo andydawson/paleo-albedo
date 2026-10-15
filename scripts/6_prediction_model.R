@@ -1,20 +1,19 @@
 # 6_prediction_model.R: hindcast albedo for every Holocene slice
 # Interp (spatially complete) path only: the point-based code and its guards are
-# removed. Since issue I04a the draw count and random seed come from config.R and files
-# are read and written through the run manifest; the computation is unchanged.
+# removed. The draw count and random seed come from config.R, and files are read and
+# written through the run manifest.
 
 
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issues I05, I04a).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('6_prediction_model')
 cfg   = run$cfg
 paths = run$paths
 alb_prod = paths$tag   # the albedo product in file names
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(dplyr)
 library(mgcv)
 library(gratia)
@@ -28,8 +27,8 @@ seed_base = run_record(run, 'random_seed', list(setting = cfg$analysis$draws$see
                                                 base = base_seed(cfg$analysis$draws$seed)))$base
 
 
-# The months analysed, from config.R (analysis$months, issue I04b); month names and
-# numbers come from the shared calendar, R/calendar.R (issue I02).
+# The months analysed, from config.R (analysis$months); month names and
+# numbers come from the shared calendar, R/calendar.R.
 source('R/calendar.R')
 months = cfg$analysis$months
 

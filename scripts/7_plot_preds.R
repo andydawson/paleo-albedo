@@ -3,19 +3,18 @@
 # removed. Every remaining line is unchanged from the original.
 
 
-# Settings from config.R (issue I03): the coarse ages and the map window. Slice and
+# Settings from config.R: the coarse ages and the map window. Slice and
 # period labels are made from the ages (R/calendar.R).
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
-# given with --config), sets up the paths of R/paths.R (issue I07) and starts the run's
-# manifest; files are then read and written through it (issue I05).
+# given with --config), sets up the paths of R/paths.R and starts the run's
+# manifest; files are then read and written through it.
 source('R/run_manifest.R')
 run   = run_begin('7_plot_preds')
 cfg   = run$cfg
-paths = run$paths   # every file read or written (issue I07)
+paths = run$paths   # every file read or written
 alb_prod = paths$tag   # the albedo product in file names
 
-# Packages, loaded after run_begin() so that a missing one is recorded as a failed run
-# (issue I06).
+# Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(ggplot2)
 library(fields)
 library(raster)
@@ -29,11 +28,11 @@ breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 labels = seq(1, length(breaks)-1)
 
 # CM: the fine time slices (ages, N_times) were defined here and relabelled further down
-# but never used; removed so config.R holds their only definition (issue I04b).
+# but never used; removed so config.R holds their only definition.
 ages_sub = cfg$analysis$coarse$ages
 
-# The months analysed, from config.R (analysis$months, issue I04b); month names and
-# numbers come from the shared calendar, R/calendar.R (issue I02).
+# The months analysed, from config.R (analysis$months); month names and
+# numbers come from the shared calendar, R/calendar.R.
 source('R/calendar.R')
 months = cfg$analysis$months
 
@@ -81,7 +80,7 @@ ice_fill_dark = 'ivory3'
 ice_colour_dark = 'gray40'
 
 alb_interp_preds = read_input(run, path_file(paths, 'prediction_summary'))
-# CM: the slice alias, config.R analysis$coarse$slice_alias (question C7; issue I04b): the
+# CM: the slice alias, config.R analysis$coarse$slice_alias (question C7): the
 # 11,500 BP slice is treated as 12,000 BP, which also gives it the 12 ka ice polygon below.
 slice_alias = cfg$analysis$coarse$slice_alias
 if (!is.null(slice_alias)) {
@@ -165,14 +164,14 @@ alb_grid_sub = subset(alb_grid, year %in% years)
 alb_glacier = read_input(run, path_file(paths, 'glacier_albedo'), read.csv, header=TRUE)
 
 # The glacier-albedo column for these maps: config.R analysis$ice$albedo_coarse (question
-# C0a; script 7a uses other columns of the same file; issue I04b).
+# C0a; script 7a uses other columns of the same file).
 alb_grid_sub$alb_mean_ice = alb_glacier[match(alb_grid_sub$month, alb_glacier$month), cfg$analysis$ice$albedo_coarse]
 
 alb_grid_sub$alb_mean_ice[which(is.na(alb_grid_sub$ice))] = alb_grid_sub$alb_mean[which(is.na(alb_grid_sub$ice))]
 
 alb_grid_sub$alb_mean[which(alb_grid_sub$ice == 'ICE')] = NA
 
-# CM: the two lines below are commented out (2026-10-12, issue I02). They look meant to drop
+# CM: the two lines below are commented out (2026-10-12). They look meant to drop
 # poorly covered cells, but table() counts rows per cell across ages AND months, and a cell
 # present at any age has 12 rows per age, so "< 8" dropped no cells at all (0 of 2,870).
 # With fewer months selected it would start dropping cells for the wrong reason. Outputs
@@ -202,12 +201,12 @@ labels_year = paste(ages_ka(years), 'ka')
 alb_grid_sub$facets = labels_year[match(alb_grid_sub$year, years)]
 alb_grid_sub$facets = factor(alb_grid_sub$facets, levels = labels_year)
 
-# Cells east of config.R analysis$domain$lon_max_coarse are dropped (issue I04b).
+# Cells east of config.R analysis$domain$lon_max_coarse are dropped.
 alb_grid_sub = alb_grid_sub[which(alb_grid_sub$long < cfg$analysis$domain$lon_max_coarse),]
 
 alb_grid_sub$month = factor(alb_grid_sub$month, levels = months)
 
-# CM: February-only map; skipped when February is not selected (issue I02).
+# CM: February-only map; skipped when February is not selected.
 if ('feb' %in% months) {
 ggplot()+
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
@@ -260,7 +259,7 @@ ggplot()+
 ggsave(path_figure(paths, paste0('alb_interp_preds_month_binned_tile_grid_', alb_prod, '.pdf')), width=14, height=12)
 ggsave(path_figure(paths, paste0('alb_interp_preds_month_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
 
-# CM: the four-month panel shows whichever of its months are selected (issue I02).
+# CM: the four-month panel shows whichever of its months are selected.
 months_sub = intersect(c('feb', 'may', 'aug', 'nov'), months)
 if (length(months_sub)) {
 
@@ -290,7 +289,7 @@ ggsave(path_figure(paths, paste0('alb_interp_preds_month_sub_binned_tile_grid_',
 ggsave(path_figure(paths, paste0('alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
 } # CM: end of four-month panel
 
-# CM: February-only map; skipped when February is not selected (issue I02).
+# CM: February-only map; skipped when February is not selected.
 if ('feb' %in% months) {
 ggplot() +
   geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
