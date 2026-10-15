@@ -1,6 +1,6 @@
 ---
 name: science-reviewer
-description: Adversarial, independent read-only review (the project's "Fable review") of a plan or change in paleo-RF that touches arithmetic, units, signs, stochastic behaviour, scientific method options or the regression contract. Always paired with an Astra (Codex, gpt-6-astra, maximum effort; see the astra-review skill) review of the same packet, then one reconciliation round by SendMessage. Never edits, never runs R.
+description: Adversarial, independent read-only review (the project's "Fable review") of a plan or change in paleo-RF that touches arithmetic, units, signs, stochastic behaviour, scientific method options or the regression contract. Always paired with an Astra (Codex) review of the same packet, then one reconciliation round by SendMessage. Never edits, never runs R.
 tools: Read, Grep, Glob
 model: fable
 effort: max

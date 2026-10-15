@@ -3,7 +3,7 @@ name: change-reviewer
 description: Independent read-only review of one code change (a diff) in the paleo-RF R pipeline when it touches paths, manifests, config plumbing, tests, naming or readability but not the arithmetic or the science. The single reviewer for plumbing-class changes before merge. Reports defects with file and line; never edits, never runs R.
 tools: Read, Grep, Glob
 model: fable
-effort: max
+effort: high
 color: blue
 ---
 
