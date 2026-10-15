@@ -36,7 +36,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
 | I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
-| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3 merged 2026-10-15 | |
+| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3, 1 merged 2026-10-15 | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -958,4 +958,13 @@ new, and its outputs compared.
 - Verified (`docs/cc/verification/2026-10-15_i15c-script3-{before,after}_report.md`, PASS;
   script 3 has no anchor): all nine figure files, Rplots.pdf included, identical to the old
   code's.
+
+### Script 1 (merged 2026-10-15)
+- In the diagnostic block: `present` to `present_cell_slice_keys`, the table `status` to
+  `ice_status_table` (its column `status` and the legend unchanged), `sums` to
+  `cover_fraction_sums`, `d` to `class_draw_stats`. The elevation-lookup rename waits for
+  I16c, which edits that block.
+- Verified in diagnostic mode (`docs/cc/verification/2026-10-15_i15c-script1-{before,after}_report.md`,
+  PASS): both land-cover tables byte-identical to the anchor; all 29 diagnostic figure files
+  identical to the old code's; the printed diagnostics differ only in the run-folder name.
 
