@@ -65,7 +65,7 @@ byte-identical, which are within tolerance, which seed, which anchor directory.
   lists its inputs with checks passed (or the stale inputs the config allowed and recorded),
   and lists the outputs with MD5s.
 - The expected newly produced files exist in the run directory and are not reported
-  "seeded from the baseline" by `check_anchors.R`; only produced files count as evidence.
+  "SEEDED (copied from the baseline)" by `check_anchors.R`; only produced files count as evidence.
 - Anchor comparison: every deterministic artefact MATCH; stochastic artefacts within the
   tolerances of `tests/anchors/tolerances.tsv`; seeded runs byte-identical to the seed-1
   anchor.
