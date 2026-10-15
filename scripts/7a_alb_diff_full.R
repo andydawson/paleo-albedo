@@ -77,8 +77,6 @@ alb_interp_preds = alb_interp_preds[which(alb_interp_preds$x > cfg$analysis$doma
 
 alb_interp_preds = alb_interp_preds[which(!is.na(alb_interp_preds$ice_frac)),]
 
-pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
-pbs = read_input(run, path_file(paths, 'boundaries'))
 
 
 

@@ -22,8 +22,6 @@ library(raster)
 
 pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
-pbs = read_input(run, path_file(paths, 'boundaries'))
-
 ages_sub = cfg$analysis$coarse$ages
 
 # The months analysed, from config.R (analysis$months); month names and
@@ -81,9 +79,6 @@ slice_alias = cfg$analysis$coarse$slice_alias
 if (!is.null(slice_alias)) {
   alb_interp_preds$year[which(alb_interp_preds$year == slice_alias[1])] = slice_alias[2]
 }
-
-pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
-pbs = read_input(run, path_file(paths, 'boundaries'))
 
 albedo_bin_breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 

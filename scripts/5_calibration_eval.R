@@ -329,8 +329,8 @@ p = ggplot(data=cal_sims) +
   facet_wrap(~model)
 print(p)
 
-# CM: November-only block (model comparison, re-save of the November selected model, and its
-# figures), to the end of the script. It runs only when November is among the selected
+# CM: November-only block (model comparison and its figures; the selected model is saved in
+# the first loop), to the end of the script. It runs only when November is among the selected
 # months.
 if ('nov' %in% months) {
   month = "nov"
