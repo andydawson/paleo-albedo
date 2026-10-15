@@ -28,14 +28,6 @@ months = cfg$analysis$months
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 
-# CM: script 7's three ice-outline tables (ice_fort, ice_fort_diff_young, ice_fort_diff_old)
-# were read here but never used, which made script 8 depend on script 7 for nothing;
-# removed. Script 8 needs only script 7a's differences.
-
-# CM: the period labels (labels_period), the coarse ages (ages_sub) and the tail map window
-# (xlim, ylim) were defined here but never used in this script; removed so config.R holds
-# their only definition. Likewise the fine time slices (ages, N_times; I04b).
-
 ice_fill = 'gainsboro'
 ice_colour = 'gray60'
 

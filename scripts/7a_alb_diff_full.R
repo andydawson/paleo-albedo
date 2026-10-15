@@ -27,8 +27,6 @@ library(ggplot2)
 # of the prediction table, which is checked once it is read.
 ages = cfg$analysis$ages
 N_times = length(ages)
-# CM: the coarse ages (ages_sub) and the tail map window (xlim, ylim) were defined here but
-# never used in this script; removed so config.R holds their only definition.
 
 # The months analysed, from config.R (analysis$months); month names and
 # numbers come from the shared calendar, R/calendar.R.
@@ -100,9 +98,6 @@ labels_period_full$facets = paste(labels_period_full$end_young, labels_period_fu
 labels_period_full$period_id = seq(1, nrow(labels_period_full))
 
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
-
-# CM: the coarse ages (years) were typed out again here but never used in this script;
-# removed so config.R holds their only definition.
 
 breaks_alb = c(0, 5, 10, 20, 30, 40, 60, 80, 100)/100
 labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "60 - 80", "80 - 100")
@@ -209,8 +204,6 @@ alb_grid_full$alb_cv_bin = cut(alb_grid_full$alb_cv, breaks_cv, labels=FALSE, in
 alb_grid_full$alb_cv_bin = factor(alb_grid_full$alb_cv_bin,
                                   levels=seq(1, length(labels_cv)),
                                   labels = labels_cv)
-
-# CM: coarse slice labels (labels_year) were typed out here but never used; removed.
 
 alb_grid_full$facets = labels_ages_full[match(alb_grid_full$year/1000, labels_ages_full$age), 'facets']
 alb_grid_full$facets = factor(alb_grid_full$facets, levels = labels_ages_full$facets)

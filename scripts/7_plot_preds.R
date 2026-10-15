@@ -28,8 +28,6 @@ breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
 labels = seq(1, length(breaks)-1)
 
-# CM: the fine time slices (ages, N_times) were defined here and relabelled further down
-# but never used; removed so config.R holds their only definition.
 ages_sub = cfg$analysis$coarse$ages
 
 # The months analysed, from config.R (analysis$months); month names and
