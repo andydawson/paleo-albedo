@@ -76,6 +76,8 @@ for (n in 1:length(months)){
                                   cal_interp_sim_gam)
   cal_interp_sim_gam_melt = melt(cal_interp_sim_gam,
                                  id.vars = c('x', 'y', month))
+  # 'month' here holds this month's OBSERVED albedo (the column named after the month), not
+  # the month's name; 'value' holds the simulated draws.
   colnames(cal_interp_sim_gam_melt) = c('x', 'y', 'month', 'variable', 'value')
 
   cal_interp_sim_gam_sum = cal_interp_sim_gam_melt %>%

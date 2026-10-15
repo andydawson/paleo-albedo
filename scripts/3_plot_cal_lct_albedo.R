@@ -121,17 +121,16 @@ tric_lct$key +
 ggsave(path_figure(paths, 'LCT_tricolore_key_interp.png'))
 ggsave(path_figure(paths, 'LCT_tricolore_key_interp.pdf'))
 
-# add the vector of colors to the `euro_example` data
+# each calibration cell's colour, from its mix of the three land-cover classes
 cal_data_pie$lct_rgb <- tric_lct$rgb
 
 plot_lct <-
-  # using data sf data `euro_example`...
+  # the calibration cells...
   ggplot() +
   boundary_layers(pbs_land, map_window, colour = "grey", fill = "grey") +
-  # ...draw a choropleth map
+  # ...drawn as tiles
   geom_tile(data=cal_data_pie, aes(x, y, fill = lct_rgb)) +
-  # ...and color each region according to the color-code
-  # in the variable `educ_rgb`
+  # ...each coloured by its land-cover mix (lct_rgb)
   theme_bw() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
@@ -211,21 +210,22 @@ ggplot(data=subset(cal_long, variable == 'OVL'), aes(x=value, y=albedo)) +
   facet_wrap(~month)
 
 
-# albedo versus land cover & snow
+# albedo versus land cover, by month
 
 # CM: the original re-melted cal_long here and then plotted columns OL, ST and ET, which
 # no longer exist once the table is melted (they are 'variable' and 'value'). Those three
 # plots duplicate the per-class scatters above, so the block is dropped; cal_lct_melt from
 # the gridded-maps section is what the plots below use.
 
-# relationship between land cover type and albedo in month 5; weak but there
+# albedo against each land-cover fraction, one panel per month, with a linear fit
+# (Andria's note on May: the relationship is weak but there)
 ggplot(data=cal_lct_melt, aes(x=value, y=albedo, colour=variable)) +
   geom_point(alpha=0.6) +
   geom_smooth(se = TRUE, method = lm, fullrange=TRUE)+
   facet_wrap(~month)
 
 
-# relationship between land cover type and albedo in month 5; weak but there
+# each land-cover fraction against latitude, with a linear fit
 ggplot(data=cal_lct_melt, aes(x=lat, y=value, colour=variable)) +
   geom_point(alpha=0.6) +
   geom_smooth(se = TRUE, method = lm, fullrange=TRUE)
