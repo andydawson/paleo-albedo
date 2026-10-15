@@ -14,11 +14,11 @@ MONTHS <- tolower(month.abb)
 # (in the order given), so it can wrap any assignment.
 check_months <- function(months) {
   if (!length(months)) stop("month selection is empty")
-  unknown <- setdiff(months, MONTHS)
-  if (length(unknown)) stop("unknown month name(s): ", paste(unknown, collapse = ", "),
+  unknown_months <- setdiff(months, MONTHS)
+  if (length(unknown_months)) stop("unknown month name(s): ", paste(unknown_months, collapse = ", "),
                             "; expected some of ", paste(MONTHS, collapse = ", "))
-  dup <- unique(months[duplicated(months)])
-  if (length(dup)) stop("month(s) selected more than once: ", paste(dup, collapse = ", "))
+  duplicate_months <- unique(months[duplicated(months)])
+  if (length(duplicate_months)) stop("month(s) selected more than once: ", paste(duplicate_months, collapse = ", "))
   months
 }
 

@@ -110,7 +110,7 @@ redirected_paths = function(dir) list(profile = 'redirected', root = dir)
 # product directories and says where the run writes.
 pipeline_paths = function(cfg, profile = if (is.null(cfg$run$dir)) baseline_paths() else redirected_paths(cfg$run$dir)) {
   paths = c(profile, list(tag = ALBEDO_TAG))
-  for (d in PRODUCT_DIRS) dir.create(under_root(paths, d), recursive = TRUE, showWarnings = FALSE)
+  for (product_dir in PRODUCT_DIRS) dir.create(under_root(paths, product_dir), recursive = TRUE, showWarnings = FALSE)
   # Plots printed with no device open go to Rplots.pdf in the working directory (scripts 3
   # and 5 rely on this); in a run directory they go to its own Rplots.pdf instead, so a
   # redirected run writes nothing into the repository.
@@ -131,23 +131,23 @@ under_root = function(paths, rel) if (is.null(paths$root)) rel else file.path(pa
 path_file = function(paths, id, month = NULL, model = NULL) {
   if (!id %in% PATH_CATALOGUE$id) stop('path_file: no catalogued file with id ', sQuote(id, FALSE))
   entry = PATH_CATALOGUE[id, ]
-  rel = entry$template
-  needs = function(key) grepl(sprintf('{%s}', key), rel, fixed = TRUE)
+  relative_path = entry$template
+  needs = function(key) grepl(sprintf('{%s}', key), relative_path, fixed = TRUE)
   if (needs('month') != !is.null(month))
     stop(sprintf('path_file: %s %s a month', id, if (needs('month')) 'needs' else 'takes no'))
   if (needs('model') != !is.null(model))
     stop(sprintf('path_file: %s %s a model id', id, if (needs('model')) 'needs' else 'takes no'))
   if (!is.null(month)) {
     if (length(month) != 1) stop('path_file: one month at a time')
-    rel = sub('{month}', check_months(month), rel, fixed = TRUE)
+    relative_path = sub('{month}', check_months(month), relative_path, fixed = TRUE)
   }
   if (!is.null(model)) {
     if (length(model) != 1 || !model %in% TEMPLATE_MODELS[[id]])
       stop(sprintf('path_file: %s takes model ids %s', id, paste(TEMPLATE_MODELS[[id]], collapse = ', ')))
-    rel = sub('{model}', model, rel, fixed = TRUE)
+    relative_path = sub('{model}', model, relative_path, fixed = TRUE)
   }
-  rel = gsub('{tag}', paths$tag, rel, fixed = TRUE)
-  if (entry$kind == 'input') rel else under_root(paths, rel)
+  relative_path = gsub('{tag}', paths$tag, relative_path, fixed = TRUE)
+  if (entry$kind == 'input') relative_path else under_root(paths, relative_path)
 }
 
 # A calibration fit of script 4, by model id: one of the ladder (mod1 ... mod8), a spatial
@@ -183,47 +183,48 @@ path_runs = function(paths) under_root(paths, 'runs')
 # with / separators. Lets paths given under a run directory, or with \ separators, be
 # matched to the catalogue and compared between runs (the run manifests).
 root_relative = function(paths, path) {
-  rel = gsub('\\\\', '/', path)
+  relative_path = gsub('\\\\', '/', path)
   if (!is.null(paths$root)) {
     root = sub('/$', '', gsub('\\\\', '/', paths$root))
-    if (startsWith(rel, paste0(root, '/'))) rel = substring(rel, nchar(root) + 2)
+    if (startsWith(relative_path, paste0(root, '/'))) relative_path = substring(relative_path, nchar(root) + 2)
   }
-  sub('^\\./', '', rel)
+  sub('^\\./', '', relative_path)
 }
 
 # The script that writes `path` (NA for an original input). Stops if the path is not in
 # the catalogue. Accepts a path under any run root, with / or \ separators.
 producer = function(paths, path) {
-  rel = root_relative(paths, path)
-  for (i in seq_len(nrow(PATH_CATALOGUE))) {
-    if (grepl(template_regex(PATH_CATALOGUE$id[i], paths$tag), rel)) return(PATH_CATALOGUE$producer[i])
+  relative_path = root_relative(paths, path)
+  for (catalogue_row in seq_len(nrow(PATH_CATALOGUE))) {
+    if (grepl(template_regex(PATH_CATALOGUE$id[catalogue_row], paths$tag), relative_path))
+      return(PATH_CATALOGUE$producer[catalogue_row])
   }
   stop('producer: ', path, ' is not a catalogued file (R/paths.R, PATH_CATALOGUE)')
 }
 
 # A catalogue template as a regular expression matching the whole relative path.
 template_regex = function(id, tag) {
-  t = PATH_CATALOGUE[id, 'template']
-  t = gsub('([.+()^$|\\[\\]\\\\])', '\\\\\\1', t)
-  t = gsub('{tag}', tag, t, fixed = TRUE)
-  t = gsub('{month}', paste0('(', paste(MONTHS, collapse = '|'), ')'), t, fixed = TRUE)
+  pattern = PATH_CATALOGUE[id, 'template']
+  pattern = gsub('([.+()^$|\\[\\]\\\\])', '\\\\\\1', pattern)
+  pattern = gsub('{tag}', tag, pattern, fixed = TRUE)
+  pattern = gsub('{month}', paste0('(', paste(MONTHS, collapse = '|'), ')'), pattern, fixed = TRUE)
   if (!is.null(TEMPLATE_MODELS[[id]]))
-    t = gsub('{model}', paste0('(', paste(TEMPLATE_MODELS[[id]], collapse = '|'), ')'), t, fixed = TRUE)
-  paste0('^', t, '$')
+    pattern = gsub('{model}', paste0('(', paste(TEMPLATE_MODELS[[id]], collapse = '|'), ')'), pattern, fixed = TRUE)
+  paste0('^', pattern, '$')
 }
 
 # Every catalogued path for the given months, expanded over months and model ids. Used by
 # the tests to compare the catalogue with the files on disk.
 catalogue_paths = function(paths, months = MONTHS, include_spatial_eval = FALSE) {
-  out = character()
+  expanded_paths = character()
   for (id in PATH_CATALOGUE$id) {
     if (!include_spatial_eval && startsWith(id, 'spatial_eval')) next
-    t = PATH_CATALOGUE[id, 'template']
-    ms = if (grepl('{month}', t, fixed = TRUE)) months else list(NULL)
-    ks = if (grepl('{model}', t, fixed = TRUE)) TEMPLATE_MODELS[[id]] else list(NULL)
-    for (m in ms) for (k in ks) out = c(out, path_file(paths, id, month = m, model = k))
+    path_template = PATH_CATALOGUE[id, 'template']
+    template_months = if (grepl('{month}', path_template, fixed = TRUE)) months else list(NULL)
+    template_models = if (grepl('{model}', path_template, fixed = TRUE)) TEMPLATE_MODELS[[id]] else list(NULL)
+    for (month in template_months) for (model_id in template_models) expanded_paths = c(expanded_paths, path_file(paths, id, month = month, model = model_id))
   }
-  out
+  expanded_paths
 }
 
 # Make baseline products available in a run directory, for a run that reuses them (for
@@ -236,17 +237,17 @@ catalogue_paths = function(paths, months = MONTHS, include_spatial_eval = FALSE)
 # paths.
 seed_run_dir = function(paths, files) {
   if (is.null(paths$root)) stop('seed_run_dir: the baseline profile has no run directory to seed')
-  targets = vapply(files, function(f) {
-    if (!file.exists(f)) stop('seed_run_dir: no baseline file ', f)
-    target = file.path(paths$root, f)
+  targets = vapply(files, function(source_file) {
+    if (!file.exists(source_file)) stop('seed_run_dir: no baseline file ', source_file)
+    target = file.path(paths$root, source_file)
     if (!file.exists(target)) {
       dir.create(dirname(target), recursive = TRUE, showWarnings = FALSE)
-      if (!file.copy(f, target, copy.mode = FALSE)) stop('seed_run_dir: could not copy ', f)
+      if (!file.copy(source_file, target, copy.mode = FALSE)) stop('seed_run_dir: could not copy ', source_file)
     }
     target
   }, character(1), USE.NAMES = FALSE)
   record = file.path(paths$root, 'SEEDED.txt')
-  done = if (file.exists(record)) readLines(record) else character()
-  writeLines(sort(unique(c(done, files))), record)
+  recorded_files = if (file.exists(record)) readLines(record) else character()
+  writeLines(sort(unique(c(recorded_files, files))), record)
   targets
 }

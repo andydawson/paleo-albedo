@@ -47,9 +47,9 @@ check_choice = function(v, legal, single = FALSE) {
   if (!is.null(names(v)))                         return('must not have names')
   if (single && length(v) != 1)                   return('must be a single value')
   if (anyDuplicated(v))                           return('must not repeat a value')
-  bad = setdiff(v, legal)
-  if (length(bad)) return(sprintf('has %s; legal values are %s',
-                                  paste(sQuote(bad, FALSE), collapse = ', '),
+  invalid_choices = setdiff(v, legal)
+  if (length(invalid_choices)) return(sprintf('has %s; legal values are %s',
+                                  paste(sQuote(invalid_choices, FALSE), collapse = ', '),
                                   paste(legal, collapse = ', ')))
   NULL
 }
@@ -64,13 +64,13 @@ check_run_dir = function(v) {
   if (is.null(v)) return(NULL)
   if (!is.character(v) || length(v) != 1 || is.na(v) || !nzchar(v)) return('must be NULL or one directory path')
   if (!is.null(names(v))) return('must not have names')
-  top = strsplit(gsub('\\\\', '/', v), '/', fixed = TRUE)[[1]]
-  top = top[nzchar(top) & top != '.']
-  if (!length(top)) return('must not be the repository itself; use NULL for the baseline locations')
+  path_components = strsplit(gsub('\\\\', '/', v), '/', fixed = TRUE)[[1]]
+  path_components = path_components[nzchar(path_components) & path_components != '.']
+  if (!length(path_components)) return('must not be the repository itself; use NULL for the baseline locations')
   absolute = grepl('^(/|\\\\|[A-Za-z]:)', v)
-  if (!absolute && top[1] %in% c('data', 'output', 'figures', 'runs', 'scripts', 'R', 'tests'))
-    return(sprintf("must not be inside the repository's %s/ directory", top[1]))
-  if ('..' %in% top) return("must not contain '..'")
+  if (!absolute && path_components[1] %in% c('data', 'output', 'figures', 'runs', 'scripts', 'R', 'tests'))
+    return(sprintf("must not be inside the repository's %s/ directory", path_components[1]))
+  if ('..' %in% path_components) return("must not contain '..'")
   NULL
 }
 

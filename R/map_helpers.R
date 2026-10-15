@@ -35,8 +35,11 @@ prepare_boundaries = function(pbs_sp, window) {
   land = st_as_sf(pbs_sp)
   land = land[land$COUNTRY != "water/agua/d'eau", ]
   land = st_make_valid(land)
-  span = vapply(st_geometry(land), function(g) { b = st_bbox(g); unname(b["xmax"] - b["xmin"]) }, numeric(1))
-  land = land[span <= 300, ]
+  longitude_span = vapply(st_geometry(land), function(geometry) {
+    bounds = st_bbox(geometry)
+    unname(bounds["xmax"] - bounds["xmin"])
+  }, numeric(1))
+  land = land[longitude_span <= 300, ]
   suppressWarnings(st_crop(land, xmin = window$x[1], xmax = window$x[2],
                                  ymin = window$y[1], ymax = window$y[2]))
 }
