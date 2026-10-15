@@ -134,8 +134,8 @@ if (diagnostic) {
   cells = unique(lct_interp_all[, c('x', 'y')])
   slices = sort(unique(lct_interp_all$ages))
   full_grid = merge(cells, data.frame(ages = slices))
-  present = paste(lct_interp_all$x, lct_interp_all$y, lct_interp_all$ages)
-  full_grid$absent = !(paste(full_grid$x, full_grid$y, full_grid$ages) %in% present)
+  present_cell_slice_keys = paste(lct_interp_all$x, lct_interp_all$y, lct_interp_all$ages)
+  full_grid$absent = !(paste(full_grid$x, full_grid$y, full_grid$ages) %in% present_cell_slice_keys)
   # Zones from config.R analysis$domain; at the defaults the labels read
   # 'south of 27N', 'north of 74N' and 'west of 170W'.
   dom = cfg$analysis$domain
@@ -173,31 +173,32 @@ if (diagnostic) {
   # drawn as a tile, coloured ice (flagged), land (present, not flagged) or absent (no row in
   # the input at that slice). Using the flag rather than the polygons keeps this a picture of
   # what the land-cover product itself says; the 1 ka polygons would add 48 cells at 50 BP.
-  status = full_grid
+  ice_status_table = full_grid
   key_ice = paste(ice_flags$cell_id, ice_flags$ages)[!is.na(ice_flags$ice)]
   cell_key = lct_interp_all[!duplicated(paste(lct_interp_all$x, lct_interp_all$y)), c('x', 'y')]
   cell_key$cell_id = lct_interp_wide$cell_id[match(paste(cell_key$x, cell_key$y),
                                                     paste(lct_interp_wide$x, lct_interp_wide$y))]
-  status$cell_id = cell_key$cell_id[match(paste(status$x, status$y), paste(cell_key$x, cell_key$y))]
-  status$status = ifelse(status$absent, 'absent',
-                  ifelse(paste(status$cell_id, status$ages) %in% key_ice, 'ice', 'land'))
-  status$status = factor(status$status, levels = c('land', 'ice', 'absent'))
+  ice_status_table$cell_id = cell_key$cell_id[match(paste(ice_status_table$x, ice_status_table$y),
+                                                    paste(cell_key$x, cell_key$y))]
+  ice_status_table$status = ifelse(ice_status_table$absent, 'absent',
+                  ifelse(paste(ice_status_table$cell_id, ice_status_table$ages) %in% key_ice, 'ice', 'land'))
+  ice_status_table$status = factor(ice_status_table$status, levels = c('land', 'ice', 'absent'))
   status_cols = c(land = 'grey80', ice = 'steelblue', absent = 'firebrick')
   # The map window is the diagnostics window in config.R.
   diag_window = cfg$presentation$map_windows$diagnostics
   for (a in slices) {
-    p = ggplot(status[status$ages == a, ]) +
+    p = ggplot(ice_status_table[ice_status_table$ages == a, ]) +
       geom_tile(aes(x = x, y = y, fill = status)) +
       scale_fill_manual(values = status_cols, drop = FALSE, name = NULL) +
       coord_fixed(xlim = diag_window$x, ylim = diag_window$y) +
       labs(title = paste0('Ice flag in the land-cover product, ', a, ' BP'),
-           subtitle = paste0(sum(status$ages == a & status$status == 'ice'), ' cells flagged ice; ',
-                             sum(status$ages == a & status$status == 'absent'), ' cells absent'),
+           subtitle = paste0(sum(ice_status_table$ages == a & ice_status_table$status == 'ice'), ' cells flagged ice; ',
+                             sum(ice_status_table$ages == a & ice_status_table$status == 'absent'), ' cells absent'),
            x = NULL, y = NULL) +
       theme_bw(11)
     ggsave(path_figure(paths, 'diagnostics', sprintf('1_ice_flag_%05dBP.png', a)), p, width = 9, height = 5, dpi = 120)
   }
-  p_all = ggplot(status) +
+  p_all = ggplot(ice_status_table) +
     geom_tile(aes(x = x, y = y, fill = status)) +
     scale_fill_manual(values = status_cols, drop = FALSE, name = NULL) +
     coord_fixed(xlim = diag_window$x, ylim = diag_window$y) +
@@ -218,24 +219,24 @@ if (diagnostic) {
   cat('\n==== Mean versus median of the 200 draws, per cell-slice-class ====\n')
   cat('Cell-slice-class combinations:', nrow(draw_stats), '\n')
   cat('\nmedian minus mean, by class (fractions, 0..1):\n')
-  print(do.call(rbind, lapply(split(draw_stats, draw_stats$LCT), function(d) data.frame(
-    LCT = d$LCT[1], mean_abs_diff = round(mean(abs(d$diff)), 4), p95_abs_diff = round(quantile(abs(d$diff), 0.95), 4),
-    max_abs_diff = round(max(abs(d$diff)), 4), share_over_0.01 = round(mean(abs(d$diff) > 0.01), 3),
-    share_over_0.05 = round(mean(abs(d$diff) > 0.05), 4)))), row.names = FALSE)
+  print(do.call(rbind, lapply(split(draw_stats, draw_stats$LCT), function(class_draw_stats) data.frame(
+    LCT = class_draw_stats$LCT[1], mean_abs_diff = round(mean(abs(class_draw_stats$diff)), 4), p95_abs_diff = round(quantile(abs(class_draw_stats$diff), 0.95), 4),
+    max_abs_diff = round(max(abs(class_draw_stats$diff)), 4), share_over_0.01 = round(mean(abs(class_draw_stats$diff) > 0.01), 3),
+    share_over_0.05 = round(mean(abs(class_draw_stats$diff) > 0.05), 4)))), row.names = FALSE)
   cat('\nFor scale: the smallest slice-to-slice change in vegetation albedo that script 7a treats as\n',
       'real is of order 0.001-0.01, and land-cover fractions enter the albedo model through a smooth\n',
       'whose gradient is of order 0.1-0.3 albedo per unit fraction, so a 0.01 shift in a fraction is\n',
       'roughly 0.001-0.003 in albedo. Compare the columns above with that.\n')
   # Sum-to-one: the mean fractions sum to 1 exactly; the medians do not.
-  sums = draw_stats %>% group_by(cell_id, ages) %>%
+  cover_fraction_sums = draw_stats %>% group_by(cell_id, ages) %>%
     dplyr::summarize(sum_mean = sum(mean), sum_median = sum(median), .groups = 'drop')
   cat('\nSum of the three class fractions per cell-slice:\n')
-  cat('  using the mean:   range', paste(round(range(sums$sum_mean), 4), collapse = ' to '), '\n')
-  cat('  using the median: range', paste(round(range(sums$sum_median), 4), collapse = ' to '),
-      '| share of cell-slices off 1 by more than 0.01:', round(mean(abs(sums$sum_median - 1) > 0.01), 3), '\n')
+  cat('  using the mean:   range', paste(round(range(cover_fraction_sums$sum_mean), 4), collapse = ' to '), '\n')
+  cat('  using the median: range', paste(round(range(cover_fraction_sums$sum_median), 4), collapse = ' to '),
+      '| share of cell-slices off 1 by more than 0.01:', round(mean(abs(cover_fraction_sums$sum_median - 1) > 0.01), 3), '\n')
   # Where the difference is largest: it should track the posterior spread.
   cat('\nCorrelation of |median - mean| with the posterior sd, by class:\n')
-  print(round(sapply(split(draw_stats, draw_stats$LCT), function(d) cor(abs(d$diff), d$sd)), 3))
+  print(round(sapply(split(draw_stats, draw_stats$LCT), function(class_draw_stats) cor(abs(class_draw_stats$diff), class_draw_stats$sd)), 3))
   # Plot: median against mean per class, and the difference against the mean.
   p_mm = ggplot(draw_stats, aes(x = mean, y = median)) +
     geom_point(alpha = 0.05, size = 0.3) +
