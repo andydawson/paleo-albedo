@@ -7,7 +7,9 @@ satellite-albedo calibration, and radiative kernels.
 **Status: research code under active development.** The pipeline runs end
 to end as of 2026-09-21 and its outputs are frozen as regression anchors.
 Since 2026-09-24 the trunk carries the interp flavour only (see below).
-This README was last brought up to date on 2026-09-24. The authoritative
+Every setting the scripts read is in `config.R`; `configs/legacy_config.R`
+holds the original analysis's settings and reproduces the anchors.
+This README was last brought up to date on 2026-10-15. The authoritative
 descriptions of the scripts and data are in `docs/cc/`; see the index at
 the end.
 
@@ -38,8 +40,10 @@ Diagram: `docs/cc/2026-09-17_methodology_schematic.png`.
 | Path | Holds |
 |---|---|
 | `scripts/` | the R pipeline, numbered in run order |
-| `R/` | helpers sourced by the scripts (`run_manifest.R`) |
-| `tools/` | shell and Python helpers that are not part of the pipeline |
+| `config.R` | every setting the pipeline reads (the current analysis) |
+| `configs/` | `legacy_config.R`: the same settings for the original analysis |
+| `R/` | functions the scripts share: settings and their checks (`config.R`, `config_schema.R`), file locations (`paths.R`), run records (`run_manifest.R`), model formulas (`model_registry.R`), months, seeds, preparation, differencing, kernels and maps |
+| `tools/` | not part of the pipeline: preparation of fixed inputs (`prepare_*.R`), and development checks (verification, regression anchors, table comparison); mostly R, with a few older shell and Python helpers |
 | `data/` | inputs, plus some intermediates the scripts still write here |
 | `output/` | fitted models, predictions, forcing (git-ignored except small summary tables) |
 | `figures/` | figures (git-ignored; regenerable) |
@@ -68,10 +72,8 @@ outputs are anchored in `tests/anchors/nointerp-*` and its scripts and
 data are documented in `docs/cc/README_nointerp.md`, whose line numbers
 refer to `v1-both-flavours`.
 
-One thing the removal did not change: the scripts loop over all twelve
-months and cannot run a single month without editing the loop. Making
-the month set a setting is on the roadmap for the config stage
-(the staged plan, archived 2026-09-25).
+Months: `analysis$months` in `config.R` selects any subset of months for
+scripts 4 to 8 (script 2 always prepares all twelve).
 
 ## Scripts (`scripts/`)
 
@@ -132,10 +134,8 @@ smooth) at ~2 h per month, every other model 1 to 5 min; 5 ~4 min; 6
 dominated by a per-cell `rbind` loop that is quadratic in output rows,
 which is a planned consolidation.
 
-Known stop: script 5 reads the spatial-experiment models from
-`output/calibration/spatial_experiment/` but script 4 writes them to
-`output/calibration/` (known issue 13). Its essential outputs are written
-before that point, so the pipeline continues.
+(Fixed: script 5 used to look for the spatial-experiment models in a directory script 4
+never wrote; both now use the path catalogue in `R/paths.R`.)
 
 ## Data assets, interp flavour (`data/`, `output/`)
 
@@ -251,7 +251,7 @@ the EDI portal (link in the table above) and unzipped into
 
 ## Environment
 
-R 4.5 with `mgcv`, `terra`, `raster`, `sp`, `sf`, `dplyr`, `tidyr`,
+R 4.5 (4.5.3 on the development machine) with `mgcv`, `terra`, `raster`, `sp`, `sf`, `dplyr`, `tidyr`,
 `reshape2`, `ggplot2`, `patchwork`, `gratia`, `tidyterra`, `scico`,
 `ggtern`, `tricolore`, `scatterpie`, `fields`, `brms`, `elevatr` (needs
 network). On the development machine there is no system R; a user-space
@@ -274,9 +274,21 @@ micromamba install -n paleo-rf -c conda-forge --freeze-installed libgdal-hdf4 li
 micromamba run -n paleo-rf Rscript -e 'install.packages("ecmwfr", dependencies = FALSE)'
 ```
 
-Run scripts from the repository root. **Cap the BLAS threads to the cores
-you give the job** or the fits oversubscribe the machine: an uncapped run
-on 2026-09-17 sat for 2.5 hours producing nothing. A typical launch:
+**Running a script.** From the repository root, on any system with R:
+
+```
+Rscript scripts/1_veg_lct_prep.R                                    # current analysis (config.R)
+Rscript scripts/1_veg_lct_prep.R --config configs/legacy_config.R   # the original analysis
+```
+
+or open the repository in RStudio with the repository root as the working directory and run
+or step through a script; it uses `config.R`. Scripts run in order 1, 2, 3, 4, 5, 6, 7, 7a,
+8, 9 (script 3 only draws figures; script 7 draws the maps and also writes the
+coarse albedo differences that script 9 reads).
+
+On a many-core Linux machine, **cap the BLAS threads to the cores you give the job** or the
+fits oversubscribe the machine: an uncapped run on 2026-09-17 sat for 2.5 hours producing
+nothing. A typical launch on the development machine:
 
 ```
 OPENBLAS_NUM_THREADS=8 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 \
