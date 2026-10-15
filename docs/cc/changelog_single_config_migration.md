@@ -34,6 +34,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I11 (slim) Script 7a's per-pair arithmetic as a tested function | #12 | merged 2026-10-14 | d772ea3 |
 | I16a Kernel variables; ice-advance method; legacy config | #19 (first part) | merged 2026-10-14 | c1f2d73 |
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
+| I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | MERGE_SHA |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -862,4 +863,38 @@ rerun from its own worktree at 5deabac):
   few seconds while script 4 ran from it. The running R kept reading the file it had opened
   (git replaces files rather than editing them), as `/proc` confirmed; the runs not yet
   started used the restored branch.
+
+## I15a: readability, comments and indentation only (#21), merged 2026-10-15
+
+**Purpose.** The first of the three readability issues split from #18 (Chris adopted
+Astra's plan, `2026-10-15_i15_split_recommendation_codex_gpt6astra.md`): make the scripts
+easier for Andria to read without changing one executable expression.
+
+**Changed** (scripts, R/ helpers and the two configurations; one commit each):
+- **Issue tags removed:** about 125 '(issue I0x)' mentions; question references for Andria
+  kept; sentences mended where a tag sat inside one.
+- **Script headers corrected:** eight scripts said every remaining line was unchanged from
+  the original, no longer true; 7a's first sentence was unfinished.
+- **Out-of-date comments corrected:** settings described as fixed values that now come from
+  config.R; a CM note pointing to 'line 123'; the registry's 'each model adds to the one
+  before'.
+- **CM notes about code that no longer exists** (six) removed (Chris: list the important
+  removals in the write-up instead; done in its "Code removed from the original analysis"
+  list).
+- **Notes at the calculation sites:** script 8's kernel coordinates, t(flip()) of CACK, units,
+  factor of 100 and signs; script 2's zero albedo set to 1e-4 (the beta family).
+- **Script 3's tutorial leftovers** (euro_example, educ_rgb, two plots both called 'month 5')
+  and **script 5's 'month' column** (it holds observed albedo) explained.
+- **'One row per ...'** at every saved table, checked against the frozen outputs.
+- **Indentation** of script 5's November block, script 7's month-guarded maps and script 9's
+  EGU recipe.
+- **New tool** `tools/check_comments_only.R`: proves a change touched only comments and
+  layout of the pipeline code (scripts, R/, configurations) by comparing parsed code.
+
+**Outputs changed.** None.
+
+**Verification.** `docs/cc/verification/2026-10-15_i15a-comments-only-2_report.md`, PASS:
+all 23 changed pipeline files parse to exactly the same code as before the first edit, and
+all 12 test files pass. A first run failed on the checker itself, which counted a
+verification spec in docs/ as code; fixed and tested.
 
