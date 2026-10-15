@@ -18,14 +18,18 @@ alt <- suppressMessages(pipeline_paths(load_config(), redirected_paths(run)))
 invisible(file.copy(file.path(anchor, "forcing_by_period.csv"), path_file(alt, "forcing_by_period")))
 invisible(seed_run_dir(alt, "output/forcing/modern_ipcc_ar6_erf.csv"))
 out <- capture.output(res <- check_anchors(anchor, run))
+result_of <- function(res, f) res$result[res$file == f]
 stopifnot(
-  isTRUE(res),
+  identical(result_of(res, "forcing_by_period.csv"), "MATCH"),
+  identical(result_of(res, "modern_ipcc_ar6_erf.csv"), "SEEDED"),
+  identical(result_of(res, "forcing_by_period_variant_sensitivity.csv"), "NOT PRODUCED"),
   any(grepl("^forcing_by_period.csv +MATCH", out)),
-  any(grepl("^modern_ipcc_ar6_erf.csv +seeded from the baseline", out)),
-  any(grepl("^forcing_by_period_variant_sensitivity.csv +not produced", out))
+  anchors_ok(res),                          # a partial run passes on what it produced
+  !anchors_ok(res, require_all = TRUE)      # but does not reproduce the whole anchor
 )
 writeLines("changed", path_file(alt, "forcing_by_period"))
 out <- capture.output(res <- check_anchors(anchor, run))
-stopifnot(!res, any(grepl("^forcing_by_period.csv +DIFFER", out)))
+stopifnot(identical(result_of(res, "forcing_by_period.csv"), "DIFFER"), !anchors_ok(res),
+          any(grepl("^forcing_by_period.csv +DIFFER \\(anchor", out)))
 unlink(run, recursive = TRUE)
 cat("test_tools: all tests passed\n")
