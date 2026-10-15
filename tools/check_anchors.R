@@ -24,14 +24,22 @@ check_anchors <- function(anchor, root = NULL) {
   results <- data.frame(file = basename(sums$path), result = "", detail = "", stringsAsFactors = FALSE)
   for (i in seq_len(nrow(sums))) {
     live <- map$path[map$anchor == results$file[i]]
-    if (length(live) != 1) { results$result[i] <- "NO MAPPING"; next }
+    if (length(live) != 1) {
+      results[i, c("result", "detail")] <- c("NO MAPPING", "not in tests/anchors/live_paths.tsv")
+      next
+    }
     p <- if (is.null(root)) live else file.path(root, live)
-    if (live %in% seeded) results$result[i] <- "SEEDED"
-    else if (!file.exists(p)) results$result[i] <- "NOT PRODUCED"
-    else {
+    if (live %in% seeded) {
+      results[i, c("result", "detail")] <- c("SEEDED", "copied from the baseline, not produced here")
+    } else if (!file.exists(p)) {
+      results$result[i] <- "NOT PRODUCED"
+    } else {
       got <- unname(tools::md5sum(p))
-      results$result[i] <- if (got == sums$md5[i]) "MATCH" else "DIFFER"
-      if (got != sums$md5[i]) results$detail[i] <- sprintf("anchor %s, got %s", substr(sums$md5[i], 1, 8), substr(got, 1, 8))
+      if (got == sums$md5[i]) {
+        results$result[i] <- "MATCH"
+      } else {
+        results[i, c("result", "detail")] <- c("DIFFER", sprintf("anchor %s, got %s", substr(sums$md5[i], 1, 8), substr(got, 1, 8)))
+      }
     }
   }
   cat(sprintf("%-48s %s%s\n", results$file, results$result,
@@ -47,7 +55,7 @@ anchors_ok <- function(results, require_all = FALSE) {
 if (sys.nframe() == 0) {
   a <- commandArgs(TRUE)
   require_all <- "--all" %in% a
-  a <- setdiff(a, "--all")
+  a <- a[a != "--all"]
   if (!length(a)) { cat("usage: Rscript tools/check_anchors.R <anchor-dir> [run-dir] [--all]\n"); quit(status = 2) }
   if (!anchors_ok(check_anchors(a[1], if (length(a) > 1) a[2] else NULL), require_all)) quit(status = 1)
 }

@@ -31,5 +31,15 @@ writeLines("changed", path_file(alt, "forcing_by_period"))
 out <- capture.output(res <- check_anchors(anchor, run))
 stopifnot(identical(result_of(res, "forcing_by_period.csv"), "DIFFER"), !anchors_ok(res),
           any(grepl("^forcing_by_period.csv +DIFFER \\(anchor", out)))
-unlink(run, recursive = TRUE)
+# The command line: the default rule passes this partial run's MATCH, --all fails it.
+writeLines(readLines(file.path(anchor, "forcing_by_period.csv")), path_file(alt, "forcing_by_period"))
+rscript <- file.path(R.home("bin"), "Rscript")
+status <- function(...) system2(rscript, c("tools/check_anchors.R", ...), stdout = FALSE, stderr = FALSE)
+stopifnot(status(anchor, run) == 0, status(anchor, run, "--all") == 1)
+# A file in an anchor with no entry in live_paths.tsv is NO MAPPING, which fails.
+odd <- file.path(tempdir(), "anchor_unmapped"); dir.create(odd, showWarnings = FALSE)
+writeLines("0123456789abcdef0123456789abcdef  not_in_live_paths.csv", file.path(odd, "MD5SUMS.txt"))
+out <- capture.output(res <- check_anchors(odd, run))
+stopifnot(identical(res$result, "NO MAPPING"), !anchors_ok(res))
+unlink(c(run, odd), recursive = TRUE)
 cat("test_tools: all tests passed\n")
