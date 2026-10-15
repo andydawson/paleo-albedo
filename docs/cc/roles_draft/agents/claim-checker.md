@@ -24,7 +24,7 @@ the extractor's or the author's reasoning; if it does, read the source before yo
 ## Procedure
 
 1. Confirm the file is the cited work: first page title, authors, year and journal must
-   match the citation key's record. If not, verdict `WRONG-FILE` and stop.
+   match the citation key's record. If not, verdict `UNVERIFIABLE` (the file is not the cited work) and stop.
 2. Find the passage: start from the locator, then search the paper's results, tables,
    figure captions and discussion. Quote it verbatim, at most about forty words, with the
    page or table number. No quote, no verdict of support.
