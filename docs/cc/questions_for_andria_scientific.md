@@ -270,6 +270,12 @@ following published methods, with water removed at the satellite's 500 m scale u
 MOD44W, downloaded and processed on our workstation. Your raster stays as the legacy
 setting and the two are compared. Nothing is built until Chris approves the design.
 
+**Decided 2026-10-15 (Chris), after two literature reviews and Fable's comparison:** the
+calibration albedo will be our own build from MODIS MCD43A3/A2 v6.1 with the ERA5 all-sky
+diffuse fraction, 2000-2009, water removed at 500 m; Jia et al. (2022, doi:10.1029/2021JD035987)
+is kept as a cross-check, not the primary response, because it is a clear-sky product while the
+radiative kernels are all-sky. One recipe, settled after a small pilot.
+
 ### B2d. What the paper claims about past snow
 **Raised 2026-10-15** by Chris ("snow is perhaps the weakest point"), reviewed in Astra's review of 2026-10-15, docs/cc/2026-10-15_snow_and_water_masking_codex_gpt6astra.md on the migration branch.
 **What the code does.** The calibration models have location, elevation and the three cover
@@ -349,6 +355,12 @@ monotonically with model complexity in every month". It does not: in the same ta
 rises by a few units at three steps, model 6 to 7 in April (-9500 to -9497), model 7 to 8
 in May (-10202 to -10199) and model 5 to 6 in June (-11796 to -11790). The overall fall from
 model 1 to model 8 holds in every month. Found by the methods-from-code pilot.
+
+**Decided 2026-10-15 (Chris):** the seven spatial experiments of script 4 follow the same
+comparison setting as the ladder (ML in the current configuration, REML in the legacy one),
+for the same reason: REML scores are not comparable between models with different fixed
+terms (mgcv 1.9.4 documentation, `gam.selection` and `AIC.gam`; Wood 2017, doi:10.1201/9781315370279;
+Zuur et al. 2009, doi:10.1007/978-0-387-87458-6).
 
 **What is left of the question.** A formal one: the models are fitted by
 REML and compared across differing mean structures, which is not a valid
@@ -541,6 +553,8 @@ satellite land cover (MODIS MCD12). **What we need from you:**
 4. Would a modern-pollen REVEALS layer be feasible as the calibration land cover?
 5. If the tests show the blur matters, would you prefer restricting the calibration to
    low-land-use-change cells, or re-pairing on satellite land cover?
+
+**Chris, 2026-10-15:** the two tests wait for your answers to these questions.
 
 
 ## C. Differencing, ice and forcing
