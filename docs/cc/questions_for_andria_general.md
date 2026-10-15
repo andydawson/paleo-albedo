@@ -52,6 +52,30 @@ centre or a bin edge?
   have the file? Also: did you preprocess any of the three, or use them
   as downloaded? And which CACK band is band 3?
 
+### 3a. For Chris: downloading the MODIS water mask (MOD44W) for the land-mean albedo (2026-10-15)
+
+Needed before the land-support part of issue I16 (i16c). It needs a NASA Earthdata login,
+so Chris downloads it. The version and year are still a proposal for Andria to confirm
+(scientific question B5): version 6.1, the 2015 annual layer. Another year is one more
+request of the same kind.
+
+1. Go to AppEEARS, https://appeears.earthdatacloud.nasa.gov/, and sign in with Earthdata.
+2. Extract > Area > Start a new request.
+3. Name: `paleo-rf-mod44w-2015`.
+4. Area: draw or upload a rectangle covering the grid: west -172, east -52, south 17, north
+   79 (degrees; the 1-degree grid's cells span lon -172 to -53, lat 17 to 79).
+5. Dates: 2015-01-01 to 2015-12-31 (one annual layer).
+6. Layers: product `MOD44W.061` (Terra Land Water Mask, 250 m, yearly); layers
+   `water_mask` and `water_mask_QA`.
+7. Output: file format GeoTIFF; projection **Native Projection** (sinusoidal), so that the
+   250 m pixels are not resampled.
+8. Submit. When the e-mail arrives, download every file of the request (the .tif files,
+   and the README and `*-request.json` it includes).
+9. Put them, unrenamed, in `data/mod44w/2015/` of the repository checkout (not committed:
+   the pipeline records their checksums), and tell Claude.
+
+Not needed from Chris: the elevation model (fetched without a login).
+
 ## 4. Provenance to record in the data documentation
 
 - The blue-sky albedo GeoTIFF (`blue_sky_monthly_2000-2009.tif`): the
