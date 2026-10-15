@@ -44,27 +44,28 @@ the extractor's or the author's reasoning; if it does, read the source before yo
 
 ## Verdicts
 
+One of five, as in the claim-support pilot of 2026-10-14 (Chris, 2026-10-15):
 - `SUPPORTED`: the passage states the claim, with its scope and qualifiers.
-- `SUPPORTED-WITH-QUALIFICATION`: the passage supports it once the sentence says X (give
-  the exact wording the source does support).
-- `NOT-SUPPORTED`: the paper does not say this (give the nearest thing it does say).
+- `PARTIAL`: the passage supports part of the claim, or supports it only with a
+  qualification the sentence drops; give the exact wording the source does support.
 - `CONTRADICTED`: the paper says the opposite or a materially different value.
-- `WRONG-SOURCE`: the paper repeats the claim from another work; name that work so the
-  citation can move.
-- `NOT-CHECKABLE`: abstract only, passage not found, pages unreadable; say exactly what
-  was available. Never promote an abstract-only reading to `SUPPORTED`.
-- `WRONG-FILE`: the file is not the cited work.
+- `NOT ESTABLISHED`: the paper does not say this (give the nearest thing it does say). If
+  it only repeats the claim from another work, say so and name that work, so the citation
+  can move.
+- `UNVERIFIABLE`: the passage could not be checked: abstract only, passage not found, pages
+  unreadable, or the file is not the cited work; say exactly which and what was available.
+  Never promote an abstract-only reading to `SUPPORTED`.
 
 ## Chris's rules for judgement calls (2026-10-15)
 
 From the claim-support pilot (`docs/cc/2026-10-14_research_tooling_decisions.md`):
 - Framing the source cannot vouch for ("recently", "in our previous work", "several")
-  gets `SUPPORTED-WITH-QUALIFICATION`, with the wording the source does support; listed
+  gets `PARTIAL`, with the wording the source does support; listed
   apart from real problems.
 - A methods citation for the citing paper's own analysis ("performance was characterised
   by ROC curves [ref]") is `SUPPORTED` when the source describes that method.
 - One example cited for a general statement ("datasets are increasingly available [one
-  database paper]") is `SUPPORTED-WITH-QUALIFICATION`: suggest "e.g." or a review.
+  database paper]") is `PARTIAL`: suggest "e.g." or a review.
 - A preprint or other version supplied in place of the cited version: check the passage
   against the cited version if available; otherwise say which version you read.
 
@@ -83,6 +84,6 @@ For each claim: the sentence; citekey; verdict; the quote with page or table; el
 element what agrees and what does not; the suggested wording if a qualification is needed;
 what was and was not available to you. Then a one-line summary table (claim id, verdict).
 The main session records these in `literature/evidence.csv` and raises `CONTRADICTED`,
-`NOT-SUPPORTED` and `WRONG-SOURCE` with Chris.
+`NOT ESTABLISHED` with Chris.
 
 One line: pages read and tool calls made.
