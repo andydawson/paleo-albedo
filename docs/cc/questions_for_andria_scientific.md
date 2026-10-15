@@ -502,7 +502,8 @@ albedo, which is the term the whole hindcast rests on.
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Exclude cells whose centre lies inside the 1 ka ice polygons (48) from the calibration; they stay in the prediction domain. The 1 ka mask is a proxy for recent ice.
 
 ### B9. Elevation is a single point at the cell centre, at an unstated resolution
-Script 1 takes elevation from `elevatr::get_elev_point()` at each cell's
+The original elevation (now the legacy setting; its table is made by
+`tools/prepare_centre_elevation.R`) comes from `elevatr::get_elev_point()` at each cell's
 centre coordinate: one spot in a cell 70-100 km across, against land
 cover that is a cell average. In flat country it hardly matters; in the
 Rockies or the Mexican highlands (the table reaches 3,492 m) the centre
