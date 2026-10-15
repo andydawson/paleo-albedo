@@ -162,3 +162,16 @@ Limits: one paper, 28 claims, sources partly rendered from XML, and the "real" c
 shortened by me. PaperTrace reads only bracketed numeric citations; a Word manuscript with
 author-year citations needs a numbered PDF export first.
 
+**Chris's rules for the judgement calls (2026-10-15), to go into the claim-checking
+instructions:**
+- Framing the source cannot vouch for ("recently", "in our previous work") is **flagged as
+  partly supported**, with the suggested wording; Chris decides whether to change it.
+- A **methods citation** for the citing paper's own analysis ("performance was
+  characterised by ROC and precision-recall curves [Davis & Goadrich]") is **supported**
+  when the source describes the method.
+- **One example cited for a general statement** ("datasets are increasingly available
+  [one database paper]") is **partly supported**: suggest "e.g." or a review citation.
+Against these rules, of the 9 disagreements Astra matched Chris on 5 (C03, C04, C05, C25:
+framing; C15: partly rather than supported, so a near miss) and PaperTrace on 2 (C22 and,
+for the framing items, neither); the remaining (C13, C26, C27) are left for the full run.
+
