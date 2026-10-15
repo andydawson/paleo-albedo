@@ -59,7 +59,7 @@ lonlat_interp = cbind(longitude_interp, latitude_interp)
 
 lct_interp_spat = vect(lonlat_interp,
                 crs  = crs("+init=epsg:4326"),
-                atts = lct_interp_modern[,3:ncol(lct_interp_modern)])
+                atts = lct_interp_modern[, setdiff(names(lct_interp_modern), c('x', 'y'))])   # every column but the coordinates
 
 # construct objects to hold albedo data
 
@@ -69,7 +69,6 @@ colnames(bs_interp_df) = MONTHS
 
 # albedo coarser resolution (same as grid?)
 bs_interp_df_coarse = data.frame(matrix(NA, nrow=nrow(lct_interp_spat), ncol=12))
-colnames(bs_interp_df_coarse) = paste0('bs', c(paste0('0', seq(1, 9)), seq(10,12)))
 colnames(bs_interp_df_coarse) = MONTHS
 
 grid = rast(grid)
@@ -109,21 +108,11 @@ ggplot() +
 ggsave(path_figure(paths, 'albedo_maps_monthly_bluesky_coarse.pdf'))
 ggsave(path_figure(paths, 'albedo_maps_monthly_bluesky_coarse.png'))
 
-cols_fill = scale_fill_gradientn(colours=terrain.colors(10),
-                                 na.value='transparent',
-                                 name = "Albedo")
-
-cols_fill = scale_fill_brewer(palette="YlOrBr",
-                              direction = -1,
-                                 na.value='transparent',
-                                 name = "Albedo")
-
 for(i in 1:length(months)) {
 
   month = months[i]
 
   blue_month = blue_all_months[[month]]
-  vname = sprintf('bs%02d', i)
 
   p <- ggplot() +
     boundary_layers(pbs_land, map_window) +
@@ -137,7 +126,6 @@ for(i in 1:length(months)) {
   ggsave(path_figure(paths, paste0('albedo_maps_', month, '_bluesky.png')))
 
   blue_month_coarse = blue_all_months_coarse[[month]]
-  vname = sprintf('bs%02d', i)
 
   p_coarse <- ggplot() +
     boundary_layers(pbs_land, map_window) +

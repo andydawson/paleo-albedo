@@ -36,7 +36,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
 | I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
-| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3, 1 merged 2026-10-15 | |
+| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3, 1, 2 merged 2026-10-15 | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -967,4 +967,13 @@ new, and its outputs compared.
 - Verified in diagnostic mode (`docs/cc/verification/2026-10-15_i15c-script1-{before,after}_report.md`,
   PASS): both land-cover tables byte-identical to the anchor; all 29 diagnostic figure files
   identical to the old code's; the printed diagnostics differ only in the run-folder name.
+
+### Script 2 (merged 2026-10-15)
+- Removed: the coarse table's column names set to 'bs01'...'bs12' and overwritten on the next
+  line; two unused fill scales (`cols_fill`); `vname`, set twice and never read.
+- The point layer's attributes taken by name (every column but the coordinates) instead of
+  by position; same columns, same order. The albedo-table renames wait for I16c.
+- Verified (`docs/cc/verification/2026-10-15_i15c-script2-{before,after}_report.md`, PASS):
+  both calibration tables byte-identical (to the anchor and to the old code's); all 55
+  figure files identical to the old code's.
 
