@@ -22,8 +22,6 @@ library(raster)
 
 pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 
-pbs = read_input(run, path_file(paths, 'boundaries'))
-
 ages_sub = cfg$analysis$coarse$ages
 
 # The months analysed, from config.R (analysis$months); month names and
@@ -82,9 +80,6 @@ if (!is.null(slice_alias)) {
   alb_interp_preds$year[which(alb_interp_preds$year == slice_alias[1])] = slice_alias[2]
 }
 
-pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
-pbs = read_input(run, path_file(paths, 'boundaries'))
-
 albedo_bin_breaks = c(0, 4, 8, 12, 16, 20, 40, 60, 80, 100)/100
 
 alb_interp_preds$alb_bin = cut(alb_interp_preds$alb_mean, albedo_bin_breaks, labels=FALSE)
@@ -119,8 +114,6 @@ breaks_alb = c(0, 5, 10, 20, 30, 40, 60, 80, 100)/100
 labels_alb = c("0 - 5", "5 - 10", "10 - 20", "20 - 30", "30 - 40", "40 - 60", "60 - 80", "80 - 100")
 
 grid_NA <- read_input(run, path_file(paths, 'grid'))
-
-point_predictions = read_input(run, path_file(paths, 'prediction_point'))
 
 cell_id <- raster::extract(grid_NA, alb_interp_preds[,c('x', 'y')])
 

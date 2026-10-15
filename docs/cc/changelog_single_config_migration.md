@@ -1039,7 +1039,7 @@ shorter than the original; Chris approved its five "do now" items.
   (MATCH, DIFFER, NOT PRODUCED, SEEDED, NO MAPPING) and `anchors_ok()` is the single pass
   rule, used by the command line (default) and by `tools/verify_change.R` (`require_all`),
   instead of the tool parsing printed lines. Change-reviewer: approve with changes, made.
-- **Anchor guard** (this merge): the default rule also fails when no file matched, after a
+- **Anchor guard** (branch anchor-guard): the default rule also fails when no file matched, after a
   renaming slip made a verification check an empty run folder and pass vacuously.
   Change-reviewer: approve with changes, made. Verified PASS (`anchor-guard-2`).
 - **Elevation lookup out of script 1** (branch centre-elevation-tool): the original network
@@ -1050,7 +1050,16 @@ shorter than the original; Chris approved its five "do now" items.
   string used only by the lookup left script 1. Verified under the legacy configuration
   (both land-cover tables MATCH; path and config tests pass), which shows nothing else in
   script 1 depended on them. Change-reviewer: approve with changes, made.
-- Still in progress: redundant reads and writes (scripts 5, 7, 7a, 8).
+- **Redundant reads and writes** (branch simplify-redundant-io): script 5 wrote the same
+  selected-model file in three places, now once (in the first loop, for script 6); script 7
+  read the point predictions and the projected boundaries without using them and read the
+  lon/lat boundaries twice; script 7a read both boundary files and used neither; script 8
+  read both boundary files and used neither. All removed; no value, seed or simulation call
+  changes, only the run records lose the needless entries. Verified under the legacy
+  configuration: script 5 (the stats table MATCHes and the twelve selected-model files equal
+  the frozen inventory byte for byte), scripts 7, 7a and 8 in one run (seeded without the point
+  predictions; all six files of the end-of-pipeline anchor produced and MATCH).
+  Change-reviewer: approve with changes, made. README's input tables corrected.
 
 ## I16c (first part): land-mean elevation, merged 2026-10-15
 
