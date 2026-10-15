@@ -58,7 +58,16 @@ box = ext(min(cells$x) - CELL_SIZE / 2, max(cells$x) + CELL_SIZE / 2,
 
 # GMTED2010 over the box. Its pixels nest exactly in whole degrees (120 x 120 per degree);
 # stop if not, because step 4 relies on it.
-gmted = crop(rast(GMTED_DIR), box, snap = 'near')
+gmted = rast(GMTED_DIR)
+# GMTED2010 keeps the "pixel centre" convention of its 1-arc-second SRTM source (Danielson &
+# Gesch 2011, p. 9 and fig. 8), so its grid edges sit half a source arc-second (1/7200
+# degree, about 4 m) west and south of whole degrees: -180.000139 to 179.999860 E, -90.000139
+# to 83.999860 N for 43,200 x 20,880 pixels. Placing the grid on whole degrees moves it by
+# those 4 m, far less than a pixel, and lets 120 x 120 pixels make exactly one cell.
+stopifnot(ncol(gmted) == 43200, nrow(gmted) == 20880,
+          abs(xmin(gmted) + 180) < 1 / 3600, abs(ymax(gmted) - 84) < 1 / 3600)
+ext(gmted) = ext(-180, 180, -90, 84)
+gmted = crop(gmted, box, snap = 'near')
 pixels_per_cell = CELL_SIZE / res(gmted)
 stopifnot(all(abs(pixels_per_cell - round(pixels_per_cell)) < 1e-6),
           abs(xmin(gmted) - xmin(box)) < 1e-6, abs(ymax(gmted) - ymax(box)) < 1e-6)
