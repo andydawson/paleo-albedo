@@ -36,7 +36,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
 | I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
-| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3, 1, 2, 5 merged 2026-10-15 | |
+| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3, 1, 2, 5, 6 merged 2026-10-15 | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -989,4 +989,14 @@ new, and its outputs compared.
 - Verified with seed 1 (`docs/cc/verification/2026-10-15_i15c-script5-{before,after}_report.md`,
   PASS): the statistics CSV byte-identical to the seed-1 anchor; the twelve selected models and
   all ten figure files identical to the old code's.
+
+### Script 6 (merged 2026-10-15)
+- One name per prediction table, saying what it holds: `fitted_albedo`, `point_predictions`,
+  `response_draws`, `response_table`, `response_samples`, `response_summary` (were
+  `paleo_interp_predict_gam_vec` ... `paleo_interp_sim_gam_sum`).
+- The slice column renamed `year` by name ('ages') instead of by position; same column.
+- The base seed computed, then recorded; the `alb_prod` line and a commented-out vector removed.
+- Verified with seed 1 on the code as merged (`docs/cc/verification/2026-10-15_i15c-script6_report.md`,
+  PASS): all 25 script-6 files of the seed-1 anchor and the combined point predictions of the
+  all-months anchor byte-identical.
 

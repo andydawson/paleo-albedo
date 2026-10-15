@@ -11,7 +11,6 @@ source('R/run_manifest.R')
 run   = run_begin('6_prediction_model')
 cfg   = run$cfg
 paths = run$paths
-alb_prod = paths$tag   # the albedo product in file names
 
 # Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(dplyr)
@@ -23,8 +22,8 @@ library(reshape2)
 # random seed of this run, recorded in its manifest (R/random.R).
 source('R/random.R')
 n_draws   = cfg$analysis$draws$prediction
-seed_base = run_record(run, 'random_seed', list(setting = cfg$analysis$draws$seed,
-                                                base = base_seed(cfg$analysis$draws$seed)))$base
+seed_base = base_seed(cfg$analysis$draws$seed)
+run_record(run, 'random_seed', list(setting = cfg$analysis$draws$seed, base = seed_base))
 
 
 # The months analysed, from config.R (analysis$months); month names and
@@ -33,7 +32,8 @@ source('R/calendar.R')
 months = cfg$analysis$months
 
 lct_interp_paleo = read_input(run, path_file(paths, 'lct_paleo'))
-colnames(lct_interp_paleo)[1] = 'year'
+# The slice column is called 'year' in the prediction tables.
+names(lct_interp_paleo)[names(lct_interp_paleo) == 'ages'] = 'year'
 
 for (month in months){
 
@@ -42,34 +42,34 @@ for (month in months){
   cal_interp_model = read_input(run, path_file(paths, 'calibration_selected', month = month))
 
   print(">>Predict")
-  paleo_interp_predict_gam_vec = predict.gam(cal_interp_model,
+  fitted_albedo = predict.gam(cal_interp_model,
                                              newdata = lct_interp_paleo ,
                                              type    = 'response')
-  paleo_interp_predict_gam = data.frame(lct_interp_paleo,
-                                        alb_mean = paleo_interp_predict_gam_vec)
+  point_predictions = data.frame(lct_interp_paleo,
+                                        alb_mean = fitted_albedo)
 
   # One row per cell and slice (year): this month's point prediction (alb_mean).
-  write_output(run, paleo_interp_predict_gam, path_file(paths, 'prediction_point_month', month = month))
+  write_output(run, point_predictions, path_file(paths, 'prediction_point_month', month = month))
 
   print(">>Simulate")
-  paleo_interp_sim_gam = simulate(cal_interp_model,
+  response_draws = simulate(cal_interp_model,
                                   nsim = n_draws,
                                   seed = derive_seed(seed_base, '6_prediction_model', month, 'prediction'),
                                   data = lct_interp_paleo)
 
-  paleo_interp_sim_gam_df = data.frame(lct_interp_paleo,
-                                       paleo_interp_sim_gam)
+  response_table = data.frame(lct_interp_paleo,
+                                       response_draws)
 
-  paleo_interp_sim_gam_melt = melt(paleo_interp_sim_gam_df, id.vars = c('year', 'x', 'y', 'elev', 'ET', 'OL', 'ST'))
-  colnames(paleo_interp_sim_gam_melt) = c('year', 'x', 'y', 'elev', 'ET', 'OL', 'ST', 'iter', 'value')#c('cell_idx', 'iter', 'value')
+  response_samples = melt(response_table, id.vars = c('year', 'x', 'y', 'elev', 'ET', 'OL', 'ST'))
+  colnames(response_samples) = c('year', 'x', 'y', 'elev', 'ET', 'OL', 'ST', 'iter', 'value')
 
-  paleo_interp_sim_gam_melt$iter = draw_index(paleo_interp_sim_gam_melt$iter)
+  response_samples$iter = draw_index(response_samples$iter)
 
   # One row per cell, slice and simulated draw (iter).
-  write_output(run, paleo_interp_sim_gam_melt, path_file(paths, 'prediction_samples_month', month = month))
+  write_output(run, response_samples, path_file(paths, 'prediction_samples_month', month = month))
 
   print(">>Summarize")
-  paleo_interp_sim_gam_sum = paleo_interp_sim_gam_melt %>%
+  response_summary = response_samples %>%
     group_by(year, x, y, elev, ET, OL, ST) %>%
     summarize(alb_mean = mean(value),
               alb_sd = sd(value),
@@ -79,7 +79,7 @@ for (month in months){
               .groups = 'keep')
 
   # One row per cell and slice: mean, sd and quantiles of the draws.
-  write_output(run, paleo_interp_sim_gam_sum, path_file(paths, 'prediction_summary_month', month = month))
+  write_output(run, response_summary, path_file(paths, 'prediction_summary_month', month = month))
 
 }
 
