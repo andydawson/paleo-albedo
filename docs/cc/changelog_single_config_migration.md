@@ -840,8 +840,10 @@ as settings, with the original kept in `configs/legacy_config.R`.
   | ML, ice caps out | -6566 | -6578 | -6574 | -6574 | -6583 | -6598 | **-6615** | -6608 |
 
   Under ML, model 7 (a Gaussian-process smooth of the three fractions) has the lower AIC in
-  January, by 7; under REML model 8 did. Which change causes this, ML or the ice caps left out, is being
-  separated by a January ML ladder on the full table (running at merge; added when done).
+  January, by 7; under REML model 8 did. A January ML ladder on the full table (ice caps kept,
+  `.rundirs/i16b_mlonly`) separates the causes: model 7 -6646, model 8 -6633. So the switch
+  to ML is what makes model 7 come out ahead (by 13); leaving out the ice caps narrows the
+  gap to 7. Model 8 stays the configured model; the choice is Andria's (question B4).
 
 **Verification** (`.rundirs/i16b_{legacy,new,mlonly}`; and the verification tool's report
 `docs/cc/verification/2026-10-15_i16b-legacy-seed1_report.md`, PASS: the seed-1 check below,
