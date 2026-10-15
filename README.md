@@ -283,7 +283,8 @@ Rscript scripts/1_veg_lct_prep.R --config configs/legacy_config.R   # the origin
 
 or open the repository in RStudio with the repository root as the working directory and run
 or step through a script; it uses `config.R`. Scripts run in order 1, 2, 3, 4, 5, 6, 7, 7a,
-8, 9 (3 and 7 only draw figures).
+8, 9 (script 3 only draws figures; script 7 draws the maps and also writes the
+coarse albedo differences that script 9 reads).
 
 On a many-core Linux machine, **cap the BLAS threads to the cores you give the job** or the
 fits oversubscribe the machine: an uncapped run on 2026-09-17 sat for 2.5 hours producing
