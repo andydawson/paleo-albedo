@@ -45,3 +45,17 @@ that includes version control:
   incrementally; the run is corrupted). Wait for the run to finish.
 - Never remove a `library()` call without a run proving nothing depended on it
   (`gratia` registers `simulate()` for GAMs; `terra` and `sf` set up PROJ).
+
+## Review in proportion to risk (Chris, 2026-10-14)
+
+| Change | Review |
+|---|---|
+| Documentation, comments, local naming | The implementer checks it; an independent check only where useful |
+| Paths, manifests, config plumbing, tools, tests | One independent reviewer (the `change-reviewer` role) plus targeted executable checks |
+| Arithmetic, units, signs, stochastic behaviour, scientific options | Independent reviews by Fable (`science-reviewer`) and Astra (Codex), each given the same code and requirements before seeing the other's view; one reconciliation pass; open scientific questions go to Chris or Andria as questions, not forced consensus |
+| Final integration (end of the migration) | Astra's review of all the migration code, and the full-run gate |
+
+Findings carry file and line, consequence, evidence and a proposed check. Before designing
+anything, one sentence on its benefit to the paper or to Andria's use of the code; drop
+speculative generality early. Verification of every code change: `tools/verify_change.R`
+(see CONTRIBUTING.md).
