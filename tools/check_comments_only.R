@@ -8,7 +8,8 @@
 #
 # Usage, from the repository root:
 #   Rscript tools/check_comments_only.R <base-commit>
-# Compares each .R file that differs between <base-commit> and the working tree. Exit status
+# Compares each .R file under R/, scripts/, config.R and configs/ that differs between
+# <base-commit> and the working tree. Exit status
 # 0 if every one parses to the same code, 1 otherwise (listing the files and the first
 # differing expression); a file added or removed counts as a code change.
 
@@ -18,9 +19,13 @@ code_of = function(text) {
   vapply(exprs, function(e) paste(deparse(e, width.cutoff = 500L, control = c('keepInteger', 'keepNA', 'niceNames', 'showAttributes')), collapse = '\n'), '')
 }
 
+# The pipeline's code: scripts, shared functions and configurations. Tools and tests are
+# checked by running the tests; R files in docs/, such as verification specs, are records.
+CODE_PATHS = c('R', 'scripts', 'config.R', 'configs')
+
 changed_r_files = function(base) {
-  out = system2('git', shQuote(c('diff', '--name-only', base, '--', '*.R')), stdout = TRUE)
-  out[nzchar(out)]
+  out = system2('git', shQuote(c('diff', '--name-only', base, '--', CODE_PATHS)), stdout = TRUE)
+  out[nzchar(out) & grepl('\\.R$', out)]
 }
 
 check_comments_only = function(base) {

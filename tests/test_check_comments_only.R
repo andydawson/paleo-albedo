@@ -15,13 +15,15 @@ stopifnot(
 # On a throwaway repository: a comment edit passes; a code edit fails.
 repo = tempfile('comments_fixture_'); dir.create(repo); old = setwd(repo)
 git = function(...) invisible(system2('git', shQuote(c(...)), stdout = FALSE, stderr = FALSE))
-git('init', '-q'); writeLines(c('# old comment', 'x = 1'), 'a.R'); git('add', 'a.R')
+git('init', '-q'); dir.create('R'); writeLines(c('# old comment', 'x = 1'), 'R/a.R'); git('add', 'R/a.R')
 git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'base')
-writeLines(c('# a clearer comment', 'x = 1   # why'), 'a.R')
+writeLines(c('# a clearer comment', 'x = 1   # why'), 'R/a.R')
 ok_comment = check_comments_only('HEAD')
-writeLines(c('# a clearer comment', 'x = 2'), 'a.R')
+dir.create('docs'); writeLines('list(name = "a spec")', 'docs/spec.R')      # an R file outside the code: ignored
+ok_docs = check_comments_only('HEAD')
+writeLines(c('# a clearer comment', 'x = 2'), 'R/a.R')
 ok_code = check_comments_only('HEAD')
 setwd(old)
-stopifnot(ok_comment, !ok_code)
+stopifnot(ok_comment, ok_docs, !ok_code)
 
 cat('test_check_comments_only: all tests passed\n')
