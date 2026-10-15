@@ -5,16 +5,21 @@
 # pre-merge-commit hook, so it applies to every merge that makes a merge commit (the project
 # merges with --no-ff).
 #
-# The rule: if the branch being merged changes the code (R/, scripts/, tools/, tests/,
-# config.R or configs/) relative to where it starts from, it must contain a report
+# The rule: if the merge changes the code (R/, scripts/, tools/, tests/, config.R or
+# configs/) of the branch merged into, the merged result must contain a report
 # docs/cc/verification/*_report.md, written by tools/verify_change.R with verdict PASS, for a
-# commit whose code is the same as the merged commit's (later commits may change only
-# documentation, such as the report itself). Documentation-only merges need nothing.
+# commit whose code is the same as the merge result's (later commits may change only
+# documentation, such as the report itself). So a branch behind the trunk's code must take
+# the trunk in and be verified again. Documentation-only merges need nothing.
+#
+# During a merge git has not yet written MERGE_HEAD when this hook runs (git 2.43), but the
+# merge result is already in the index: the hook checks that tree (git write-tree).
 #
 # Usage, from the repository root:
 #   Rscript tools/check_merge_evidence.R install   install the git hook (once per clone)
 #   Rscript tools/check_merge_evidence.R check     what the hook runs during a merge
 #   Rscript tools/check_merge_evidence.R check <commit> [<base>]   check a commit by hand
+#                                   (as if merged into <base>, default the current branch)
 # To merge without the check (a deliberate exception, to be recorded in the merge
 # message): git merge --no-verify.
 
@@ -29,7 +34,8 @@ same_code = function(a, b) {
   status == 0
 }
 
-# TRUE if the merge may go ahead; prints why not otherwise.
+# TRUE if the merge may go ahead; prints why not otherwise. merged and base are commits or
+# trees (the merge result; the branch merged into).
 check_merge = function(merged, base) {
   if (same_code(base, merged)) { cat('merge check: no code changes; no verification needed\n'); return(TRUE) }
   reports = grep('^docs/cc/verification/.*_report\\.md$',
@@ -67,8 +73,8 @@ if (sys.nframe() == 0L) {
   if (identical(a[1], 'install')) {
     install_hook()
   } else if (identical(a[1], 'check')) {
-    merged = if (length(a) >= 2) a[2] else 'MERGE_HEAD'
-    base   = if (length(a) >= 3) a[3] else git_lines('merge-base', 'HEAD', merged)
+    merged = if (length(a) >= 2) a[2] else git_lines('write-tree')   # the merge result in the index
+    base   = if (length(a) >= 3) a[3] else 'HEAD'
     quit(status = if (check_merge(merged, base)) 0 else 1)
   } else {
     cat('usage: Rscript tools/check_merge_evidence.R install | check [<commit> [<base>]]\n'); quit(status = 2)
