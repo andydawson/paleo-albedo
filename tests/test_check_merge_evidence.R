@@ -52,9 +52,12 @@ merge = function(branch) {
   if (status != 0) git('merge', '--abort')
   status == 0
 }
-git('checkout', '-q', 'trunk')
+git('checkout', '-q', '-b', 'feature/single-config', base)   # a trunk the rule protects
 git('branch', 'verified', passed); git('branch', 'unverified', changed)
 stopifnot(!merge('unverified'), merge('verified'))
+# ... while bringing a trunk into a topic branch needs no report.
+git('checkout', '-q', '-b', 'topic', base)
+stopifnot(merge('unverified'))
 
 setwd(old)
 cat('test_check_merge_evidence: all tests passed\n')
