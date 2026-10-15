@@ -25,14 +25,14 @@ config_schema_errors = function(value, schema, path = 'cfg') {
   if (!is.list(value) || (length(value) && (is.null(names(value)) || any(!nzchar(names(value))))))
     return(sprintf('%s must be a list with a name on every entry', path))
   errs = character()
-  dup = unique(names(value)[duplicated(names(value))])
-  if (length(dup)) errs = c(errs, sprintf('%s has %s more than once', path, paste(dup, collapse = ', ')))
+  duplicate_keys = unique(names(value)[duplicated(names(value))])
+  if (length(duplicate_keys)) errs = c(errs, sprintf('%s has %s more than once', path, paste(duplicate_keys, collapse = ', ')))
   unknown = setdiff(names(value), names(schema))
   if (length(unknown)) errs = c(errs, sprintf('%s has unknown key(s) %s', path, paste(unknown, collapse = ', ')))
   missing = setdiff(names(schema), names(value))
   if (length(missing)) errs = c(errs, sprintf('%s is missing key(s) %s', path, paste(missing, collapse = ', ')))
-  for (k in intersect(names(schema), names(value)))
-    errs = c(errs, config_schema_errors(value[[k]], schema[[k]], paste0(path, '$', k)))
+  for (key in intersect(names(schema), names(value)))
+    errs = c(errs, config_schema_errors(value[[key]], schema[[key]], paste0(path, '$', key)))
   errs
 }
 
@@ -43,12 +43,12 @@ config_schema_errors = function(value, schema, path = 'cfg') {
 # directory), which can be committed like config.R, and runs with different config files
 # can go side by side from one checkout.
 config_path = function(args = commandArgs(trailingOnly = TRUE)) {
-  i = which(args == '--config' | startsWith(args, '--config='))
-  if (!length(i)) return('config.R')
-  if (length(i) > 1) stop('--config given more than once', call. = FALSE)
-  if (args[i] != '--config') return(sub('^--config=', '', args[i]))
-  if (i == length(args)) stop('--config needs a file name', call. = FALSE)
-  args[i + 1]
+  config_arg_index = which(args == '--config' | startsWith(args, '--config='))
+  if (!length(config_arg_index)) return('config.R')
+  if (length(config_arg_index) > 1) stop('--config given more than once', call. = FALSE)
+  if (args[config_arg_index] != '--config') return(sub('^--config=', '', args[config_arg_index]))
+  if (config_arg_index == length(args)) stop('--config needs a file name', call. = FALSE)
+  args[config_arg_index + 1]
 }
 
 # Read, check and return the configuration as a list with sections analysis,

@@ -37,11 +37,11 @@ reduce_land_cover = function(posts, method = c('mean', 'median')) {
 close_fractions = function(wide, classes = c('ET', 'OL', 'ST')) {
   fractions = as.matrix(wide[, classes])
   total = rowSums(fractions)
-  bad = !is.finite(total) | total <= 0 | apply(!is.finite(fractions) | fractions < 0, 1, any)
-  if (any(bad)) {
-    where = paste0('cell ', wide$cell_id[bad], ' at ', wide$ages[bad], ' BP')
+  unusable_rows = !is.finite(total) | total <= 0 | apply(!is.finite(fractions) | fractions < 0, 1, any)
+  if (any(unusable_rows)) {
+    where = paste0('cell ', wide$cell_id[unusable_rows], ' at ', wide$ages[unusable_rows], ' BP')
     stop(sprintf('close_fractions: cannot rescale the land cover of %d cell-slice(s) to sum to 1 (a fraction missing or negative, or all zero): %s%s',
-                 sum(bad), paste(head(where, 10), collapse = '; '), if (sum(bad) > 10) '; ...' else ''),
+                 sum(unusable_rows), paste(head(where, 10), collapse = '; '), if (sum(unusable_rows) > 10) '; ...' else ''),
          call. = FALSE)
   }
   wide[, classes] = fractions / total
