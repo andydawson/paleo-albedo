@@ -11,7 +11,6 @@ source('R/run_manifest.R')
 run   = run_begin('8_radiative')
 cfg   = run$cfg
 paths = run$paths
-alb_prod = paths$tag   # the albedo product in file names
 
 # Packages, loaded after run_begin() so that a missing one is recorded as a failed run.
 library(sp)
@@ -28,11 +27,6 @@ months = cfg$analysis$months
 ll_proj = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
 
-ice_fill = 'gainsboro'
-ice_colour = 'gray60'
-
-ice_fill_dark = 'ivory3'
-ice_colour_dark = 'gray40'
 
 pbs_ll = read_input(run, path_file(paths, 'boundaries_ll'))
 pbs = read_input(run, path_file(paths, 'boundaries'))
@@ -75,23 +69,12 @@ for (month in months){
   rk_hadgem_month = raster::extract(rk_hadgem[[month_number]], alb_diff_spatial[idx_month,])
   alb_diff$rk_hadgem[idx_month] = rk_hadgem_month
 
-  rk_hadgem_df = as.data.frame(rk_hadgem[[month_number]], xy=TRUE)
-  colnames(rk_hadgem_df) = c('x', 'y', 'kernel')
-
-  ggplot() +
-    geom_raster(data=rk_hadgem_df, aes(x=x, y=y, fill=kernel)) +
-    geom_point(data=data.frame(alb_diff_spatial), aes(x=long360, y=lat), shape=1, alpha=0.1) +
-    scale_fill_gradientn(colours = terrain.colors(10))
-
   rk_cam5 = read_input(run, path_file(paths, 'kernel_cam5'), raster,
                    varname=cfg$analysis$kernels$cam5_variable,
                    band=month_number)
 
   rk_cam5_month = raster::extract(rk_cam5, alb_diff_spatial[idx_month,])
   alb_diff$rk_cam5[idx_month] = rk_cam5_month
-
-  rk_cam5_df = as.data.frame(rk_cam5, xy=TRUE)
-  colnames(rk_cam5_df) = c('x', 'y', 'kernel')
 
   if (cfg$analysis$kernels$cack_variable == 'CACK') {
     # One satellite year: CACK is [row, col, Month, Year], Year 2001 = 1 (C3; I04b).
@@ -108,9 +91,6 @@ for (month in months){
 
   # The CACK array comes in transposed and upside down relative to the map.
   rk_cack =  t(flip((rk_cack)))
-
-  rk_cack_df = as.data.frame(rk_cack, xy=TRUE)
-  colnames(rk_cack_df) = c('x', 'y', 'kernel')
 
   rk_cack_month = raster::extract(rk_cack, alb_diff_spatial_cack[idx_month,])
   alb_diff$rk_cack[idx_month] = rk_cack_month
@@ -163,39 +143,39 @@ alb_diff$rf_cack_icesc_part = alb_diff$alb_diff_icesc_part* (-alb_diff$rk_cack)
 alb_diff$rf_cack_veg_ice_parts = alb_diff$alb_diff_veg_ice_parts* (-alb_diff$rk_cack)
 alb_diff$rf_cack_veg_icesc_parts = alb_diff$alb_diff_veg_icesc_parts* (-alb_diff$rk_cack)
 
-bar = alb_diff[which((alb_diff$rf_hadgem_ice_thresh>100)&(alb_diff$month=='jun')),]
+# Checks of the largest ice forcings, printed and plotted (to Rplots.pdf), not saved: the
+# June cell-pairs whose HadGEM3 ice forcing exceeds 100 W/m2.
+june_ice_forcing_over_100 = alb_diff[which((alb_diff$rf_hadgem_ice_thresh>100)&(alb_diff$month=='jun')),]
 
-bar[,c('cell_id', 'lat', 'long', 'ice_frac_old', 'ice_frac_young',
+june_ice_forcing_over_100[,c('cell_id', 'lat', 'long', 'ice_frac_old', 'ice_frac_young',
        'alb_diff_ice_thresh', 'rk_hadgem', 'rf_hadgem_ice_thresh',
        'rk_cam5', 'rf_cam5_ice_thresh')]
 
-head(bar[,c('cell_id', 'lat', 'long', 'ice_frac_old', 'ice_frac_young',
+head(june_ice_forcing_over_100[,c('cell_id', 'lat', 'long', 'ice_frac_old', 'ice_frac_young',
                    'alb_diff_ice_thresh', 'rk_hadgem', 'rf_hadgem_ice_thresh', 'rf_hadgem_ice_part')])
 
--0.3326444*-3.297408
-
-ggplot(data=bar) +
+ggplot(data=june_ice_forcing_over_100) +
   geom_point(aes(x=alb_diff_ice_thresh, y=alb_diff_ice_part)) +
   coord_fixed()
 
-ggplot(data=bar) +
+ggplot(data=june_ice_forcing_over_100) +
   geom_point(aes(x=ice_frac_old, y=alb_diff_ice_thresh)) +
   geom_point(aes(x=ice_frac_old, y=alb_diff_ice_part), colour='dodgerblue', alpha=0.5)
 
-ggplot(data=bar) +
+ggplot(data=june_ice_forcing_over_100) +
   geom_histogram(aes(x=alb_diff_ice_thresh - alb_diff_ice_part))
 
-ggplot(data=bar) +
+ggplot(data=june_ice_forcing_over_100) +
   geom_point(aes(x=ice_frac_old, y=-rk_hadgem*100)) +
   geom_point(aes(x=ice_frac_old, y=rk_cack), colour='dodgerblue', alpha=0.5) +
   geom_point(aes(x=ice_frac_old, y=-rk_cam5*100), colour='pink', alpha=0.5)
 
-ggplot(data=bar) +
+ggplot(data=june_ice_forcing_over_100) +
   geom_point(aes(x=ice_frac_old, y=-rk_hadgem*100*alb_diff_ice_thresh)) +
   geom_point(aes(x=ice_frac_old, y=rk_cack*alb_diff_ice_thresh), colour='dodgerblue', alpha=0.5) +
   geom_point(aes(x=ice_frac_old, y=-rk_cam5*100*alb_diff_ice_thresh), colour='pink', alpha=0.5)
 
-bar$alb_diff_ice_thresh
+june_ice_forcing_over_100$alb_diff_ice_thresh
 
 # One row per cell, month and pair of slices within the domain's latitudes: the albedo
 # differences and the forcing of every variant with every kernel.

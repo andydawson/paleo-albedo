@@ -36,6 +36,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
 | I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
+| I15c Readability: scripts, one branch per script | #18 | in progress: script 8 merged 2026-10-15 | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -917,4 +918,22 @@ strings, comments and named arguments of calls were not touched.
 **Verification.** `docs/cc/verification/2026-10-15_i15b-helper-names_report.md`, PASS: all
 12 test files. Also, before and after the renames, `prepare_boundaries()` for all three map
 windows and `make_grid()` on the calibration table gave `identical()` results.
+
+## I15c: readability, renames and dead code in the scripts (#18), one branch per script
+
+**Purpose.** The third readability issue: in each script, names that say what they hold and
+code that is never used removed, with no change to any output. One branch, verification and
+merge per script, in the order 8, 9, 3, 1, 2, 5, 6, then 7 and 7a (Astra's plan, adopted by
+Chris 2026-10-15). Each script is run under `configs/legacy_config.R` with seed 1, old code and
+new, and its outputs compared.
+
+### Script 8 (merged 2026-10-15)
+- `bar` renamed `june_ice_forcing_over_100` (the June cell-pairs whose HadGEM3 ice forcing
+  exceeds 100 W/m2, a check printed and plotted), with a comment saying what the block is.
+- Removed, none of it read or printed: the `alb_prod` line, four ice colours, the kernel map
+  built inside the month loop (never drawn) and its three helper tables, and a bare
+  calculation left from a hand check. The boundary-file reads stay.
+- Verified (`docs/cc/verification/2026-10-15_i15c-script8-{before,after}_report.md`, both
+  PASS): the forcing table byte-identical to the anchor and to the old code's; Rplots.pdf
+  identical to the old code's apart from the embedded dates.
 
