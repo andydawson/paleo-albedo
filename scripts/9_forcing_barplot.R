@@ -343,24 +343,24 @@ if (!all(egu_months %in% unique(d7$month))) {
 } else if (!identical(ages_sub, slide_ages)) {
   message('EGU 2024 recipe skipped: the coarse ages in config.R are not the periods of slide 18')
 } else {
-egu = d7 %>% filter(month %in% c('feb','may','aug','nov')) %>%
-  group_by(facets) %>%
-  summarise(mean_forcing  = mean(rf, na.rm = TRUE),
-            mean_weighted = sum(rf * area, na.rm = TRUE) / sum(area[!is.na(rf)]),
-            n_rows = sum(!is.na(rf)), .groups = 'drop')
-egu$slide18 = c(-0.38, -0.17, 0.22, 0.00, 0.36, 0.37, 0.72)[match(egu$facets, sub(' ka$','',labels_period))]
-hol_egu = egu %>% transmute(panel = 'Holocene', label = facets, value = mean_forcing,
-                            striplab = 'Holocene', sign = ifelse(mean_forcing >= 0, 'pos', 'neg'))
-hol_egu$label = factor(hol_egu$label, levels = rev(sub(' ka$', '', labels_period)))
-rng = range(c(hol_egu$value, ipcc$value, 0)) + c(-0.3, 0.3)
-p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE) /
-        panel_plot(ipcc,    'forcing agent',         'IPCC',     TRUE) +
-        plot_layout(heights = c(nrow(hol_egu), nrow(ipcc))) +
-        plot_annotation(title = "Slide 18 recipe recovered from git 383002d, on today's data",
-                        subtitle = 'domain mean, feb/may/aug/nov, ice masked, HadGEM3; NOT global-equivalent')
-ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.pdf'), p_egu, width = 8, height = 6.5)
-ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.png'), p_egu, width = 8, height = 6.5, dpi = 150)
-write_output(run, egu, path_file(paths, 'forcing_egu2024_recipe'), write.csv, row.names = FALSE)
+  egu = d7 %>% filter(month %in% c('feb','may','aug','nov')) %>%
+    group_by(facets) %>%
+    summarise(mean_forcing  = mean(rf, na.rm = TRUE),
+              mean_weighted = sum(rf * area, na.rm = TRUE) / sum(area[!is.na(rf)]),
+              n_rows = sum(!is.na(rf)), .groups = 'drop')
+  egu$slide18 = c(-0.38, -0.17, 0.22, 0.00, 0.36, 0.37, 0.72)[match(egu$facets, sub(' ka$','',labels_period))]
+  hol_egu = egu %>% transmute(panel = 'Holocene', label = facets, value = mean_forcing,
+                              striplab = 'Holocene', sign = ifelse(mean_forcing >= 0, 'pos', 'neg'))
+  hol_egu$label = factor(hol_egu$label, levels = rev(sub(' ka$', '', labels_period)))
+  rng = range(c(hol_egu$value, ipcc$value, 0)) + c(-0.3, 0.3)
+  p_egu = panel_plot(hol_egu, 'time period (k years)', 'Holocene', FALSE) /
+          panel_plot(ipcc,    'forcing agent',         'IPCC',     TRUE) +
+          plot_layout(heights = c(nrow(hol_egu), nrow(ipcc))) +
+          plot_annotation(title = "Slide 18 recipe recovered from git 383002d, on today's data",
+                          subtitle = 'domain mean, feb/may/aug/nov, ice masked, HadGEM3; NOT global-equivalent')
+  ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.pdf'), p_egu, width = 8, height = 6.5)
+  ggsave(path_figure(paths, 'forcing_barplot_slide18_egu2024recipe.png'), p_egu, width = 8, height = 6.5, dpi = 150)
+  write_output(run, egu, path_file(paths, 'forcing_egu2024_recipe'), write.csv, row.names = FALSE)
 } # CM: end of the EGU 2024 recipe
 
 # --- numbers out -------------------------------------------------------------

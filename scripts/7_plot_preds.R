@@ -207,30 +207,30 @@ alb_grid_sub$month = factor(alb_grid_sub$month, levels = months)
 
 # CM: February-only map; skipped when February is not selected.
 if ('feb' %in% months) {
-ggplot()+
-  geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
-  geom_tile(data=subset(alb_grid_sub, month=='feb'), aes(x=long,y=lat, fill=factor(alb_bin))) +
-  geom_polygon(data=ice_sub, aes(x=long, y=lat, group=group),  colour=ice_colour, fill=ice_fill) +
-  scale_fill_brewer(type='seq',
-                    palette='YlOrBr',
-                    name = "Albedo",
-                    direction=1,
-                    na.value = "white",
-                    labels = labels_alb) +
-  facet_grid(facets~.)+
-  theme_bw(12)+
-  theme(axis.line = element_line(colour = "black"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        axis.title = element_blank(),
-        axis.ticks = element_blank(),
-        axis.text = element_blank(),
-        legend.text = element_text(size=12),
-        legend.title = element_text(size=12)) +
-  coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_grid_', alb_prod, '.pdf')))#, width=12, height=14)
-ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_grid_', alb_prod, '.png')))#, width=12, height=14)
+  ggplot()+
+    geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
+    geom_tile(data=subset(alb_grid_sub, month=='feb'), aes(x=long,y=lat, fill=factor(alb_bin))) +
+    geom_polygon(data=ice_sub, aes(x=long, y=lat, group=group),  colour=ice_colour, fill=ice_fill) +
+    scale_fill_brewer(type='seq',
+                      palette='YlOrBr',
+                      name = "Albedo",
+                      direction=1,
+                      na.value = "white",
+                      labels = labels_alb) +
+    facet_grid(facets~.)+
+    theme_bw(12)+
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text = element_blank(),
+          legend.text = element_text(size=12),
+          legend.title = element_text(size=12)) +
+    coord_fixed(xlim = xlim, ylim = ylim)
+  ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_grid_', alb_prod, '.pdf')))#, width=12, height=14)
+  ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_grid_', alb_prod, '.png')))#, width=12, height=14)
 } # CM: end of February-only map
 
 ggplot()+
@@ -262,54 +262,54 @@ ggsave(path_figure(paths, paste0('alb_interp_preds_month_binned_tile_grid_', alb
 months_sub = intersect(c('feb', 'may', 'aug', 'nov'), months)
 if (length(months_sub)) {
 
-ggplot()+
-  geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
-  geom_tile(data=subset(alb_grid_sub, month %in% months_sub), aes(x=long,y=lat, fill=factor(alb_bin))) +
-  geom_polygon(data=ice_sub, aes(x=long, y=lat, group=group),  colour=ice_colour, fill=ice_fill) +
-  scale_fill_brewer(type='seq',
-                    palette='YlOrBr',
-                    name = "Albedo",
-                    direction=1,
-                    na.value = "white",
-                    labels = labels_alb) +
-  facet_grid(facets~month)+
-  theme_bw(20)+
-  theme(axis.line = element_line(colour = "black"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        axis.title = element_blank(),
-        axis.ticks = element_blank(),
-        axis.text = element_blank(),
-        legend.text = element_text(size=12),
-        legend.title = element_text(size=12)) +
-  coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(path_figure(paths, paste0('alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.pdf')), width=14, height=12)
-ggsave(path_figure(paths, paste0('alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
+  ggplot()+
+    geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
+    geom_tile(data=subset(alb_grid_sub, month %in% months_sub), aes(x=long,y=lat, fill=factor(alb_bin))) +
+    geom_polygon(data=ice_sub, aes(x=long, y=lat, group=group),  colour=ice_colour, fill=ice_fill) +
+    scale_fill_brewer(type='seq',
+                      palette='YlOrBr',
+                      name = "Albedo",
+                      direction=1,
+                      na.value = "white",
+                      labels = labels_alb) +
+    facet_grid(facets~month)+
+    theme_bw(20)+
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text = element_blank(),
+          legend.text = element_text(size=12),
+          legend.title = element_text(size=12)) +
+    coord_fixed(xlim = xlim, ylim = ylim)
+  ggsave(path_figure(paths, paste0('alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.pdf')), width=14, height=12)
+  ggsave(path_figure(paths, paste0('alb_interp_preds_month_sub_binned_tile_grid_', alb_prod, '.png')), width=14, height=12)
 } # CM: end of four-month panel
 
 # CM: February-only map; skipped when February is not selected.
 if ('feb' %in% months) {
-ggplot() +
-  geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
-  geom_tile(data=subset(alb_grid_sub, month=='feb'), aes(x=long,y=lat, fill=factor(alb_bin))) +
-  geom_polygon(data=ice_sub, aes(x=long, y=lat, group=group),  colour=ice_colour, fill=ice_fill) +
-  scale_fill_brewer(type='seq', palette='YlOrBr',
-                    na.value='transparent', name = "Albedo", direction=1, labels = labels_alb) +
-  facet_wrap(facets~.) +
-  theme_bw(12)+
-  theme(axis.line = element_line(colour = "black"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        axis.title = element_blank(),
-        axis.ticks = element_blank(),
-        axis.text = element_blank(),
-        legend.text = element_text(size=12),
-        legend.title = element_text(size=12)) +
-  coord_fixed(xlim = xlim, ylim = ylim)
-ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_wrap_', alb_prod, '.pdf')), width=14, height=12)
-ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_wrap_', alb_prod, '.png')), width=14, height=12)
+  ggplot() +
+    geom_polygon(data=pbs_ll, aes(long,lat, group = group), color="grey", fill="grey") +
+    geom_tile(data=subset(alb_grid_sub, month=='feb'), aes(x=long,y=lat, fill=factor(alb_bin))) +
+    geom_polygon(data=ice_sub, aes(x=long, y=lat, group=group),  colour=ice_colour, fill=ice_fill) +
+    scale_fill_brewer(type='seq', palette='YlOrBr',
+                      na.value='transparent', name = "Albedo", direction=1, labels = labels_alb) +
+    facet_wrap(facets~.) +
+    theme_bw(12)+
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text = element_blank(),
+          legend.text = element_text(size=12),
+          legend.title = element_text(size=12)) +
+    coord_fixed(xlim = xlim, ylim = ylim)
+  ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_wrap_', alb_prod, '.pdf')), width=14, height=12)
+  ggsave(path_figure(paths, paste0('alb_interp_preds_binned_tile_wrap_', alb_prod, '.png')), width=14, height=12)
 } # CM: end of February-only map
 
 pdf(path_figure(paths, paste0('alb_interp_preds_month_binned_tile_pages_', alb_prod, '.pdf')))

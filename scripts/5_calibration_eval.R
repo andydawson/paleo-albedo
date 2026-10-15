@@ -340,90 +340,90 @@ print(p)
 
 # CM: November-only block (model comparison, re-save of the November selected model, and its
 # figures), to the end of the script. It runs only when November is among the selected
-# months; not re-indented, to keep the diff against Andria's lines small.
+# months.
 if ('nov' %in% months) {
-month = "nov"
+  month = "nov"
 
-mod1_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod1'))
-mod2_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod2'))
-mod3_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod3'))
-mod4_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod4'))
-mod5_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod5'))
-mod6_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod6'))
-mod7_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod7'))
-mod8_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod8'))
+  mod1_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod1'))
+  mod2_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod2'))
+  mod3_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod3'))
+  mod4_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod4'))
+  mod5_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod5'))
+  mod6_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod6'))
+  mod7_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod7'))
+  mod8_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod8'))
 
-AIC(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp,
-    mod6_interp, mod7_interp, mod8_interp)
+  AIC(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp,
+      mod6_interp, mod7_interp, mod8_interp)
 
-anova_gam_interp = anova.gam(mod1_interp, mod2_interp, mod3_interp, mod4_interp,
-                             mod5_interp, mod6_interp, mod7_interp, mod8_interp,
-                             test = "Chisq")
-anova_gam_interp
+  anova_gam_interp = anova.gam(mod1_interp, mod2_interp, mod3_interp, mod4_interp,
+                               mod5_interp, mod6_interp, mod7_interp, mod8_interp,
+                               test = "Chisq")
+  anova_gam_interp
 
-# The selected model (model_id above), fitted by REML in script 4, saved again for November.
-cal_interp_model = read_input(run, path_file(paths, 'calibration_prediction_fit', month = month))
-summary(cal_interp_model)
+  # The selected model (model_id above), fitted by REML in script 4, saved again for November.
+  cal_interp_model = read_input(run, path_file(paths, 'calibration_prediction_fit', month = month))
+  summary(cal_interp_model)
 
-write_output(run, cal_interp_model, path_file(paths, 'calibration_selected', month = month))
+  write_output(run, cal_interp_model, path_file(paths, 'calibration_selected', month = month))
 
-cal_interp_predict_gam = predict(cal_interp_model,
-                                 newdata = cal_interp_data,
-                                 type = 'response')#,
+  cal_interp_predict_gam = predict(cal_interp_model,
+                                   newdata = cal_interp_data,
+                                   type = 'response')#,
 
-cal_interp_eval_gam = data.frame(cal_interp_data,
-                                 alb_mean = cal_interp_predict_gam)
+  cal_interp_eval_gam = data.frame(cal_interp_data,
+                                   alb_mean = cal_interp_predict_gam)
 
-cor(cal_interp_eval_gam[,month], cal_interp_eval_gam$alb_mean, use='complete')
+  cor(cal_interp_eval_gam[,month], cal_interp_eval_gam$alb_mean, use='complete')
 
-ggplot(data=cal_interp_eval_gam) +
-  geom_point(aes(x=get(month), y=alb_mean), size=2, alpha=0.5) +
-  geom_abline(slope=1, intercept=0, colour="red", lwd=1, lty=2) +
-  xlim(c(0,1)) +
-  ylim(c(0,1)) +
-  coord_fixed() +
-  theme_bw(18) +
-  theme(axis.title = element_text(size=14),
-        axis.text = element_text(size=14)) +
-  xlab('albedo (data)') +
-  ylab('albedo (model)')
-ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.png')))
-ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.pdf')))
+  ggplot(data=cal_interp_eval_gam) +
+    geom_point(aes(x=get(month), y=alb_mean), size=2, alpha=0.5) +
+    geom_abline(slope=1, intercept=0, colour="red", lwd=1, lty=2) +
+    xlim(c(0,1)) +
+    ylim(c(0,1)) +
+    coord_fixed() +
+    theme_bw(18) +
+    theme(axis.title = element_text(size=14),
+          axis.text = element_text(size=14)) +
+    xlab('albedo (data)') +
+    ylab('albedo (model)')
+  ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.png')))
+  ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_interp_', month, '.pdf')))
 
-cal_interp_sim_gam = simulate(cal_interp_model,
-                              nsim = n_draws,
-                              seed = derive_seed(seed_base, '5_calibration_eval', month, 'november'),
-                              data = cal_interp_data)
+  cal_interp_sim_gam = simulate(cal_interp_model,
+                                nsim = n_draws,
+                                seed = derive_seed(seed_base, '5_calibration_eval', month, 'november'),
+                                data = cal_interp_data)
 
-cal_interp_sim_gam = data.frame(cal_interp_data[,c('x', 'y', month)],
-                                cal_interp_sim_gam)
-cal_interp_sim_gam_melt = melt(cal_interp_sim_gam,
-                               id.vars = c('x', 'y', month))
+  cal_interp_sim_gam = data.frame(cal_interp_data[,c('x', 'y', month)],
+                                  cal_interp_sim_gam)
+  cal_interp_sim_gam_melt = melt(cal_interp_sim_gam,
+                                 id.vars = c('x', 'y', month))
 
-vars_to_group = c('x', 'y', month)
+  vars_to_group = c('x', 'y', month)
 
-cal_interp_sim_gam_sum = cal_interp_sim_gam_melt %>%
-  group_by_at(vars_to_group) %>%
-  summarize(alb_mean = mean(value),
-            alb_lo = quantile(value, c(0.025)),
-            alb_mid = quantile(value, c(0.5)),
-            alb_hi = quantile(value, c(0.975)),
-            .groups = "keep")
+  cal_interp_sim_gam_sum = cal_interp_sim_gam_melt %>%
+    group_by_at(vars_to_group) %>%
+    summarize(alb_mean = mean(value),
+              alb_lo = quantile(value, c(0.025)),
+              alb_mid = quantile(value, c(0.5)),
+              alb_hi = quantile(value, c(0.975)),
+              .groups = "keep")
 
-ggplot(data=cal_interp_sim_gam_sum) +
-  geom_point(aes(x=get(month), y=alb_mean), size=2, alpha=0.4) +
-  geom_linerange(aes(x=get(month), ymin=alb_lo, ymax=alb_hi), alpha=0.5) +
-  geom_abline(slope=1, intercept=0, colour="red", lwd=1, lty=2, alpha=0.4) +
-  xlim(c(0,1)) +
-  ylim(c(0,1)) +
-  coord_fixed() +
-  theme_bw(18) +
-  theme(axis.title = element_text(size=14),
-        axis.text = element_text(size=14)) +
-  xlab('albedo (data)') +
-  ylab('albedo (model)')
-ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_error_interp_', month, '.png')))
-ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_error_interp_', month, '.pdf')))
+  ggplot(data=cal_interp_sim_gam_sum) +
+    geom_point(aes(x=get(month), y=alb_mean), size=2, alpha=0.4) +
+    geom_linerange(aes(x=get(month), ymin=alb_lo, ymax=alb_hi), alpha=0.5) +
+    geom_abline(slope=1, intercept=0, colour="red", lwd=1, lty=2, alpha=0.4) +
+    xlim(c(0,1)) +
+    ylim(c(0,1)) +
+    coord_fixed() +
+    theme_bw(18) +
+    theme(axis.title = element_text(size=14),
+          axis.text = element_text(size=14)) +
+    xlab('albedo (data)') +
+    ylab('albedo (model)')
+  ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_error_interp_', month, '.png')))
+  ggsave(path_figure(paths, paste0('cal_model_vs_data_gam_error_interp_', month, '.pdf')))
 } # CM: end of the November-only block
 
 run_finish(run)
