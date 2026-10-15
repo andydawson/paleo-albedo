@@ -110,12 +110,16 @@ could be reached.
 |---|---|---|---|
 | Moody, E.G., King, M.D., Platnick, S., Schaaf, C.B., Gao, F. (2005). Spatially complete global spectral surface albedos: value-added datasets derived from Terra MODIS land products. *IEEE TGRS* 43(1), 144-158. doi:10.1109/TGRS.2004.838359 | MODIS albedo with water screened out, aggregated as land-only means onto coarse climate-model grids | "Pixels flagged as seasonally snow-covered or over ephemeral waters were also replaced with fill-values" (Sec. III-A); "the 1-min resolution (land-only) products have been aggregated onto climate modeling grids" (Sec. IV) | Both found in the full text (NASA-hosted PDF) |
 | Helbig, M., Wischnewski, K., Kljun, N., Chasmer, L.E., Quinton, W.L., Detto, M., Sonnentag, O. (2016). Regional atmospheric cooling and wetting effect of permafrost thaw-induced boreal forest loss. *Global Change Biology* 22(12), 4048-4066. doi:10.1111/gcb.13348 | MOD44W used to exclude water from a MODIS albedo analysis of vegetation change, in North America | "Pixels classified as open water bodies by the MODIS Land Water Mask (MOD44W) were discarded from the analysis." (Materials and methods) | Found in the full text (author PDF) |
-| Oleson, K.W., Bonan, G.B., Schaaf, C., Gao, F., Jin, Y., Strahler, A. (2003). Assessment of global climate model land surface albedo using MODIS data. *GRL* 30(8), 1443. doi:10.1029/2002GL016749 | Land-only MODIS albedo by land fraction, aggregated to a model grid, for comparison with a land-surface model | "We used MODIS land fraction to obtain MODIS albedo for the land only." (Sec. 2.2, per Astra) | Confirmed by Chris in the publisher's full text, 2026-10-15 (automated access is blocked); the rest of its methods section to be checked |
+| Oleson, K.W., Bonan, G.B., Schaaf, C., Gao, F., Jin, Y., Strahler, A. (2003). Assessment of global climate model land surface albedo using MODIS data. *GRL* 30(8), 1443. doi:10.1029/2002GL016749 | Land-only MODIS albedo by land fraction, aggregated to a model grid, for comparison with a land-surface model | "We used MODIS land fraction to obtain MODIS albedo for the land only." (Sec. 2.2, per Astra) | Confirmed by Chris in the publisher's full text, 2026-10-15 (automated access is blocked). The full methods (Sec. 2.1-2.2) also show: area-weighted aggregation from 0.5 degree to T42; the MODIS product included retrievals over shallow water within 5 km of shore or 50 m depth, with a 4% fill beyond; mixed land-ocean cells were dropped; inland water (lakes) was NOT removed, and they note a remaining lake bias. So it supports the land-only principle and the coastal correction, not the removal of lakes |
 
 Limits, as Astra noted: none of these uses MOD44W v6.1 with blue-sky albedo at 1 degree,
 and none addresses land-only *elevation*; together they support the principle (albedo
 representing the land surface only, water masked, averaged to the coarse grid), which is
-the defensible claim. Moody and Helbig are in the Zotero collection `paleo-RF`; Oleson to be added once its methods are checked.
+the defensible claim. Moody, Helbig and Oleson are in the Zotero collection `paleo-RF`. Suggested wording for the
+methods: albedo was averaged over the land part of each cell, excluding water as identified
+by MOD44W, following the practice of using land-only satellite albedo for coarse grids
+(Oleson et al. 2003; Moody et al. 2005) and of masking MOD44W water in MODIS albedo analyses
+(Helbig et al. 2016).
 
 ---
 

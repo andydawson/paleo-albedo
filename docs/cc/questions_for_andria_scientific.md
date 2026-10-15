@@ -231,6 +231,19 @@ is. Worth fixing before the number is quoted.
 
 **Considered 2026-10-14 (Chris), not decided:** weighting the annual forcing by sunlight was dropped, because the monthly kernels already include sunlight and it would count it twice. How to treat the extrapolated winter cells remains your call.
 
+### B2c. How snow is treated in the satellite albedo
+**Raised 2026-10-15** while checking Oleson et al. (2003, GRL, doi:10.1029/2002GL016749), a
+reference for the land-only albedo. They note that the MODIS albedo product of their time
+"tends toward a snow-free albedo": when most observations in a 16-day window were snow-free,
+the snowy ones were discarded, so in places with intermittent snow the satellite albedo is
+lower than the albedo averaged over all days. Their product (MOD43B3, collection 4) is older
+than ours (MCD43A3 v061, with ERA5), whose snow handling differs; we have not checked how.
+**Why it matters.** Winter and spring albedo in cells with patchy or ephemeral snow sets
+the cold-season part of the calibration, and so the forcing in those months.
+**What we need from you.** Does the blue-sky albedo product keep snow-covered retrievals
+(and in what proportion), or lean towards snow-free as described? Was this considered when
+it was built?
+
 ### B3. The spatial term cancels through time and may have absorbed the cover effect
 **What the code does.** Every prediction uses the same location and
 elevation values for a cell in every time slice; only the cover fractions
