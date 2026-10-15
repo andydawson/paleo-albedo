@@ -75,7 +75,7 @@ locations_interp = lct_interp_wide[,c('x', 'y')]
 if (cfg$analysis$elevation$method == 'land_mean') {
   elev_lookup = read_input(run, path_file(paths, 'elevation_land_mean'), read.csv)
   run_record(run, 'elevation', list(method = 'land_mean',
-                                    source = 'GMTED2010 30-arc-second mean over non-ocean area (MOD44W 2015)'))
+                                    source = 'GMTED2010 30-arc-second mean over non-sea area (sea = GMTED 0 m)'))
 } else {
   elev_file = path_file(paths, 'elevation_cache')
   if (file.exists(elev_file)) {
