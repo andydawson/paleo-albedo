@@ -46,6 +46,16 @@ that includes version control:
 - Never remove a `library()` call without a run proving nothing depended on it
   (`gratia` registers `simulate()` for GAMs; `terra` and `sf` set up PROJ).
 
+## Methods grounded in the literature (Chris, 2026-10-15)
+
+"We can't just be making up our own methods." Before any scientific method, analysis or
+data-processing choice is designed or built (a new option, a sensitivity test, a data
+product, a statistic), check that it follows published practice and record the precedent
+(full reference with DOI, and what exactly it supports) in the plan, in the changelog entry
+and, where it reaches the paper, in the write-up. Verify the precedent's identity with the
+reference checkers and read the passage that supports it. Where no precedent exists, say so
+plainly, label the choice a judgement, and put it to Chris before building.
+
 ## Review in proportion to risk (Chris, 2026-10-14)
 
 | Change | Review |
