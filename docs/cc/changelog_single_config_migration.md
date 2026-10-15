@@ -36,7 +36,7 @@ for the coauthor change log. Living document, updated as each issue merges.
 | I16b ML ladder; REML prediction fit; ice caps out of calibration; fraction check | #19 (second part) | merged 2026-10-15 | 8f6c9b9 |
 | I15a Readability: comments and indentation only | #21 | merged 2026-10-15 | f5a33e4 |
 | I15b Readability: names in the R/ helpers | #22 | merged 2026-10-15 | d8c32c0 |
-| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9 merged 2026-10-15 | |
+| I15c Readability: scripts, one branch per script | #18 | in progress: scripts 8, 9, 3 merged 2026-10-15 | |
 | I15 Readability cleanup | #18 | filed 2026-10-13; four figure slips marked in scripts 2 and 7 | df0d28f (comments only) |
 
 ---
@@ -949,4 +949,13 @@ new, and its outputs compared.
 - Verified (`docs/cc/verification/2026-10-15_i15c-script9-{before,after}_report.md`, PASS):
   the four forcing CSVs byte-identical to the anchors; all seven figures identical to the
   old code's (PNG byte for byte, PDF apart from the embedded dates).
+
+### Script 3 (merged 2026-10-15)
+- `cal_long` held two different tables (the monthly calibration table, then, after an alias
+  halfway down, the table melted by land-cover class): now `calibration_long` and
+  `cover_albedo_long` (which also replaces `cal_lct_melt`); the alias is gone. The unused
+  four-colour palette is removed.
+- Verified (`docs/cc/verification/2026-10-15_i15c-script3-{before,after}_report.md`, PASS;
+  script 3 has no anchor): all nine figure files, Rplots.pdf included, identical to the old
+  code's.
 
