@@ -96,6 +96,7 @@ into `data/`.
 | `7a_alb_diff_full.R` | consecutive-slice albedo differences split into vegetation and ice parts |
 | `8_radiative.R` | forcing = albedo change x kernel, three kernels, ten variants |
 | `9_forcing_barplot.R` | continental forcing by period beside the IPCC AR6 agents, plus kernel-spread and variant-sensitivity figures; every aggregation choice is an explicit assumption in its header |
+| `10_forcing_breakdown.R` | script 9's period totals broken down by month and latitude band (where the forcing comes from, for the snow question); stops unless the parts add up to script 9 |
 
 What each script reads and writes (`script:line` is the load statement):
 
@@ -111,13 +112,14 @@ What each script reads and writes (`script:line` is the load statement):
 | `7_plot_preds.R` | `output/prediction/paleo_interp_predict_gam_summary_bluesky.RDS` (`7:84`)<br>`data/grid.RDS` (`7:148`)<br>`data/map-data/ice/glacier_shapefiles_21-1k.RDS` (`7:46`)<br>`data/albedo_glacier_monthly.csv` (`7:163`)<br>`pbs_ll.RDS` (`7:23`) | figures<br>`data/ice_fort*.RDS`<br>`data/alb_interp_preds_diffs_bluesky.RDS` |
 | `7a_alb_diff_full.R` | `output/prediction/paleo_interp_predict_gam_summary_bluesky.RDS` (`7a:40`)<br>`data/Dalton_QSR_2020_Ice/dalton_interpolated_LC6k.tif` (`7a:44`)<br>`data/albedo_glacier_monthly.csv` (`7a:121`)<br>`data/grid.RDS` (`7a:98`) | `data/ALB_diffs_bluesky.RDS` |
 | `8_radiative.R` | `data/ALB_diffs_bluesky.RDS`<br>kernels | `output/forcing/RF_holocene_all_cases.RDS` |
-| `9_forcing_barplot.R` | `output/forcing/RF_holocene_all_cases.RDS` (`9:141`)<br>`data/alb_interp_preds_diffs_bluesky.RDS` (`9:325`)<br>`data/ipcc-ar6/*.csv` (`9:199-201`) | `output/forcing/forcing_by_period*.csv`<br>`modern_ipcc_ar6_erf.csv`<br>figures |
+| `9_forcing_barplot.R` | `output/forcing/RF_holocene_all_cases.RDS` (`9:139`)<br>`data/alb_interp_preds_diffs_bluesky.RDS` (`9:311`)<br>`data/ipcc-ar6/*.csv` (`9:180-182`) | `output/forcing/forcing_by_period*.csv`<br>`modern_ipcc_ar6_erf.csv`<br>figures |
+| `10_forcing_breakdown.R` | `output/forcing/RF_holocene_all_cases.RDS` (`10:72`)<br>`output/forcing/forcing_by_period.csv` (`10:100`) | `output/forcing/forcing_by_month_latitude.csv`<br>`figures/forcing_by_month_latitude.pdf` |
 
 Not part of the pipeline: `GCM_snow_prob.R`, `thornthwaite.R`,
 `beta_veg_lct_modern.R` and `scripts/archive/` (abandoned climate/snow
 branch and earlier versions).
 
-Run order is 1 -> 2 -> 4 -> 5 -> 6 -> 7 -> 7a -> 8 -> 9; 3 and
+Run order is 1 -> 2 -> 4 -> 5 -> 6 -> 7 -> 7a -> 8 -> 9 -> 10; 3 and
 6-spatial-eval are optional, and 7 and 7a are independent of each other.
 Every script logs a provenance manifest (see below).
 

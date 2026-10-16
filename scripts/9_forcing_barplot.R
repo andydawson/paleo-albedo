@@ -10,7 +10,7 @@
 # Andria's code. They are listed here so they can be checked and corrected.
 #
 # WHERE THIS SITS IN THE PIPELINE
-#   Step 9 of 9, the last. Script 8 produced a forcing for every cell, month and pair of
+#   Step 9 (script 10 then breaks its totals down by month and latitude). Script 8 produced a forcing for every cell, month and pair of
 #   consecutive slices. This script boils that down to one number per period for the
 #   whole continent and puts it next to the modern forcing agents from the IPCC, which is
 #   the comparison the talk and the paper make. It was written on 2026-09-21; the original

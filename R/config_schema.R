@@ -150,7 +150,8 @@ CONFIG_SCHEMA = list(
       earth_area_m2        = function(v) check_numbers(v, len = 1, range = c(1, Inf)),
       variant              = function(v) check_choice(v, FORCING_VARIANTS, single = TRUE),
       report_kernels       = function(v) check_choice(v, FORCING_KERNELS),
-      sensitivity_variants = function(v) check_choice(v, FORCING_VARIANTS))),
+      sensitivity_variants = function(v) check_choice(v, FORCING_VARIANTS),
+      latitude_band_width  = function(v) check_numbers(v, len = 1, range = c(1, 90)))),
   presentation = list(
     map_windows = list(calibration = MAP_WINDOW_SCHEMA,
                        tail        = MAP_WINDOW_SCHEMA,
