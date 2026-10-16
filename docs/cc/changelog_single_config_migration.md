@@ -1100,6 +1100,37 @@ centre points become land elevations.
 MATCH), path and config tests pass. Current configuration: only the elevation column changes.
 Reports `2026-10-15_i16c-elevation-{legacy,current}-4`.
 
+## B4 follow-up: model comparison by AIC only, the ML reason corrected (2026-10-16)
+
+**Why.** On 15 October Chris chose to fit the seven spatial experiments by ML too, on my
+statement that they are compared by AIC. They are not: nothing in the original or current code
+computes an AIC for them; script 5 only simulates from them for figures, and the off-pipeline
+spatial-evaluation script compares their predictions with the REML prediction model. Fable and
+Astra reviewed it independently (one reconciliation round; reports filed under `docs/cc/`):
+both recommended keeping the seven on REML, the original, and both found that the recorded
+reason for the ML ladder misdescribed mgcv's AIC. Chris's decisions, 2026-10-16:
+
+- **The seven spatial experiments stay REML** (both configurations). The branch that changed
+  them (spatial-ml) was deleted unmerged; nothing on the trunk changes.
+- **The ladder stays ML** in the current configuration (`comparison_method`, already a setting;
+  REML in the legacy one), and the two ladders are to be compared. The reason is corrected in
+  `config.R` and `R/model_registry.R`: ML is the usual convention for comparing models that
+  differ in their terms (mgcv's `gam.selection` help), not a requirement, because the AIC mgcv
+  computes is the conditional AIC with the corrected degrees of freedom (Wood, Pya & Saefken
+  2016, JASA 111:1548, doi:10.1080/01621459.2016.1180986; `logLik.gam` help), valid on REML fits
+  as well. Checked on the original fits: all eight ladder models use identical rows (2,166 in
+  January, 2,827 in June) and carry the correction (`edf2`).
+- **Analysis of deviance removed** (scripts 4 and 5): the chi-square tests across the ladder,
+  which nothing saved or read. Models 5 to 8 are not nested (model 6 replaces three smooths by
+  one, models 7 and 8 change its basis), so those tests did not test what they appeared to; AIC
+  is the comparison kept. For Andria's review.
+- **Recorded, not changed:** the spatial experiment "elevation and cover with location" is the
+  same model as model 8, fitted a second time; on the original files the two fits are identical
+  (same formula and rows, fitted values differ by 0). It stays for now (general question 7).
+
+**Outputs.** None change: the removed tests were printed only, and no fit, table or figure is
+different. Verified with `tools/verify_change.R` (spec `2026-10-16_ladder-aic.R`).
+
 ## Snow, step 1: the forcing broken down by month and latitude (script 10), 2026-10-16
 
 **Why.** Chris's decision of 15 October (question B2d): before any snow test, see where in the
