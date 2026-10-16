@@ -50,8 +50,11 @@ list(
     # model and script 6 uses). One of the ladder mod1 ... mod8; their formulas are in
     # R/model_registry.R. Model 8 was chosen by hand (question B4).
     # comparison_method: how script 4 fits the ladder that scripts 4 and 5 compare by AIC.
-    # "ML" (decided by Chris on 2026-10-14, question B4: REML likelihoods are not comparable
-    # between models with different fixed terms) or "REML" (the original).
+    # "ML" (decided by Chris on 2026-10-14, kept on 2026-10-16, question B4) or "REML" (the
+    # original); both are to be compared. ML is the standard convention for comparing models
+    # that differ in their terms (mgcv's gam.selection help), not a requirement: the AIC that
+    # mgcv computes (the conditional AIC with the corrected degrees of freedom of Wood, Pya and
+    # Saefken 2016) is also valid on REML fits, and Wood's own help examples use it so.
     # ice_mask: script 2 leaves out of the calibration table the modern cells whose centre
     # lies under the 1 ka ice polygons, present-day ice caps that the interpolation gave
     # vegetation fractions (48 cells; question B8). "centre_in_1ka_polygon" (decided by Chris

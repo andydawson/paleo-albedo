@@ -48,12 +48,14 @@ for (month in months) {
 AIC_list =  vector("list", length(months))
 names(AIC_list) = months
 
+# CM: the ladder is compared by AIC only. The original also ran an analysis of deviance
+# (anova.gam, chi-square tests) on the eight models and kept it in a list nothing read; it is
+# removed because models 5 to 8 are not nested (each replaces smooths or changes a basis), so
+# those tests do not test what they appear to (Chris, 2026-10-16, question B4, for Andria's
+# review).
 AIC_df = data.frame(matrix(NA, nrow=8, ncol=1 + length(months)))
 colnames(AIC_df) = c('model', months)
 AIC_df$model = seq(1,8)
-
-ANOVA_list = vector("list", length(months))
-names(ANOVA_list) = months
 
 for (month in months) {
 
@@ -66,8 +68,6 @@ for (month in months) {
   AIC_list[[month]] = this_AIC
 
   AIC_df[,month] = round(this_AIC$AIC)
-
-  ANOVA_list[[month]] = with(ladder_fits, anova.gam(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp, mod6_interp, mod7_interp, mod8_interp, test = "Chisq"))
 }
 
 write_output(run, AIC_df, path_file(paths, 'aic_table'), write.csv, row.names = FALSE)
