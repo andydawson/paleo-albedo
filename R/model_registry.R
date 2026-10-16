@@ -66,9 +66,10 @@ calibration_formula = function(model_id, month) {
 calibration_terms = function(model_id) paste(deparse(CALIBRATION_MODELS[[model_id]]$rhs[[2]], width.cutoff = 500L), collapse = ' ')
 
 # Fit one model for one month to the calibration table. method is "REML" (the default, for
-# the fit used to predict) or "ML" (for comparing models that differ in their fixed terms,
-# as the ladder does: REML likelihoods are not comparable across such models;
-# question B4).
+# the fit used to predict and for the spatial experiments) or "ML" (the ladder in the current
+# configuration, config.R analysis$calibration$comparison_method; question B4). ML is the
+# usual convention when models with different terms are compared; mgcv's AIC is valid on
+# either.
 fit_calibration_model = function(model_id, month, data, method = "REML") {
   mgcv::bam(calibration_formula(model_id, month),
             data      = data,

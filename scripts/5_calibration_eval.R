@@ -344,13 +344,9 @@ if ('nov' %in% months) {
   mod7_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod7'))
   mod8_interp = read_input(run, path_file(paths, 'calibration_ladder', month = month, model = 'mod8'))
 
+  # CM: AIC only; the original's chi-square analysis of deviance is removed, as in script 4.
   AIC(mod1_interp, mod2_interp, mod3_interp, mod4_interp, mod5_interp,
       mod6_interp, mod7_interp, mod8_interp)
-
-  anova_gam_interp = anova.gam(mod1_interp, mod2_interp, mod3_interp, mod4_interp,
-                               mod5_interp, mod6_interp, mod7_interp, mod8_interp,
-                               test = "Chisq")
-  anova_gam_interp
 
   # The selected model (model_id above), fitted by REML in script 4 (saved for script 6 in
   # the first loop).
