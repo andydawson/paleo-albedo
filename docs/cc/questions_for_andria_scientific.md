@@ -315,6 +315,22 @@ existing outputs; (2) a sensitivity test that shifts snow cover and melt timing 
 from today's, using snowy and snow-free albedo by cover type. What the paper finally
 claims stays your call.
 
+**Step 1 done 2026-10-16** (script 10 on the migration branch, reviewed by Fable and Astra): the
+forcing broken down by month and latitude band. On the original settings the 6-12 ka forcing
+comes mostly from May to September at 50-70 N (ice-sheet retreat), the last 4,000 years mostly
+from spring; November to March add little in every period. The headline variant mixes
+vegetation change and ice retreat, so this locates the combined forcing and says nothing by
+itself about snow; and land newly freed of ice gets today's vegetation albedo, so the snow
+assumption touches ice retreat too.
+
+**Decided 2026-10-16 (Chris, to be reviewed by Andria):** a simple estimate of the snow effect
+comes first: calibrate the whole pipeline on snow-free albedo (the snow-free version from our
+MODIS rebuild, by the product's own snow flag) and compare with the all-days calibration; the
+difference shows how much of the forcing depends on snow being there (today's snow against
+none, not past snow). Northern winter months have few or no snow-free days and drop out of
+that run (valid-day counts are kept). The small shift in snow cover and melt timing is kept as
+a second test. Built after the MODIS rebuild, once checked against published practice.
+
 ### B3. The spatial term cancels through time and may have absorbed the cover effect
 **What the code does.** Every prediction uses the same location and
 elevation values for a cell in every time slice; only the cover fractions
