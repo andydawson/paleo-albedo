@@ -66,6 +66,7 @@ stopifnot(
   rejects("ages must be finite numbers", '2000, 4000, 6000', '2000, "4000", 6000'),
   rejects("ages must not have names", '2000, 4000, 6000', '2000, mid = 4000, 6000'),
   rejects("latitude_band_width must lie between 1 and 90", 'latitude_band_width = 10', 'latitude_band_width = 0'),
+  rejects("latitude_band_width must be a whole number", 'latitude_band_width = 10', 'latitude_band_width = 2.5'),
   rejects("earth_area_m2 must have exactly 1 values", 'earth_area_m2 = 5.101e14', 'earth_area_m2 = c(1, 2)'),
   rejects("tail\\$x must be strictly increasing", 'list(x = c(-166, -50)', 'list(x = c(-50, -166)'),
   rejects("tail\\$y must lie between -90 and 90", 'y = c(12, 82)', 'y = c(12, 95)'),

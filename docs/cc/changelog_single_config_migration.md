@@ -1099,3 +1099,34 @@ centre points become land elevations.
 **Verification.** Legacy configuration: script 1 matches the anchors (both land-cover tables
 MATCH), path and config tests pass. Current configuration: only the elevation column changes.
 Reports `2026-10-15_i16c-elevation-{legacy,current}-4`.
+
+## Snow, step 1: the forcing broken down by month and latitude (script 10), 2026-10-16
+
+**Why.** Chris's decision of 15 October (question B2d): before any snow test, see where in the
+year and in latitude each period's forcing comes from, since the calibration's modern snow is
+assumed for the past.
+
+**Changed.**
+- `R/forcing_periods.R`: script 9's grouping of slice-pairs into periods and its
+  complete-cell filter, moved unchanged into one function, so scripts 9 and 10 use the same
+  pairs and cells.
+- `scripts/10_forcing_breakdown.R` and `R/forcing_breakdown.R`: script 9's arithmetic with the
+  months and latitude bands kept apart. Five columns per kernel, period, month and band (the
+  month's global-equivalent forcing; its part of script 9's annual figure; the band's mean;
+  the band's area and the part of it with a value). The script stops unless the parts add up
+  to script 9's totals (within 1e-9 W/m2). Tables and figure name the variant and kernels.
+- One setting, `analysis$forcing$latitude_band_width` (10 degrees, a whole number), in both
+  configurations; schema, tests (`tests/test_forcing_breakdown.R`: a hand-worked case with a
+  missing month and a cell with no value, and the band edges for widths 1 to 90 and a narrow
+  domain), path catalogue, README.
+
+**Reviews.** Fable and Astra, independently, then one reconciliation round. Both: the
+arithmetic is right and the parts add up to script 9 in general, not only on this data. Fixes
+made, approved by Chris: a legal band width (e.g. 90) crashed the script; the columns'
+missing-value denominators were unclear (now `valid_area_m2` and exact definitions); the
+outputs did not name the variant and kernel; no unit test. Both also found that the headline
+variant mixes vegetation change and ice-sheet retreat, so the breakdown locates the combined
+forcing and says nothing by itself about snow; the snow estimate is the next step.
+
+**Outputs.** Script 9's four tables are unchanged (anchor `interp-forcing-2026-10-08`); one new
+table and one figure.

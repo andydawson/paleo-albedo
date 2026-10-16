@@ -26,28 +26,28 @@
 #   1. Slice-pairs grouped into periods, incomplete cell-months dropped: R/forcing_periods.R,
 #      the function script 9 uses.
 #   2. Forcing summed over the slice-pairs of a period, per cell and month (A5).
-#   3. Cells grouped into latitude bands by their centre: edges at multiples of
-#      analysis$forcing$latitude_band_width degrees, the outer bands cut at the domain's
+#   3. Cells grouped into latitude bands by their centre: edges at the whole-degree
+#      multiples of analysis$forcing$latitude_band_width, the outer bands cut at the domain's
 #      limits (analysis$domain), e.g. 27-30, 30-40, ..., 70-74 N for 10 degrees.
-#   4. For each period, month and band:
-#        global_equiv_month      sum(rf x area) / Earth's area: that month's forcing as a
-#                                global equivalent (A8), W m-2;
-#        contribution_to_annual  the same month's share of script 9's annual figure, W m-2:
-#                                script 9 averages each cell over its months with a kernel
-#                                value (A6), so each cell-month counts rf x area / Earth's
-#                                area / the cell's number of such months (12, or fewer where
-#                                CACK has no value in polar night). Summed over months and
-#                                bands it gives script 9's global_equiv exactly;
-#        band_mean               area-weighted mean over the band's cells (A7), W m-2: how
-#                                strong the forcing is there, not how much it adds;
-#        area_m2                 the band's area.
+#   4. For each period, month and band, five columns, defined exactly in R/forcing_breakdown.R:
+#      global_equiv_month (that month's global-equivalent forcing), contribution_to_annual
+#      (its part of script 9's annual figure; these add up to script 9), band_mean (how
+#      strong the forcing is there), area_m2 and valid_area_m2 (the band's area, and the part
+#      of it with a forcing value that month: a missing month is not a zero).
 #   Positive = warming (albedo fell), as in scripts 8 and 9.
+#
+# WHAT IT SHOWS AND WHAT IT DOES NOT. The forcing variant of config.R (analysis$forcing$
+# variant), which by default combines vegetation change and ice-sheet retreat; the tables and
+# the figure name the variant and kernels. It locates where that combined forcing comes from;
+# it does not measure what snow does to it (it reads no snow data).
 #
 # No new method: the same sums as script 9, kept apart instead of added together. It changes
 # no number, it only shows where the existing ones come from.
 
 source('R/calendar.R')
 source('R/forcing_periods.R')
+source('R/forcing_breakdown.R')
+source('R/kernels.R')
 source('R/run_manifest.R')
 run   = run_begin('10_forcing_breakdown')
 cfg   = run$cfg
@@ -61,12 +61,17 @@ FORCING_COLUMNS = setNames(paste0('rf_', cfg$analysis$forcing$report_kernels, '_
                            cfg$analysis$forcing$report_kernels)
 months          = cfg$analysis$months
 
-# Latitude band edges: multiples of the band width inside the domain, plus its limits.
-band_width = cfg$analysis$forcing$latitude_band_width
-lat_min    = cfg$analysis$domain$lat_min
-lat_max    = cfg$analysis$domain$lat_max
-band_edges = sort(unique(c(lat_min, seq(ceiling(lat_min / band_width) * band_width, lat_max, by = band_width), lat_max)))
-band_labels = paste0(head(band_edges, -1), '-', band_edges[-1], ' N')
+# What the numbers are, for the tables and the figure: the variant and each kernel's
+# variable, sky and level (R/kernels.R).
+VARIANT       = cfg$analysis$forcing$variant
+KERNEL_LABELS = kernels_read(cfg)$label
+names(KERNEL_LABELS) = rownames(kernels_read(cfg))
+cat('forcing variant', VARIANT, '; kernels:', paste(KERNEL_LABELS[names(FORCING_COLUMNS)], collapse = ', '), '\n')
+
+# Latitude band edges (R/forcing_breakdown.R).
+band_edges  = latitude_band_edges(cfg$analysis$domain$lat_min, cfg$analysis$domain$lat_max,
+                                  cfg$analysis$forcing$latitude_band_width)
+band_labels = latitude_band_labels(band_edges)
 
 # Step 1.
 forcing_by_cell = read_input(run, path_file(paths, 'forcing'))
@@ -76,25 +81,14 @@ forcing_by_cell = assign_forcing_periods(forcing_by_cell, cfg$analysis$coarse$ag
 forcing_by_cell$lat_band = cut(forcing_by_cell$lat, breaks = band_edges, labels = band_labels, include.lowest = TRUE)
 if (anyNA(forcing_by_cell$lat_band)) stop('cells outside the latitude bands: ', paste(unique(forcing_by_cell$lat[is.na(forcing_by_cell$lat_band)]), collapse = ' '))
 
-# Steps 2 and 4 for one forcing column.
-breakdown_forcing <- function(forcing_by_cell, forcing_column, earth_area) {
-  forcing_by_cell %>%
-    group_by(period, cell_id, month, area, lat_band) %>%
-    summarise(rf = sum(.data[[forcing_column]], na.rm = FALSE), .groups = 'drop') %>%   # step 2 (A5)
-    group_by(period, cell_id) %>%
-    mutate(months_with_value = sum(!is.na(rf))) %>%                                     # A6's denominator
-    group_by(period, month, lat_band) %>%
-    summarise(global_equiv_month     = sum(rf * area, na.rm = TRUE) / earth_area,
-              contribution_to_annual = sum(rf * area / months_with_value, na.rm = TRUE) / earth_area,
-              band_mean              = weighted.mean(rf, area, na.rm = TRUE),
-              area_m2                = sum(area), .groups = 'drop')
-}
-
+# Steps 2 and 4, per kernel (R/forcing_breakdown.R).
 breakdown = bind_rows(lapply(names(FORCING_COLUMNS), function(kernel_id)
-  breakdown_forcing(forcing_by_cell, FORCING_COLUMNS[[kernel_id]], EARTH_AREA) %>% mutate(kernel = kernel_id)))
+  breakdown_forcing(forcing_by_cell, FORCING_COLUMNS[[kernel_id]], EARTH_AREA) %>%
+    mutate(kernel = kernel_id, kernel_label = KERNEL_LABELS[[kernel_id]], variant = VARIANT)))
 breakdown$month = factor(breakdown$month, levels = months)
 breakdown = breakdown %>% arrange(kernel, period, month, lat_band) %>%
-  select(kernel, period, month, lat_band, global_equiv_month, contribution_to_annual, band_mean, area_m2)
+  select(kernel, kernel_label, variant, period, month, lat_band, global_equiv_month,
+         contribution_to_annual, band_mean, area_m2, valid_area_m2)
 
 # The check: the parts add up to script 9's totals, for every kernel and period.
 forcing_by_period = read_input(run, path_file(paths, 'forcing_by_period'), read.csv)
@@ -110,10 +104,10 @@ if (worst > 1e-9) stop('the breakdown does not add up to script 9 (largest gap '
 # Two summaries printed for the record: each month's and each band's share of the annual
 # forcing, HadGEM3, per period (shares can exceed 100% or be negative where parts cancel).
 hadgem = breakdown %>% filter(kernel == 'hadgem')
-cat('\nHadGEM3, contribution to the annual global-equivalent forcing by month (W/m2):\n')
+cat('\n', KERNEL_LABELS[['hadgem']], ', variant ', VARIANT, ': contribution to the annual global-equivalent forcing by month (W/m2):\n', sep = '')
 print(as.data.frame(hadgem %>% group_by(period, month) %>% summarise(w = sum(contribution_to_annual), .groups = 'drop') %>%
   tidyr::pivot_wider(names_from = month, values_from = w)), digits = 2)
-cat('\nHadGEM3, contribution by latitude band (W/m2):\n')
+cat('\n', KERNEL_LABELS[['hadgem']], ', variant ', VARIANT, ': contribution by latitude band (W/m2):\n', sep = '')
 print(as.data.frame(hadgem %>% group_by(period, lat_band) %>% summarise(w = sum(contribution_to_annual), .groups = 'drop') %>%
   tidyr::pivot_wider(names_from = lat_band, values_from = w)), digits = 2)
 
@@ -124,7 +118,8 @@ p = ggplot(hadgem, aes(x = month, y = lat_band, fill = contribution_to_annual)) 
                        name = expression('W/m'^2)) +
   facet_wrap(~ period) +
   labs(x = NULL, y = NULL,
-       title = 'Where the Holocene forcing comes from (HadGEM3, global equivalent)',
+       title = paste0('Where the Holocene forcing comes from: ', KERNEL_LABELS[['hadgem']],
+                      ', variant ', VARIANT, ', global equivalent'),
        subtitle = 'Each panel sums to that period\'s bar in script 9; positive = warming') +
   theme_bw(base_size = 11) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
