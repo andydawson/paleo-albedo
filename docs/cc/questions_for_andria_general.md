@@ -137,6 +137,8 @@ answers let us delete code rather than carry it.
   reading model 8 from the comparison? (Updated 2026-10-15: the third fit,
   which overwrote the comparison's copy, is now the separate REML fit used
   for prediction, since the comparison is fitted by ML; issue I16.)
+  (Checked 2026-10-16 on the original files: the two fits are identical, same formula and
+  rows, fitted values differ by 0. Chris: leave it for now and record it.)
 - **The model-structure sensitivity check** (`6_prediction_model_spatial_eval.R`)
   cannot run at present: it needs the `SemiPar` and `pwiser` packages, which
   are not installed, uses an undefined variable at line 278, and its tail

@@ -89,6 +89,12 @@ multivariate normal from `vcov(model)` applied to the prediction matrix),
 which costs seconds per month. (iii) Add both.
 **What we need from you.** Which of these did you intend? The manuscript
 says "posterior samples", which readers will take to mean (ii).
+**Raised again 2026-10-16** by Fable and Astra, reviewing the spatial-experiment fits: script
+5's seven-model figures use the same `simulate()`, so their intervals are also observation
+noise only. Note for the options: gratia's `fitted_samples()` draws the fitted mean's
+(coefficient) uncertainty, `posterior_samples()` draws both coefficients and observation
+noise, and `predicted_samples()` is observation noise only, like `simulate()` (gratia
+documentation, read by Astra). Chris asked that this go to you (2026-10-16).
 
 ### A3. 100 or 1,000 draws
 The manuscript says 1,000 posterior samples per cell and month; the
@@ -332,6 +338,14 @@ logit scale only. Differences are taken after converting back to albedo, which i
 nonlinear, so they do not cancel exactly. And the spatial term could make the cover effect
 too small or too large; it is not necessarily biased towards zero. Spatially blocked
 cross-validation or a fit without the spatial term would show which.
+**Raised again 2026-10-16** by Fable and Astra: the seven spatial-experiment figures of script 5
+judge each model on the cells it was fitted to, so they show fit, not skill at predicting cells
+the model has not seen, which is what a hindcast does. Spatially blocked cross-validation needs
+no new data (the map is split into blocks; each block is predicted from a fit to the rest), but
+each block means refitting the models (script 4's full set of fits took about 27 hours on 8
+cores). No observations of past albedo exist; the partial independent checks are E1 and the
+modern-slice test. Chris asked that this go to you (2026-10-16): **would you like the models
+tested by spatially blocked cross-validation?**
 
 ### B4. Model selection: model 8 is fixed by hand, but the data support it
 **Updated 2026-09-20 with the interp AIC table**, which script 4 produced
@@ -354,6 +368,9 @@ model 8 in every month, though not at every step:
 This supersedes the worry raised from the non-interp May run, where AIC
 rose with complexity in a way correctly fitted nested models cannot. On
 the interp data the behaviour is orderly.
+(**Corrected 2026-10-16:** "in a way correctly fitted nested models cannot" is wrong for AIC,
+which penalises each added degree of freedom and can rise when a term is added; only the
+deviance cannot. Found by Astra.)
 
 **Correction 2026-10-15.** An earlier version of this entry said AIC "decreases
 monotonically with model complexity in every month". It does not: in the same table AIC
@@ -366,7 +383,7 @@ comparison setting as the ladder (ML in the current configuration, REML in the l
 for the same reason: REML scores are not comparable between models with different fixed
 terms (mgcv 1.9.4 documentation, `gam.selection` and `AIC.gam`; Wood 2017, doi:10.1201/9781315370279;
 Zuur et al. 2009, doi:10.1007/978-0-387-87458-6).
-**Correction 2026-10-16 (Claude), decision reopened:** the question put to Chris said the
+**Correction 2026-10-16 (Claude), decision reopened, then settled the same day (below):** the question put to Chris said the
 spatial experiments are compared by AIC. They are not, in the original code or now: no AIC is
 computed for them anywhere. Script 5 only draws simulated predictions from them for the
 predicted-against-observed figures and error histograms (the off-pipeline
@@ -384,6 +401,16 @@ monotone the ordering is, refitting by ML would very likely confirm
 model 8 rather than overturn it, so this is tidying rather than a
 threat. **Would you like the ladder refitted with `method = "ML"` so the
 selection can be defended as stated?**
+(**Corrected 2026-10-16**, after independent reviews by Fable and Astra: the paragraph above
+misdescribes the AIC. What cannot be compared across models with different terms is the REML
+*score*. The AIC mgcv computes is the conditional AIC (likelihood of the data at the fitted
+coefficients, with the corrected degrees of freedom of Wood, Pya & Saefken 2016, JASA
+111:1548, doi:10.1080/01621459.2016.1180986; `logLik.gam` help), which is valid on REML fits
+too, and Wood's own help examples compare REML fits with it. Checked on the original fits:
+the eight ladder models use identical rows and carry the correction. So ML is the usual
+convention for comparing models that differ in their terms (mgcv's `gam.selection` help),
+not a requirement. The 15 October citations of Wood 2017 and Zuur et al. 2009 were not
+checked against the books' text.)
 
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Compare the ladder after fitting by ML; fit the model used for prediction by REML; check rank and fit diagnostics before selection.
 
@@ -402,6 +429,22 @@ remains the configured model (`analysis$calibration$model_id`). The other eleven
 ML come with the final full run (27 hours). **If model 7 wins in most months by ML, should
 the prediction model change to model 7, or stay model 8 for continuity with your earlier
 results?**
+
+**Decided 2026-10-16 (Chris, to be reviewed by Andria),** after independent reviews by Fable
+and Astra (filed under `docs/cc/` on the migration branch):
+- The seven spatial experiments stay REML, the original, in both configurations: nothing
+  compares them by likelihood; they are only simulated (script 5) and predicted
+  (`6_prediction_model_spatial_eval.R`, against the REML prediction model). The ML change was
+  deleted unmerged.
+- The ladder stays ML in the current configuration (a setting; REML in the legacy one), and
+  **both ladders are to be compared** (January above already differs).
+- **The ladder is compared by AIC only:** the chi-square analysis of deviance is removed from
+  scripts 4 and 5 (nothing saved or read it), because models 5 to 8 are not nested (model 6
+  replaces three smooths by one; models 7 and 8 change its basis), so those tests did not test
+  what they appeared to. **For your review.**
+- Recorded, not changed: the spatial experiment "elevation and cover with location" is model
+  8 fitted a second time; on the original files the two fits are identical (same formula
+  and rows; fitted values differ by 0). See general question 7.
 
 ### B4a. Land cover matters most in autumn, least in midwinter
 **Found 2026-09-20 in the interp AIC table.**
