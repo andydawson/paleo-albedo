@@ -331,6 +331,20 @@ none, not past snow). Northern winter months have few or no snow-free days and d
 that run (valid-day counts are kept). The small shift in snow cover and melt timing is kept as
 a second test. Built after the MODIS rebuild, once checked against published practice.
 
+**Literature check 2026-10-16 (Fable) and Chris's choice the same day.** Splitting MODIS
+albedo into snow-free and snowy retrievals with the MCD43A2 snow flag is standard (Moody et al.
+2005, 2007; Gao et al. 2014; NASA's own snow-free products are made so). No study ran the exact
+"all-days minus snow-free" comparison; the nearest precedent is Barnes & Roy (2008, GRL
+35:L09706, snow-free albedo only; 2010, JGR 115:G04033, snow and snow-free albedo, snow
+"exacerbated" the forcing). The established form mixes snow-free and snowy relations by a
+snow-cover fraction (Barnes & Roy 2010; Ghimire et al. 2014; Jiao et al. 2017, Climatic Change
+142:463). Offered both, **Chris chose the two runs** (all-days against snow-free); the
+snow-shift test stays separate, its method to be set later. Open: northern winter has few
+snow-free retrievals; published practice fills from each cover type's seasonal curve (NASA
+MCD43GF), restricts to full inversions, or drops the month (Bright et al. 2015, Biogeosciences
+12:2195, dropped December). To be decided once the build shows the counts. Report:
+scratchpad, to be filed under docs/cc/ with the other reviews.
+
 ### B3. The spatial term cancels through time and may have absorbed the cover effect
 **What the code does.** Every prediction uses the same location and
 elevation values for a cell in every time slice; only the cover fractions
