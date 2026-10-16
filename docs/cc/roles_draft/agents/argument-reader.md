@@ -65,6 +65,10 @@ Locate each finding in the source and explain its consequence.
 
 ## Output
 
+You have no tool that writes files, and should not try to save anything. Return
+the complete record in your final message, as Markdown ready to save unchanged;
+the main session saves it at the path the packet names.
+
 For extraction, return the argument records and a coverage table.
 For comparison, return the alignment and located findings.
 

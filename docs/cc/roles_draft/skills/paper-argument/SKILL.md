@@ -57,7 +57,9 @@ separate records. Heading containment does not imply logical support.
 2. For extraction, give argument-reader the supplied draft and scope
    without the intended plan. Require full-paragraph reading, coverage
    of all supplied text units and locators for extracted claims.
-   Assemble higher-level arguments from the returned records.
+   The reader returns its records in its final message; save them
+   unchanged to the record file before assembling higher-level
+   arguments from them.
 
 3. For expansion, develop only the next level below the approved scope.
    Review siblings together. Independent approved branches may proceed;
