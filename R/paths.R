@@ -83,6 +83,7 @@ PATH_CATALOGUE = data.frame(stringsAsFactors = FALSE, rbind(
   c('forcing_variant_sensitivity', 'output/forcing/forcing_by_period_variant_sensitivity.csv',        'product', '9_forcing_barplot'),
   c('forcing_egu2024_recipe',   'output/forcing/forcing_by_period_egu2024recipe_vs_slide.csv',        'product', '9_forcing_barplot'),
   c('modern_erf',               'output/forcing/modern_ipcc_ar6_erf.csv',                             'product', '9_forcing_barplot'),
+  c('forcing_breakdown',        'output/forcing/forcing_by_month_latitude.csv',                       'product', '10_forcing_breakdown'),
   # The model-structure sensitivity script is out of the migration's scope (question for
   # Andria, general 7) and reads its paths itself; its outputs are listed so the catalogue
   # is complete.

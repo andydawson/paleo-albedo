@@ -141,7 +141,11 @@ list(
       # veg_thresh and ice_thresh have missing values (no-ice cells); the
       # aggregation drops them.
       sensitivity_variants = c("veg_thresh", "ice_thresh", "veg_ice_thresh",
-                               "veg_icesc_thresh", "veg_ice_parts", "veg_icesc_parts")
+                               "veg_icesc_thresh", "veg_ice_parts", "veg_icesc_parts"),
+      # Script 10: the width of the latitude bands its breakdown uses, degrees (bands
+      # start at multiples of it; the outer two are cut at the domain's limits). Shapes a
+      # breakdown only, never a total (Chris, 2026-10-15, question B2d).
+      latitude_band_width = 10
     )
   ),
 
