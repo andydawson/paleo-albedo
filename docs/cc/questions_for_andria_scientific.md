@@ -343,7 +343,7 @@ snow-shift test stays separate, its method to be set later. Open: northern winte
 snow-free retrievals; published practice fills from each cover type's seasonal curve (NASA
 MCD43GF), restricts to full inversions, or drops the month (Bright et al. 2015, Biogeosciences
 12:2195, dropped December). To be decided once the build shows the counts. Report:
-scratchpad, to be filed under docs/cc/ with the other reviews.
+docs/cc/2026-10-16_snow_free_estimate_literature_fable.md on the migration branch.
 
 ### B3. The spatial term cancels through time and may have absorbed the cover effect
 **What the code does.** Every prediction uses the same location and
