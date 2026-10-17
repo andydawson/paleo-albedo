@@ -68,3 +68,9 @@ data/paleo_predict_gam_summary_may_bluesky.RDS
 # of the official runs (the I13b legacy run and the final run) are added deliberately with
 # `git add -f`, as the paper's provenance; the historical manifests already tracked stay.
 runs/
+
+# 2026-10-17 (Chris): downloaded inputs for the albedo rebuild, large and re-obtainable with
+# tools/download_era5_radiation.R and the MODIS build; their provenance (requests, checksums)
+# is recorded separately. Ignored so they cannot be committed by mistake.
+data/era5/
+data/modis_albedo/
