@@ -482,17 +482,19 @@ months).** Model 7 often stops at the iteration limit without converging, and th
 sets `converged` to TRUE whatever happens (mgcv 1.9.4 source); the real signal is the warning
 "algorithm did not converge" from `bgam.fit`, printed only after the loop, so without saying
 which fit. Counting the iterations of the saved fits (limit 500, `CALIBRATION_CONTROL` in
-`R/model_registry.R`), in the eleven months fitted so far:
+`R/model_registry.R`), over the twelve months:
 
 | | months |
 |---|---|
-| model 7 at the limit, not converged | feb, mar, apr, sep, oct, dec |
+| model 7 at the limit, not converged | feb, mar, apr, jun, sep, oct, dec |
 | model 7 converged, 147 to 365 iterations | jan, may, jul, aug, nov |
 | models 1 to 6 and 8 | all converged, under 100 iterations |
 
 So the January result above (model 7 lower by ML) rests on a converged fit, but in the
 months where model 7 did not converge its AIC, and so the 7-against-8 comparison, is not
-reliable. The prediction model (model 8 refitted by REML) is not affected. This also means
+reliable. The prediction model (model 8 refitted by REML) is not affected. The ML ranking over all twelve months
+(the four parts' `AIC_table.csv` combined): model 8 lowest in nine months, model 7 in January,
+May and December, and of those only January and May rest on converged fits. This also means
 the "fit diagnostics" in the 14 October decision are not yet checked: the convergence report
 is empty. Chris (2026-10-18): note it, let the run finish, then propose a fix that reports
 convergence from mgcv's real signal. **Does model 7 (a Gaussian-process smooth of the three
