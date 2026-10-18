@@ -476,6 +476,29 @@ and Astra (filed under `docs/cc/` on the migration branch):
   8 fitted a second time; on the original files the two fits are identical (same formula
   and rows; fitted values differ by 0). See general question 7.
 
+**Found 2026-10-18, during the full run of the current configuration (ML ladder, all twelve
+months).** Model 7 often stops at the iteration limit without converging, and the
+"converged: TRUE" line that script 4 prints after every fit does not show it: mgcv's `bam()`
+sets `converged` to TRUE whatever happens (mgcv 1.9.4 source); the real signal is the warning
+"algorithm did not converge" from `bgam.fit`, printed only after the loop, so without saying
+which fit. Counting the iterations of the saved fits (limit 500, `CALIBRATION_CONTROL` in
+`R/model_registry.R`), in the eleven months fitted so far:
+
+| | months |
+|---|---|
+| model 7 at the limit, not converged | feb, mar, apr, sep, oct, dec |
+| model 7 converged, 147 to 365 iterations | jan, may, jul, aug, nov |
+| models 1 to 6 and 8 | all converged, under 100 iterations |
+
+So the January result above (model 7 lower by ML) rests on a converged fit, but in the
+months where model 7 did not converge its AIC, and so the 7-against-8 comparison, is not
+reliable. The prediction model (model 8 refitted by REML) is not affected. This also means
+the "fit diagnostics" in the 14 October decision are not yet checked: the convergence report
+is empty. Chris (2026-10-18): note it, let the run finish, then propose a fix that reports
+convergence from mgcv's real signal. **Does model 7 (a Gaussian-process smooth of the three
+cover fractions) need to stay in the ladder, and if so, should it get more iterations or a
+different set-up rather than be compared unconverged?**
+
 ### B4a. Land cover matters most in autumn, least in midwinter
 **Found 2026-09-20 in the interp AIC table.**
 
