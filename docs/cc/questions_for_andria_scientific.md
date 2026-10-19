@@ -903,6 +903,11 @@ transposed.
 
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** (a) top-of-atmosphere flux for all kernels (CAM5 read at TOA); (b) CACK's climatological mean kernel instead of the year 2003. (c) is settled by C4. (d) remains open.
 
+**Still to ask (Chris, 2026-10-19).** Were the differences between the three kernels (clear-sky
+or all-sky, top of atmosphere or surface, one year or a climatology) deliberate, for example as a
+sensitivity test? And is there a reason for three kernels beyond showing that the result does not
+depend on the kernel? (Also in the Word document.)
+
 ### C4. Clear-sky, pre-industrial kernels across the Holocene
 The HadGEM kernel is clear-sky and pre-industrial. Clear-sky albedo
 kernels are typically 1.5 to 2 times larger than all-sky because clouds
@@ -943,6 +948,19 @@ the talk's bar plots are per-period and area-weighted, so the ratio is
 the meaningful quantity here rather than the absolute values.
 
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** All-sky kernels for the headline (HadGEM3 albedo_sw, CAM5 FSNT, CACK), clear-sky kept as a sensitivity.
+
+### C4b. Ice left out of the slide-18 bars
+**Raised 2026-10-19** by Chris, from the full run of 2026-10-18 and the split of its forcing into
+ice and vegetation change (one-off figure, not in the pipeline).
+Andria's slide-18 code (git 383002d, scripts/8_radiative.R, `rf_long` set to NA where `ice_young`
+or `ice_old` is present) blanks every step with ice at either end, so the slide shows vegetation
+change on land that stayed ice-free. The current pipeline counts the land uncovered by the
+retreating ice sheet, and it dominates before 6 ka: at 8-10 ka the study-area mean is +5.67 W/m²
+from ice change and -0.77 from vegetation change (total 4.90, HadGEM3 all-sky), against 0.37 on
+the slide. (Each 500-year step counts as ice change if ice is present at either end; the two parts
+add up to the total.)
+**What we need from you.** Was leaving the ice out deliberate, to show vegetation alone? Should
+the paper report ice and vegetation separately, the total, or both? (Also in the Word document.)
 
 ### C5. The comparison with modern forcing agents
 The talk compares the Holocene forcing with IPCC forcing from modern
