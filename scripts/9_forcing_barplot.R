@@ -40,15 +40,14 @@
 # The settings below (A1 variant, A2 variants, A3 kernels, A4 periods, A8 Earth's
 # area) are read from config.R, analysis$forcing and analysis$coarse.
 #
-# A1. Forcing variant. Uses rf_<kernel>_veg_ice_thresh: the vegetation plus ice
-#     albedo change, threshold method. Chosen because it combines the vegetation
-#     and the ice contribution and, like the _parts family, has no missing values
-#     over the trimmed domain. Threshold rather than area-weighting was preferred
-#     because it is closer to the binary ice mask used elsewhere in the pipeline;
-#     the choice is question C5(a). The table holds nine other variants
-#     (_veg_thresh, _ice_thresh, _icesc_thresh, and the _part / _parts family
-#     that mixes vegetation and ice albedo by area fraction rather than by
-#     threshold). A2 reports the alternatives, because the choice matters.
+# A1. Forcing variant. config.R uses rf_<kernel>_veg_ice_parts: the vegetation plus
+#     ice albedo change with partial ice, each cell's albedo being its ice fraction
+#     times the glacier albedo plus the rest times its vegetation albedo. Andria's
+#     intended headline (her answer to question C1, 2026-10-19). Until then the
+#     headline was _veg_ice_thresh, the all-or-nothing version (a cell is all ice
+#     above the threshold), which the legacy configuration keeps and A2 shows as a
+#     sensitivity. The setting must be one of the four totals (R/config_schema.R):
+#     the vegetation-only and ice-only parts appear only in A2.
 #
 # A2. Variant sensitivity. The variants in analysis$forcing$sensitivity_variants
 #     (config.R) are aggregated the same way and plotted side by side

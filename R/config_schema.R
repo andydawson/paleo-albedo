@@ -28,6 +28,11 @@ FORCING_VARIANTS = c('veg_thresh', 'ice_thresh', 'icesc_thresh',
                      'veg_part', 'ice_part', 'icesc_part',
                      'veg_ice_parts', 'veg_icesc_parts')
 FORCING_KERNELS  = c('hadgem', 'cam5', 'cack')
+# The headline (analysis$forcing$variant) must be one of the four totals, vegetation plus
+# ice: a vegetation-only or ice-only part is not a forcing of the whole surface, and script
+# 9's headline sums would drop cells whose steps are of both kinds (the parts are shown,
+# completed, only in the sensitivity figure). Chris, 2026-10-19.
+FORCING_TOTALS   = c('veg_ice_thresh', 'veg_icesc_thresh', 'veg_ice_parts', 'veg_icesc_parts')
 
 # Numbers: no NA, no names, optionally a fixed length, strictly increasing, or a range.
 check_numbers = function(v, len = NULL, min_len = 1, increasing = FALSE, range = NULL) {
@@ -148,7 +153,7 @@ CONFIG_SCHEMA = list(
       cack_year       = function(v) check_whole(v, range = c(2001, 2016))),
     forcing = list(
       earth_area_m2        = function(v) check_numbers(v, len = 1, range = c(1, Inf)),
-      variant              = function(v) check_choice(v, FORCING_VARIANTS, single = TRUE),
+      variant              = function(v) check_choice(v, FORCING_TOTALS, single = TRUE),
       report_kernels       = function(v) check_choice(v, FORCING_KERNELS),
       sensitivity_variants = function(v) check_choice(v, FORCING_VARIANTS),
       latitude_band_width  = function(v) check_whole(v, range = c(1, 90)))),

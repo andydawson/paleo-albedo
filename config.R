@@ -130,10 +130,12 @@ list(
       # figure plots the global-equivalent forcing for comparison with the IPCC's global
       # means (decision C5, 2026-10-14); the domain mean stays as a separate figure.
       earth_area_m2 = 5.101e14,
-      # The forcing variant reported: vegetation plus ice albedo change, threshold
-      # method (script 9, A1). Which ice representation the paper reports is question
-      # C1; the variant choice is C5(a). Legal: any of script 8's ten rf_* variants.
-      variant = "veg_ice_thresh",
+      # The forcing variant reported (script 9, A1): vegetation plus ice albedo change,
+      # partial ice, i.e. each cell's albedo is its ice fraction times the glacier albedo
+      # plus the rest times its vegetation albedo. Andria's intended headline (her answer
+      # to question C1, 2026-10-19); the all-or-nothing version (a cell is all ice above
+      # the threshold) stays in the sensitivity figure. Legal: one of the four totals.
+      variant = "veg_ice_parts",
       # The kernels carried through, HadGEM3 first as the headline (A3; C3, C4).
       # Must include hadgem.
       report_kernels = c("hadgem", "cam5", "cack"),
