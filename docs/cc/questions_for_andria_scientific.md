@@ -1168,6 +1168,15 @@ extent, or clipped afterwards; the product does not say.
 Is the southern thinning intended (no pollen data), and what happened to
 the top three rows of the grid at 200, 4,500 and 6,000 BP?
 
+**Why is the forcing limited to 27-74 N? (Chris, 2026-10-19.)** The two lines that keep cells
+between 27 and 74 N came in with Andria's commit aba7e1a of 2025-02-14 ("updating processing and
+plotting scripts"), with no comment; the draft, its CM-comments copy and the EGU 2024 slides do
+not mention the band (searched 2026-10-19). It removes 211 of 2,866 cells, 7.6% of the area (114
+south of 27 N, 6.3%; 97 north of 74 N, 1.3%), exactly the incomplete cells above. Was the band
+meant to keep only cells with a complete record, or is it a choice of region? If the former, a
+rule "keep cells complete at every slice" states it directly and gives the same cells today.
+(Also in the Word document.)
+
 ### D4. Script 7's coverage filter removes nothing
 *Added 2026-10-12, from issue I02 of the configuration migration.*
 **What the code does.** After choosing the eight coarse ages (0.05 to 12 ka),
