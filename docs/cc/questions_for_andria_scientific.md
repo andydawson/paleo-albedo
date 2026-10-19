@@ -65,6 +65,8 @@ rescaling, the three medians of a cell and slice sum to between 0.80 and
 1.02; after rescaling, median and mean cover differ by 0.012 on average
 and by at most 0.16 in a fraction.
 
+**Andria's answer (email to Chris, early October; passed on 2026-10-19).** The mean of the 200 draws is defensible; 200 was probably chosen for quick summary statistics, more would be slightly more defensible but unlikely to change much; the median is not obviously better (worth looking at whether some posteriors are oddly shaped). Not a priority. Uncertainty propagation: "a can of worms", maybe one to open; first work through the whole workflow without uncertainty, then think about where it would enter; pinned to revisit.
+
 ### A2. What the albedo "posterior samples" actually are
 **What the code does.** Script 6 (`6_prediction_model.R`, line 49) calls
 `simulate(model, nsim = 100)` on the fitted GAM. With the gratia package
@@ -583,6 +585,8 @@ which needs the code that built the raster (B2c). **What we need from you:** do 
 0.25-degree values already average land retrievals only? Frozen lakes would stay excluded
 in winter, so lake ice and snow on lakes are outside the analysis; a stated limitation.
 
+**Andria's answer (email to Chris, early October; passed on 2026-10-19).** A cell average is probably better than the centre value; if easy, fix it. (Done for elevation; the MODIS rebuild does it for albedo.)
+
 ### B6. Albedo values of exactly zero are set to 0.0001
 *Checked 2026-09-19: no cell-month in the interp calibration table hits
 this replacement, so it affects the non-interp flavour only.*
@@ -619,6 +623,8 @@ albedo, which is the term the whole hindcast rests on.
 
 **Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Exclude cells whose centre lies inside the 1 ka ice polygons (48) from the calibration; they stay in the prediction domain. The 1 ka mask is a proxy for recent ice.
 
+**Andria's answer (email to Chris, early October; passed on 2026-10-19).** The most recent ice outline is for 1 ka. She used it for the younger slices for a while, then was advised to assume no ice there; worth a literature search or expert ask, since the ice-to-vegetation transition matters for the forcing. Found 2026-10-19: the land-cover product has no ice at 50, 200 and 500 BP, but the Dalton ice fraction used for the forcing keeps the 1 ka ice to 50 BP (in July, 156 cells with some ice and 28 above 50% at 50, 500, 1,000 and 1,500 BP; 135 and 17 at 200 BP, where the three northern rows are absent). The forcing is unaffected (no ice change from 1.5 ka to 50 BP; the 200 BP dip cancels within its period), but the two sources disagree on today's ice.
+
 ### B9. Elevation is a single point at the cell centre, at an unstated resolution
 The original elevation (now the legacy setting; its table is made by
 `tools/prepare_centre_elevation.R`) comes from `elevatr::get_elev_point()` at each cell's
@@ -649,6 +655,8 @@ docs/cc/2026-10-15_land_mean_elevation_precedents.md on the migration branch.
 0 m pixels, as New et al. took their elevation model's own land points, rather than MOD44W's ocean
 class, which starts about 1 km offshore and labels Nettilling Lake as ocean. 116 coastal cells rise
 (median 12.7 m); four eastern Baffin Island cells, where GMTED does not resolve the fjords, fall.
+
+**Andria's answer (email to Chris, early October; passed on 2026-10-19).** A cell average is probably better than the centre point; if easy, fix it. (Done: land-mean elevation.)
 
 ### B10. The "modern" land cover is nominally AD 1900; the albedo is 2000-2009
 The calibration pairs the land cover of the 50 BP slice with a satellite
@@ -817,6 +825,8 @@ scratch script): the mixed variant equals the exact change of f·ice + (1-f)·ve
 retreat, advance, partial and full cases, to rounding. Algebraically its error is f_young·(ice
 albedo old − ice albedo young), which is zero because the glacier albedo depends on the month
 only. It uses the readvance-adjusted fractions, so question C2 applies to it as to the threshold.
+
+**Andria's answer (email to Chris, early October; passed on 2026-10-19).** Further down the pipeline she used the fraction of each cell covered by ice to split the albedo between ice and vegetation, i.e. the area-weighted (partial-ice) variant, while the configured headline is the threshold variant. Which she intends for the paper is asked in the Word document.
 
 ### C2. Ice readvances are averaged away
 **What the code does.** Script 7a (lines 452-459) looks for cells where
@@ -1129,6 +1139,8 @@ without overlap. A modern mask also cannot show past coastlines or proglacial la
 
 ## D. Land cover
 
+**Andria's answer (email to Chris, early October; passed on 2026-10-19).** The `cell_area` column of `veg_posts_interp_ice.RDS` exists; checked 2026-10-19: it is the whole 1-degree cell area in km² (ratio to our polygon areas 0.996-0.999), not land area, so it gives no land share.
+
 ### D1. Taxon-to-class mapping in the north
 `taxon2LCT_translation_v2.0.csv` maps Betula, Alnus and Salix to
 summergreen trees and drops Ericaceae, so dwarf-birch tundra looks like
@@ -1185,6 +1197,8 @@ south of 27 N, 6.3%; 97 north of 74 N, 1.3%), exactly the incomplete cells above
 meant to keep only cells with a complete record, or is it a choice of region? If the former, a
 rule "keep cells complete at every slice" states it directly and gives the same cells today.
 (Also in the Word document.)
+
+**Andria's answer (email to Chris, early October; passed on 2026-10-19).** She had checked that the 1,814 missing cell-slices are all at the northern and southern extremes and so not included in the modelling later. Why the 27-74 N band (which is what excludes them) is asked in the Word document.
 
 ### D4. Script 7's coverage filter removes nothing
 *Added 2026-10-12, from issue I02 of the configuration migration.*
