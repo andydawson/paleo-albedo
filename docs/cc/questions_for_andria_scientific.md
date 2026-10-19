@@ -756,6 +756,15 @@ That would at least be internally consistent, same product and same
 months as the calibration. We would also need to know what distinguishes
 `ice_albedo_fixed` from `ice_albedo_sc` ("scaled" by what?).
 
+**Sensitivity measured 2026-10-19** (Chris asked whether 0.68 is too high). The headline uses
+`ice_albedo_fixed`, 0.68 in every month (`ice_albedo` 0.6-0.8 is read only by script 7's maps;
+`ice_albedo_sc` 0.56-0.80 by the scaled sensitivity variant). The threshold forcing is linear in the
+glacier value, so it was recomputed exactly from the full run of 2026-10-18 (study-area mean,
+HadGEM3 all-sky, W/m²): 8-10 ka 2.50 / 3.83 / 4.90 / 6.51 for glacier albedo 0.50 / 0.60 / 0.68 /
+0.80; 10-12 ka 3.12 / 3.76 / 4.27 / 5.05; 6-8 ka 0.27 / 0.70 / 1.05 / 1.57. Bare ice at a summer
+ice-sheet margin is often quoted well below 0.68 (to be checked against the literature). Also in the
+Word document.
+
 ### C0b. The Dalton raster: can we reconstruct it?
 `dalton_interpolated_LC6k.tif` is not Dalton et al. 2020's published
 data; it is their ice margins interpolated to the LandCover6k time
