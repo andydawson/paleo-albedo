@@ -11,11 +11,15 @@
 #     recipe and IPCC tables to the 18 October run, the sensitivity table to the run that
 #     verified the variant-components fix (2026-10-19_variant-components-4);
 #  4. script 10's breakdown names the new variant (it stops by itself if its parts do not
-#     add up to script 9's totals).
+#     add up to script 9's totals);
+#  5. (added with the second run, after the review's comment fixes and the figure subtitles)
+#     every table byte-identical to the first verification run of this change (4672560):
+#     comments and figure subtitles must not move a number.
 args = commandArgs(TRUE)
 run_dir = args[1]
 ref_run  = '/home/expert/Documents/contracting/Andria/paleo-RF-verify/4ba4d2a/.rundirs/full-current-2026-10-18/output/forcing'
 ref_sens = '/home/expert/Documents/contracting/Andria/paleo-RF-verify/2bd4ab5/.rundirs/variant-components-4/output/forcing'
+ref_first = '/home/expert/Documents/contracting/Andria/paleo-RF-verify/4672560/.rundirs/headline-partial-ice/output/forcing'
 out = file.path(run_dir, 'output/forcing')
 fail = character()
 check = function(ok, what) { cat(if (ok) 'PASS' else 'FAIL', what, '\n'); if (!ok) fail <<- c(fail, what) }
@@ -61,6 +65,12 @@ check(same_file(file.path(out, 'forcing_by_period_variant_sensitivity.csv'), fil
 # 4. Script 10.
 b = read.csv(file.path(out, 'forcing_by_month_latitude.csv'))
 check(nrow(b) > 0 && all(b$variant == 'veg_ice_parts'), "script 10's breakdown is of veg_ice_parts")
+
+# 5. Unchanged from the first verification run of this change, every table.
+if (dir.exists(ref_first) && !identical(normalizePath(out), normalizePath(ref_first)))
+  for (t in c('forcing_by_period.csv', 'forcing_by_period_variant_sensitivity.csv',
+              'forcing_by_period_egu2024recipe_vs_slide.csv', 'modern_ipcc_ar6_erf.csv', 'forcing_by_month_latitude.csv'))
+    check(same_file(file.path(out, t), file.path(ref_first, t)), paste(t, 'byte-identical to the first run (4672560)'))
 
 cat('\nNew headline (study-area mean W/m2; global equivalent W/m2):\n')
 print(as.data.frame(headline %>% select(kernel, period, domain_mean, global_equiv)), digits = 4)
