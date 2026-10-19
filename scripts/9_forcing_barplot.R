@@ -25,7 +25,8 @@
 # WHAT GOES OUT
 #   output/forcing/forcing_by_period.csv          7 periods x 3 kernels: domain mean,
 #                                                 global equivalent, area   (tracked in git)
-#   output/forcing/forcing_by_period_variant_sensitivity.csv    same, 6 variants, HadGEM3
+#   output/forcing/forcing_by_period_variant_sensitivity.csv    same, HadGEM3, for each variant
+#                                                 in analysis$forcing$sensitivity_variants
 #   output/forcing/forcing_by_period_egu2024recipe_vs_slide.csv the recovered recipe
 #   output/forcing/modern_ipcc_ar6_erf.csv        the five IPCC agents used
 #   figures/forcing_barplot_*.{pdf,png}           the slide-layout chart, the kernel spread,
@@ -49,13 +50,31 @@
 #     that mixes vegetation and ice albedo by area fraction rather than by
 #     threshold). A2 reports the alternatives, because the choice matters.
 #
-# A2. Variant sensitivity. Six variants are aggregated the same way and plotted
-#     side by side (figures/forcing_barplot_variant_sensitivity.pdf). NB this note
-#     said until 2026-10-13 that the six were the ones with complete coverage; they
-#     are not. _veg_thresh is missing in 58,416 of the 764,640 rows and _ice_thresh
-#     in 706,188 (the cells with no ice), which the aggregation drops, while the
-#     complete _veg_part, _ice_part and _icesc_part are not among the six. The
-#     list is now analysis$forcing$sensitivity_variants in config.R.
+# A2. Variant sensitivity. The variants in analysis$forcing$sensitivity_variants
+#     (config.R) are aggregated the same way and plotted side by side
+#     (figures/forcing_barplot_variant_sensitivity.pdf): the totals of each ice method,
+#     and in config.R also the vegetation and ice parts of the two fixed-albedo totals,
+#     Andria's two splits:
+#       - all-or-nothing (threshold) split, by kind of step: a slice-pair is an ice step
+#         if the cell is ice (above the threshold, readvance-adjusted fractions) at
+#         either end, otherwise a vegetation step; _veg_thresh + _ice_thresh =
+#         _veg_ice_thresh. This identity holds with difference_method = "endpoint" only.
+#       - partial-ice split, by area share: every known pair has both parts, the
+#         vegetation change on the share that was ice-free and the change on the share
+#         whose ice changed (a signed change: ice retreat or advance);
+#         _veg_part + _ice_part = _veg_ice_parts.
+#     R/differences.R gives the threshold components NA where they do not apply (a
+#     vegetation step has no ice part and vice versa). Until 2026-10-19 those NAs
+#     reached the period sum (A5), so a cell with both kinds of step in one period
+#     dropped out of BOTH bars: at 8-10 ka, 343 cells carrying 99% of the total
+#     (found by Opus and confirmed by Astra on 2026-10-18,
+#     docs/cc/2026-10-18_forcing_code_check_codex_gpt6astra.md). Fixed by setting the
+#     part that does not apply to 0 before aggregating, the 'by kind of step'
+#     definition Chris chose on 2026-10-19 (R/forcing_components.R); genuinely missing
+#     pairs (total NA) stay NA. Under the legacy configuration ("legacy_components")
+#     the split does not hold (question C2), and Chris chose (2026-10-19) to keep its
+#     outputs as they were: there the threshold parts still leave out cells with both
+#     kinds of step. The headline (A1) does not use these components and is unaffected.
 #
 # A3. Kernel. HadGEM3 is the headline, matching the talk. CAM5 and CACK are
 #     carried through as a spread. They are NOT interchangeable: see C3/C4 in
@@ -107,6 +126,7 @@
 
 source('R/calendar.R')
 source('R/forcing_periods.R')
+source('R/forcing_components.R')
 # Settings, file locations and this run's manifest: run_begin() reads config.R (or the file
 # given with --config), sets up the paths of R/paths.R and starts the run's
 # manifest, which records the inputs with checksums and the whole configuration; files are
@@ -168,10 +188,15 @@ cat('\nstudy area as a fraction of Earth:',
 print(as.data.frame(forcing_by_period %>% select(kernel, period, domain_mean, global_equiv)), digits = 3)
 
 # --- A2: sensitivity to the forcing variant, HadGEM3 only --------------------
+# The threshold parts with 0 where they do not apply, so that they add up to their total
+# over a period (R/forcing_components.R; unchanged under the legacy configuration).
+forcing_by_cell_components = complete_threshold_components(forcing_by_cell, 'hadgem',
+                                                           cfg$analysis$ice$difference_method)
+
 variant_sensitivity = bind_rows(lapply(VARIANTS, function(variant_id) {
   forcing_column = paste0('rf_hadgem_', variant_id)
-  if (!forcing_column %in% names(forcing_by_cell)) return(NULL)
-  aggregate_forcing(forcing_by_cell, forcing_column, EARTH_AREA) %>% mutate(variant = variant_id)
+  if (!forcing_column %in% names(forcing_by_cell_components)) return(NULL)
+  aggregate_forcing(forcing_by_cell_components, forcing_column, EARTH_AREA) %>% mutate(variant = variant_id)
 }))
 variant_sensitivity$period = factor(variant_sensitivity$period, levels = labels_period)
 
@@ -293,11 +318,28 @@ p_dom = ggplot(forcing_by_period %>% filter(kernel=='hadgem'), aes(x = period, y
 ggsave(path_figure(paths, 'forcing_barplot_domain_mean.pdf'), p_dom, width = 9, height = 5)
 
 # Sensitivity of the answer to the forcing variant (A1/A2).
-p_sens = ggplot(variant_sensitivity, aes(x = period, y = global_equiv, fill = variant)) +
+# Plain labels for the variants, in this order; a variant not listed keeps its column name.
+variant_labels = c(veg_ice_thresh   = 'total, all-or-nothing ice',
+                   veg_thresh       = 'vegetation part, all-or-nothing ice',
+                   ice_thresh       = 'ice part, all-or-nothing ice',
+                   veg_ice_parts    = 'total, partial ice',
+                   veg_part         = 'vegetation part, partial ice',
+                   ice_part         = 'ice part, partial ice',
+                   veg_icesc_thresh = 'total, all-or-nothing ice, month-by-month glacier albedo',
+                   veg_icesc_parts  = 'total, partial ice, month-by-month glacier albedo')
+sens_plot = variant_sensitivity
+sens_plot$label = ifelse(sens_plot$variant %in% names(variant_labels),
+                         variant_labels[sens_plot$variant], sens_plot$variant)
+sens_plot$label = factor(sens_plot$label, levels = unique(c(variant_labels[names(variant_labels) %in% sens_plot$variant],
+                                                            sens_plot$label)))
+sens_subtitle = if (cfg$analysis$ice$difference_method == 'endpoint')
+  'Totals, and the vegetation and ice parts that add up to them; the headline is one of the totals (A1)' else
+  'Totals and parts; with the original arithmetic the all-or-nothing parts leave out cells with both kinds of step (A2)'
+p_sens = ggplot(sens_plot, aes(x = period, y = global_equiv, fill = label)) +
   geom_col(position = position_dodge(0.85), width = 0.8) +
   geom_hline(yintercept = 0, linewidth = 0.3) +
-  labs(title = 'Sensitivity to the forcing variant (HadGEM3 kernel)',
-       subtitle = 'Assumption A1 picks veg_ice_thresh; these are the alternatives',
+  labs(title = 'Forcing by ice method, and its vegetation and ice parts (HadGEM3 kernel)',
+       subtitle = sens_subtitle, fill = NULL,
        x = NULL, y = expression('global-equivalent forcing ('*W~m^-2*')')) +
   theme_bw(base_size = 11) + theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ggsave(path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'), p_sens, width = 10, height = 5)
