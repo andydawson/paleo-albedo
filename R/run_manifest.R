@@ -191,7 +191,7 @@ check_producer = function(run, path, md5, made_by) {
 }
 
 # The settings that differ between two `analysis` sections (as read back from JSON), one
-# line per setting: 'forcing.variant: "veg_thresh" -> "veg_ice_thresh"'.
+# line per setting: 'forcing.variant: "veg_ice_thresh" -> "veg_ice_parts"'.
 analysis_differences = function(old, new) {
   old = flatten_settings(old); new = flatten_settings(new)
   keys = sort(union(names(old), names(new)))

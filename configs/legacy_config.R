@@ -118,7 +118,10 @@ list(
       # means (decision C5, 2026-10-14); the domain mean stays as a separate figure.
       earth_area_m2 = 5.101e14,
       # The forcing variant reported: vegetation plus ice albedo change, threshold
-      # method (script 9, A1), as in the original analysis. Legal: one of the four totals.
+      # method (script 9, A1), as in the original analysis. Legal: one of the four
+      # totals, veg_ice_thresh, veg_ice_parts, veg_icesc_thresh or veg_icesc_parts
+      # (icesc: the month-by-month glacier albedo); a vegetation-only or ice-only part
+      # is refused (R/config_schema.R).
       variant = "veg_ice_thresh",
       # The kernels carried through, HadGEM3 first as the headline (A3; C3, C4).
       # Must include hadgem.

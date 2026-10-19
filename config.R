@@ -131,10 +131,13 @@ list(
       # means (decision C5, 2026-10-14); the domain mean stays as a separate figure.
       earth_area_m2 = 5.101e14,
       # The forcing variant reported (script 9, A1): vegetation plus ice albedo change,
-      # partial ice, i.e. each cell's albedo is its ice fraction times the glacier albedo
-      # plus the rest times its vegetation albedo. Andria's intended headline (her answer
-      # to question C1, 2026-10-19); the all-or-nothing version (a cell is all ice above
-      # the threshold) stays in the sensitivity figure. Legal: one of the four totals.
+      # partial ice, i.e. each cell's albedo is its ice fraction times the fixed glacier
+      # albedo plus the rest times its vegetation albedo. Andria's intended headline (her
+      # answer to question C1, 2026-10-19); the all-or-nothing version (a cell is all ice
+      # above the threshold) stays in the sensitivity figure. Legal: one of the four
+      # totals, veg_ice_parts, veg_ice_thresh, veg_icesc_parts or veg_icesc_thresh
+      # (icesc: the month-by-month glacier albedo); a vegetation-only or ice-only part
+      # is refused (R/config_schema.R).
       variant = "veg_ice_parts",
       # The kernels carried through, HadGEM3 first as the headline (A3; C3, C4).
       # Must include hadgem.

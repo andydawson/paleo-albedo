@@ -29,9 +29,10 @@ FORCING_VARIANTS = c('veg_thresh', 'ice_thresh', 'icesc_thresh',
                      'veg_ice_parts', 'veg_icesc_parts')
 FORCING_KERNELS  = c('hadgem', 'cam5', 'cack')
 # The headline (analysis$forcing$variant) must be one of the four totals, vegetation plus
-# ice: a vegetation-only or ice-only part is not a forcing of the whole surface, and script
-# 9's headline sums would drop cells whose steps are of both kinds (the parts are shown,
-# completed, only in the sensitivity figure). Chris, 2026-10-19.
+# ice: a vegetation-only or ice-only part is not the forcing of the whole surface. (The
+# all-or-nothing parts would also lose, in script 9's headline sums, every cell whose
+# steps are of both kinds; the parts appear only in the sensitivity figure.) Chris,
+# 2026-10-19.
 FORCING_TOTALS   = c('veg_ice_thresh', 'veg_icesc_thresh', 'veg_ice_parts', 'veg_icesc_parts')
 
 # Numbers: no NA, no names, optionally a fixed length, strictly increasing, or a range.
