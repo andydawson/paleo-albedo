@@ -831,9 +831,11 @@ only. It uses the readvance-adjusted fractions, so question C2 applies to it as 
 **Answered 2026-10-19 (Andria, via Chris):** partial ice (the area-weighted mix,
 `veg_ice_parts`, fixed glacier albedo) is what is intended for the paper's headline. Chris:
 keep the threshold version (`veg_ice_thresh`) as a sensitivity check; the month-by-month
-glacier albedo (`_icesc_`) stays a further sensitivity check. The configured headline
-(`analysis$forcing$variant` in config.R) is still `veg_ice_thresh`: switching it is a code
-change, to be asked first.
+glacier albedo (`_icesc_`) stays a further sensitivity check. **Switched 2026-10-19**
+(Chris approved): config.R's headline (`analysis$forcing$variant`) is now `veg_ice_parts`,
+branch `headline-partial-ice` (change a099008), merged into feature/single-config at 1716516;
+the legacy configuration keeps `veg_ice_thresh`. The headline setting now accepts only the
+four totals. HadGEM3 8-10 ka study-area mean: 4.55 W/m² (was 4.90 all-or-nothing).
 
 ### C2. Ice readvances are averaged away
 **What the code does.** Script 7a (lines 452-459) looks for cells where
@@ -1034,7 +1036,9 @@ biggest lever on the headline number, and the script currently assumes
 it. Related assumptions in the same script that we would like checked:
 (a) forcing variant `veg_ice_thresh` rather than one of the nine others,
 notably the `_parts` family that mixes vegetation and ice albedo by area
-fraction instead of by threshold; (b) slice-pairs **summed** within each
+fraction instead of by threshold [**answered by C1, 2026-10-19:** the
+`_parts` family, `veg_ice_parts`, is the headline since 19 October];
+(b) slice-pairs **summed** within each
 period, which telescopes to the endpoint difference, rather than
 averaged; (c) months averaged with equal weight; (d) cells area-weighted
 by the `area` column. A sensitivity plot over (a) is at
@@ -1042,7 +1046,9 @@ by the `area` column. A sensitivity plot over (a) is at
 
 **The layout now matches slide 18, but the numbers do not.** Reading the
 bars off `ppt/media/image37.png` in `writing/dawson_EGU.pptx` and
-comparing with our global-equivalent values (HadGEM3, `veg_ice_thresh`):
+comparing with our global-equivalent values (HadGEM3, `veg_ice_thresh`,
+the all-or-nothing headline of that time; the headline is `veg_ice_parts`
+since 2026-10-19, see C1):
 
 | period (ka) | slide 18 | ours | ratio |
 |---|---|---|---|
