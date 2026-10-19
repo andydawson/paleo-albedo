@@ -318,11 +318,28 @@ p_dom = ggplot(forcing_by_period %>% filter(kernel=='hadgem'), aes(x = period, y
 ggsave(path_figure(paths, 'forcing_barplot_domain_mean.pdf'), p_dom, width = 9, height = 5)
 
 # Sensitivity of the answer to the forcing variant (A1/A2).
-p_sens = ggplot(variant_sensitivity, aes(x = period, y = global_equiv, fill = variant)) +
+# Plain labels for the variants, in this order; a variant not listed keeps its column name.
+variant_labels = c(veg_ice_thresh   = 'total, all-or-nothing ice',
+                   veg_thresh       = 'vegetation part, all-or-nothing ice',
+                   ice_thresh       = 'ice part, all-or-nothing ice',
+                   veg_ice_parts    = 'total, partial ice',
+                   veg_part         = 'vegetation part, partial ice',
+                   ice_part         = 'ice part, partial ice',
+                   veg_icesc_thresh = 'total, all-or-nothing ice, month-by-month glacier albedo',
+                   veg_icesc_parts  = 'total, partial ice, month-by-month glacier albedo')
+sens_plot = variant_sensitivity
+sens_plot$label = ifelse(sens_plot$variant %in% names(variant_labels),
+                         variant_labels[sens_plot$variant], sens_plot$variant)
+sens_plot$label = factor(sens_plot$label, levels = unique(c(variant_labels[names(variant_labels) %in% sens_plot$variant],
+                                                            sens_plot$label)))
+sens_subtitle = if (cfg$analysis$ice$difference_method == 'endpoint')
+  'Totals, and the vegetation and ice parts that add up to them; the headline is one of the totals (A1)' else
+  'Totals and parts; with the original arithmetic the all-or-nothing parts leave out cells with both kinds of step (A2)'
+p_sens = ggplot(sens_plot, aes(x = period, y = global_equiv, fill = label)) +
   geom_col(position = position_dodge(0.85), width = 0.8) +
   geom_hline(yintercept = 0, linewidth = 0.3) +
-  labs(title = 'Sensitivity to the forcing variant (HadGEM3 kernel)',
-       subtitle = 'Assumption A1 picks veg_ice_thresh; these are the alternatives',
+  labs(title = 'Forcing by ice method, and its vegetation and ice parts (HadGEM3 kernel)',
+       subtitle = sens_subtitle, fill = NULL,
        x = NULL, y = expression('global-equivalent forcing ('*W~m^-2*')')) +
   theme_bw(base_size = 11) + theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ggsave(path_figure(paths, 'forcing_barplot_variant_sensitivity.pdf'), p_sens, width = 10, height = 5)
