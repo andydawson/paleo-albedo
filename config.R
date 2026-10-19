@@ -140,8 +140,9 @@ list(
       # The variants compared in the sensitivity table and figure, HadGEM3 only (A2):
       # the totals, and both of Andria's vegetation/ice splits, each adding up to its
       # total (veg_thresh + ice_thresh = veg_ice_thresh, by kind of step;
-      # veg_part + ice_part = veg_ice_parts, by area share). Script 9 gives a
-      # threshold component that does not apply 0, so mixed cells stay in.
+      # veg_part + ice_part = veg_ice_parts, by area share). With
+      # difference_method = "endpoint", script 9 sets a threshold part that does not
+      # apply to 0, so cells with both kinds of step stay in (R/forcing_components.R).
       sensitivity_variants = c("veg_thresh", "ice_thresh", "veg_ice_thresh",
                                "veg_part", "ice_part", "veg_ice_parts",
                                "veg_icesc_thresh", "veg_icesc_parts"),
