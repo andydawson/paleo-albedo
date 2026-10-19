@@ -49,13 +49,27 @@
 #     that mixes vegetation and ice albedo by area fraction rather than by
 #     threshold). A2 reports the alternatives, because the choice matters.
 #
-# A2. Variant sensitivity. Six variants are aggregated the same way and plotted
-#     side by side (figures/forcing_barplot_variant_sensitivity.pdf). NB this note
-#     said until 2026-10-13 that the six were the ones with complete coverage; they
-#     are not. _veg_thresh is missing in 58,416 of the 764,640 rows and _ice_thresh
-#     in 706,188 (the cells with no ice), which the aggregation drops, while the
-#     complete _veg_part, _ice_part and _icesc_part are not among the six. The
-#     list is now analysis$forcing$sensitivity_variants in config.R.
+# A2. Variant sensitivity. The variants in analysis$forcing$sensitivity_variants
+#     (config.R) are aggregated the same way and plotted side by side
+#     (figures/forcing_barplot_variant_sensitivity.pdf). They include Andria's two
+#     splits of the forcing into a vegetation part and an ice part, each adding up
+#     to its own total:
+#       - threshold split, by kind of step: a slice-pair is an ice step if the cell
+#         is ice (above the threshold) at either end, otherwise a vegetation step;
+#         _veg_thresh + _ice_thresh = _veg_ice_thresh.
+#       - partial split, by area share: every pair has both parts, the vegetation
+#         change on the share that was ice-free and the change on the share that
+#         melted; _veg_part + _ice_part = _veg_ice_parts.
+#     Script 8 gives the threshold components NA where they do not apply (a
+#     vegetation step has no ice part and vice versa). Until 2026-10-19 those NAs
+#     reached the period sum (A5), so a cell with both kinds of step in one period
+#     dropped out of BOTH bars: at 8-10 ka, 343 cells carrying 99% of the total
+#     (found by Opus and confirmed by Astra on 2026-10-18,
+#     docs/cc/2026-10-18_forcing_code_check_codex_gpt6astra.md). Fixed by giving the
+#     component that does not apply 0 before aggregating, the 'by kind of step'
+#     definition Chris chose on 2026-10-19 (complete_threshold_components() below);
+#     genuinely missing pairs (total NA) stay NA. The headline (A1) does not use
+#     these components and is unaffected.
 #
 # A3. Kernel. HadGEM3 is the headline, matching the talk. CAM5 and CACK are
 #     carried through as a spread. They are NOT interchangeable: see C3/C4 in
@@ -168,10 +182,39 @@ cat('\nstudy area as a fraction of Earth:',
 print(as.data.frame(forcing_by_period %>% select(kernel, period, domain_mean, global_equiv)), digits = 3)
 
 # --- A2: sensitivity to the forcing variant, HadGEM3 only --------------------
+# The threshold components with 0 where they do not apply, so that each adds up over
+# a period and the two add up to their total (A2). A pair whose total is NA is a
+# genuinely missing pair and stays NA in both. Stops if a known pair is not exactly
+# one kind of step, or if the parts do not add up, since either would mean script 8's
+# components no longer mean what this assumes.
+complete_threshold_components <- function(forcing_by_cell, kernel_id) {
+  pairs = list(c('veg_thresh', 'ice_thresh', 'veg_ice_thresh'),
+               c('veg_thresh', 'icesc_thresh', 'veg_icesc_thresh'))
+  out = forcing_by_cell
+  for (p in pairs) {
+    veg   = forcing_by_cell[[paste0('rf_', kernel_id, '_', p[1])]]
+    ice   = forcing_by_cell[[paste0('rf_', kernel_id, '_', p[2])]]
+    total = forcing_by_cell[[paste0('rf_', kernel_id, '_', p[3])]]
+    known = !is.na(total)
+    one_kind = xor(!is.na(veg), !is.na(ice))
+    if (any(known & !one_kind))
+      stop(sum(known & !one_kind), ' pairs with a known ', p[3], ' have both or neither of ',
+           p[1], ' and ', p[2], ': the split by kind of step does not apply')
+    veg = ifelse(known, coalesce(veg, 0), NA)
+    ice = ifelse(known, coalesce(ice, 0), NA)
+    if (any(abs(veg + ice - total) > 1e-9, na.rm = TRUE))
+      stop(p[1], ' + ', p[2], ' differs from ', p[3])
+    out[[paste0('rf_', kernel_id, '_', p[1])]] = veg
+    out[[paste0('rf_', kernel_id, '_', p[2])]] = ice
+  }
+  out
+}
+forcing_by_cell_components = complete_threshold_components(forcing_by_cell, 'hadgem')
+
 variant_sensitivity = bind_rows(lapply(VARIANTS, function(variant_id) {
   forcing_column = paste0('rf_hadgem_', variant_id)
-  if (!forcing_column %in% names(forcing_by_cell)) return(NULL)
-  aggregate_forcing(forcing_by_cell, forcing_column, EARTH_AREA) %>% mutate(variant = variant_id)
+  if (!forcing_column %in% names(forcing_by_cell_components)) return(NULL)
+  aggregate_forcing(forcing_by_cell_components, forcing_column, EARTH_AREA) %>% mutate(variant = variant_id)
 }))
 variant_sensitivity$period = factor(variant_sensitivity$period, levels = labels_period)
 
