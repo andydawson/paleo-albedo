@@ -828,6 +828,13 @@ only. It uses the readvance-adjusted fractions, so question C2 applies to it as 
 
 **Andria's answer (email to Chris, early October; passed on 2026-10-19).** Further down the pipeline she used the fraction of each cell covered by ice to split the albedo between ice and vegetation, i.e. the area-weighted (partial-ice) variant, while the configured headline is the threshold variant. Which she intends for the paper is asked in the Word document.
 
+**Answered 2026-10-19 (Andria, via Chris):** partial ice (the area-weighted mix,
+`veg_ice_parts`, fixed glacier albedo) is what is intended for the paper's headline. Chris:
+keep the threshold version (`veg_ice_thresh`) as a sensitivity check; the month-by-month
+glacier albedo (`_icesc_`) stays a further sensitivity check. The configured headline
+(`analysis$forcing$variant` in config.R) is still `veg_ice_thresh`: switching it is a code
+change, to be asked first.
+
 ### C2. Ice readvances are averaged away
 **What the code does.** Script 7a (lines 452-459) looks for cells where
 the ice fraction increases from an older to a younger slice, and replaces
