@@ -345,6 +345,19 @@ MCD43GF), restricts to full inversions, or drops the month (Bright et al. 2015, 
 12:2195, dropped December). To be decided once the build shows the counts. Report:
 docs/cc/2026-10-16_snow_free_estimate_literature_fable.md on the migration branch.
 
+**Decided 2026-10-19 (Chris, to be reviewed by Andria; replaces the two runs of 16 October).**
+Calibrate twice, on snowy and on snow-free MODIS albedo (the product's snow flag), and mix the
+two predictions by a snow share per cell and month: albedo = share x snowy + (1 - share) x
+snow-free, the established form (Barnes & Roy 2010; Ghimire et al. 2014; Jiao et al. 2017).
+It contains the two runs as cases: share 0 is the snow-free run; today's share should come close
+to the all-days calibration (exact for the data, close but not identical for two fitted models;
+the gap is measured as a check). Then vary the share away from today's (amount and melt timing)
+as the snow-shift test, without refitting. Where a cell-month has no snow-free days the share is
+1, so the poorly known snow-free value gets no weight. Built after the MODIS build, with a
+literature check first of the shift sizes and of one caveat: the satellite sees less snow under
+forest canopy, so today's share partly reflects today's forest, not only today's climate.
+Past snow from climate-model runs (the HadCM3 question above) would be the full version.
+
 ### B3. The spatial term cancels through time and may have absorbed the cover effect
 **What the code does.** Every prediction uses the same location and
 elevation values for a cell in every time slice; only the cover fractions
