@@ -40,15 +40,14 @@
 # The settings below (A1 variant, A2 variants, A3 kernels, A4 periods, A8 Earth's
 # area) are read from config.R, analysis$forcing and analysis$coarse.
 #
-# A1. Forcing variant. Uses rf_<kernel>_veg_ice_thresh: the vegetation plus ice
-#     albedo change, threshold method. Chosen because it combines the vegetation
-#     and the ice contribution and, like the _parts family, has no missing values
-#     over the trimmed domain. Threshold rather than area-weighting was preferred
-#     because it is closer to the binary ice mask used elsewhere in the pipeline;
-#     the choice is question C5(a). The table holds nine other variants
-#     (_veg_thresh, _ice_thresh, _icesc_thresh, and the _part / _parts family
-#     that mixes vegetation and ice albedo by area fraction rather than by
-#     threshold). A2 reports the alternatives, because the choice matters.
+# A1. Forcing variant. config.R uses rf_<kernel>_veg_ice_parts: the vegetation plus
+#     ice albedo change with partial ice, each cell's albedo being its ice fraction
+#     times the fixed glacier albedo plus the rest times its vegetation albedo. Andria's
+#     intended headline (her answer to question C1, 2026-10-19). Until then the
+#     headline was _veg_ice_thresh, the all-or-nothing version (a cell is all ice
+#     above the threshold), which the legacy configuration keeps and A2 shows as a
+#     sensitivity. The setting must be one of the four totals (R/config_schema.R):
+#     the vegetation-only and ice-only parts appear only in A2.
 #
 # A2. Variant sensitivity. The variants in analysis$forcing$sensitivity_variants
 #     (config.R) are aggregated the same way and plotted side by side
@@ -222,6 +221,21 @@ modern$agent = factor(modern$agent, levels = modern$agent)
 cat('\nIPCC AR6 ERF 1750-2019 (W/m2, global mean):\n'); print(modern, digits = 3)
 
 # --- figures -----------------------------------------------------------------
+# Plain labels for the forcing variants, in this order: the sensitivity figure's legend,
+# and the line that names the headline's ice method on the headline figures (the current
+# and legacy configurations report different totals under the same file names). A variant
+# not listed keeps its column name. The headline is always one of the four totals
+# (R/config_schema.R), all listed here.
+variant_labels = c(veg_ice_thresh   = 'total, all-or-nothing ice, fixed glacier albedo',
+                   veg_thresh       = 'vegetation part, all-or-nothing ice',
+                   ice_thresh       = 'ice part, all-or-nothing ice',
+                   veg_ice_parts    = 'total, partial ice, fixed glacier albedo',
+                   veg_part         = 'vegetation part, partial ice',
+                   ice_part         = 'ice part, partial ice',
+                   veg_icesc_thresh = 'total, all-or-nothing ice, month-by-month glacier albedo',
+                   veg_icesc_parts  = 'total, partial ice, month-by-month glacier albedo')
+headline_line = paste('Ice method:', variant_labels[[cfg$analysis$forcing$variant]])
+
 # Layout matched to slide 18 of dawson_EGU.pptx (ppt/media/image37.png):
 # horizontal bars, two stacked panels sharing one x axis, panel labels in strips
 # on the right, bars coloured by sign with no legend, ggplot's default two-colour
@@ -281,7 +295,8 @@ ipcc$sign = ifelse(ipcc$value >= 0, 'pos', 'neg')
 # Stack the two panels, heights proportional to their row counts, and save.
 p_slide_lab = panel_plot(holocene_panel,  'time period (k years)', 'Holocene', FALSE, forcing_axis_limits) /
               panel_plot(ipcc, 'forcing agent',         'IPCC',     TRUE, forcing_axis_limits) +
-              plot_layout(heights = c(nrow(holocene_panel), nrow(ipcc)))
+              plot_layout(heights = c(nrow(holocene_panel), nrow(ipcc))) +
+              plot_annotation(subtitle = paste0(headline_line, ' (Holocene panel, HadGEM3 kernel)'))
 
 ggsave(path_figure(paths, 'forcing_barplot_slide18.pdf'), p_slide_lab, width = 8, height = 6)
 ggsave(path_figure(paths, 'forcing_barplot_slide18.png'), p_slide_lab, width = 8, height = 6, dpi = 150)
@@ -302,7 +317,8 @@ p_kern = ggplot(kernel_comparison, aes(x = label, y = value, fill = kernel)) +
                     labels = c(cack=kernel_rows['cack', 'label'], cam5=kernel_rows['cam5', 'label'],
                                hadgem=kernel_rows['hadgem', 'label']), name = NULL) +
   labs(title = if (mixed_sky) 'Kernel choice moves the answer by about a factor of two' else 'Forcing by kernel',
-       subtitle = if (mixed_sky) 'see C3 and C4; CACK is the only all-sky kernel of the three' else 'all three kernels all-sky; see C3 and C4',
+       subtitle = paste0(if (mixed_sky) 'see C3 and C4; CACK is the only all-sky kernel of the three' else 'all three kernels all-sky; see C3 and C4',
+                         '\n', headline_line),
        x = 'time period (k years)', y = expression('radiative forcing ('*W/m^2*')')) +
   theme_bw(base_size = 12) + theme(panel.grid.minor = element_blank())
 ggsave(path_figure(paths, 'forcing_barplot_kernel_spread.pdf'), p_kern, width = 8, height = 5)
@@ -312,21 +328,12 @@ ggsave(path_figure(paths, 'forcing_barplot_kernel_spread.pdf'), p_kern, width = 
 p_dom = ggplot(forcing_by_period %>% filter(kernel=='hadgem'), aes(x = period, y = domain_mean)) +
   geom_col(fill = 'grey55') + geom_hline(yintercept = 0, linewidth = 0.3) +
   labs(title = 'Domain mean over the study area',
-       subtitle = 'NOT comparable with global-mean IPCC ERF; see assumption A8',
+       subtitle = paste0('NOT comparable with global-mean IPCC ERF; see assumption A8\n', headline_line),
        x = NULL, y = expression('W'~m^-2)) +
   theme_bw(base_size = 11) + theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ggsave(path_figure(paths, 'forcing_barplot_domain_mean.pdf'), p_dom, width = 9, height = 5)
 
-# Sensitivity of the answer to the forcing variant (A1/A2).
-# Plain labels for the variants, in this order; a variant not listed keeps its column name.
-variant_labels = c(veg_ice_thresh   = 'total, all-or-nothing ice',
-                   veg_thresh       = 'vegetation part, all-or-nothing ice',
-                   ice_thresh       = 'ice part, all-or-nothing ice',
-                   veg_ice_parts    = 'total, partial ice',
-                   veg_part         = 'vegetation part, partial ice',
-                   ice_part         = 'ice part, partial ice',
-                   veg_icesc_thresh = 'total, all-or-nothing ice, month-by-month glacier albedo',
-                   veg_icesc_parts  = 'total, partial ice, month-by-month glacier albedo')
+# Sensitivity of the answer to the forcing variant (A1/A2), with the plain labels above.
 sens_plot = variant_sensitivity
 sens_plot$label = ifelse(sens_plot$variant %in% names(variant_labels),
                          variant_labels[sens_plot$variant], sens_plot$variant)

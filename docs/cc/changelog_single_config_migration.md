@@ -1201,3 +1201,61 @@ Re-reviews: both "ready to merge" (`2026-10-19_variant_components_{review,rerevi
 Verification: `2026-10-19_variant-components-4` (current, PASS) and
 `2026-10-19_variant-components-legacy` (legacy anchors, PASS). Follow-up decided by Chris: the
 headline setting is to accept totals only, done with the switch to partial ice.
+
+## Headline forcing: partial ice, and only a total may be the headline, 2026-10-19
+
+**Why.** Andria's email answer (passed on by Chris, 19 October; question C1): she split each
+cell's albedo between ice and vegetation by the fraction of the cell under ice. Chris confirmed
+that this partial-ice version is the paper's headline, with the all-or-nothing version (a cell
+is all ice above the 50% threshold) kept as a sensitivity check. After both reviewers of the
+variant-components fix pointed out that a vegetation-only or ice-only part could still be set
+as the headline, Chris also chose to accept only totals there.
+
+**What changed.**
+- `config.R`: `analysis$forcing$variant` is `veg_ice_parts` (was `veg_ice_thresh`); its comment
+  names the four legal totals. `configs/legacy_config.R` keeps `veg_ice_thresh`, as in the
+  original analysis.
+- `R/config_schema.R`: the headline must be one of `veg_ice_thresh`, `veg_icesc_thresh`,
+  `veg_ice_parts`, `veg_icesc_parts`; anything else stops with the legal values listed.
+  `tests/test_config.R` covers the new default, the legacy value, another total, and the
+  refusal of a part.
+- Script 9: the slide-18, kernel-spread and domain-mean figures name the ice method they show
+  ("Ice method: total, partial ice, fixed glacier albedo"), because the current and legacy
+  configurations now report different totals under the same file names (Chris chose a
+  subtitle rather than a table column, so the tables and the legacy anchors are untouched).
+  Comments corrected from the review: the four totals named; "fixed glacier albedo".
+- Scripts 9 and 10 follow the setting without other changes.
+
+**New headline** (full run of 18 October, scripts 9 and 10 rerun; HadGEM3 all-sky, study-area
+mean in W/m², global equivalent in W/m² in brackets; all-or-nothing values in the sensitivity
+figure):
+
+| Period | Partial ice (new headline) | All-or-nothing (before) |
+|---|---|---|
+| 0.05-0.5 ka | -0.692 (-0.0261) | -0.701 (-0.0264) |
+| 0.5-2 ka | -0.668 (-0.0252) | -0.664 (-0.0250) |
+| 2-4 ka | 0.489 (0.0184) | 0.487 (0.0184) |
+| 4-6 ka | -0.575 (-0.0217) | -0.626 (-0.0236) |
+| 6-8 ka | 1.102 (0.0415) | 1.048 (0.0395) |
+| 8-10 ka | 4.547 (0.1713) | 4.903 (0.1848) |
+| 10-12 ka | 4.429 (0.1669) | 4.274 (0.1611) |
+
+At 8-10 ka CAM5 gives 5.203 (0.1961) and CACK 4.049 (0.1526).
+
+**Outputs changed (current configuration).** `forcing_by_period.csv` and the three headline
+figures; script 10's breakdown table and figure (now of `veg_ice_parts`). The sensitivity, EGU
+recipe and IPCC tables are unchanged. **Legacy configuration:** all four script 9 tables still
+match `tests/anchors/interp-forcing-2026-10-08` byte for byte.
+
+**Note for existing run folders.** `forcing.variant` is an analysis setting, so script 9 stops
+in a run folder whose script 8 manifest records the old value: rerun script 8 there first (or
+set `run$allow_stale`).
+
+**Review and verification.** One reviewer (Chris's choice: no arithmetic changed): Opus,
+standing in for Fable, `2026-10-19_headline_partial_ice_review_opus.md`; ready to merge once the
+records were added, plus comment nits, all applied. Verification: `2026-10-19_headline-partial-ice`
+and `-legacy` (first run), then `-2` and `-legacy-2` after the comment fixes and subtitles (every
+table byte-identical to the first run; legacy anchors match): all PASS.
+
+**Open.** The `output/forcing/forcing_by_period.csv` tracked in git dates from September
+(e0ad29b) and is not today's headline; whether to refresh it or stop tracking it is to be asked.

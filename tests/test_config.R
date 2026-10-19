@@ -49,14 +49,14 @@ stopifnot(
 
   # the schema: unknown, missing and duplicated keys
   rejects("analysis\\$forcing has unknown key\\(s\\) kernel",  'earth_area_m2 = 5.101e14,', 'earth_area_m2 = 5.101e14, kernel = "cam5",'),
-  rejects("analysis\\$forcing is missing key\\(s\\) variant", 'variant = "veg_ice_thresh",', ''),
+  rejects("analysis\\$forcing is missing key\\(s\\) variant", 'variant = "veg_ice_parts",', ''),
   rejects("has earth_area_m2 more than once", 'earth_area_m2 = 5.101e14,', 'earth_area_m2 = 5.101e14, earth_area_m2 = 1,'),
   rejects("analysis\\$domain must be a list", 'domain = list(lon_min = -170, lat_min = 27, lat_max = 74, lon_max_coarse = -60),',
           'domain = c(50, 500),'),
   rejects("must be a value, not a list", 'earth_area_m2 = 5.101e14', 'earth_area_m2 = list(5.101e14)'),
   # illegal values
-  rejects("variant has 'veg_ice'; legal values", 'variant = "veg_ice_thresh"', 'variant = "veg_ice"'),
-  rejects("variant must be a single value", 'variant = "veg_ice_thresh"', 'variant = c("veg_thresh", "ice_thresh")'),
+  rejects("variant has 'veg_ice'; legal values", 'variant = "veg_ice_parts"', 'variant = "veg_ice"'),
+  rejects("variant must be a single value", 'variant = "veg_ice_parts"', 'variant = c("veg_thresh", "ice_thresh")'),
   rejects("report_kernels must not repeat", 'report_kernels = c("hadgem", "cam5", "cack")', 'report_kernels = c("hadgem", "cam5", "cam5")'),
   rejects("report_kernels must be text, not empty", 'report_kernels = c("hadgem", "cam5", "cack")', 'report_kernels = c()'),
   rejects("ages must be strictly increasing", '2000, 4000, 6000', '4000, 2000, 6000'),
@@ -142,11 +142,18 @@ stopifnot(
   rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = 1'),
   rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = c(TRUE, FALSE)'),
   rejects("run\\$allow_stale must be TRUE or FALSE", 'allow_stale = FALSE', 'allow_stale = NA'),
+  # the headline forcing (Chris, 2026-10-19): partial ice, the original all-or-nothing in
+  # the legacy file; only the four totals are accepted, never a vegetation or ice part
+  identical(cfg$analysis$forcing$variant, "veg_ice_parts"),
+  identical(load_config("configs/legacy_config.R")$analysis$forcing$variant, "veg_ice_thresh"),
+  identical(load_variant('variant = "veg_ice_parts"', 'variant = "veg_icesc_thresh"')$analysis$forcing$variant, "veg_icesc_thresh"),
+  rejects("forcing\\$variant has 'veg_thresh'", 'variant = "veg_ice_parts"', 'variant = "veg_thresh"'),
+  rejects("forcing\\$variant has 'ice_part'", 'variant = "veg_ice_parts"', 'variant = "ice_part"'),
   # unsupported combinations
   rejects("report_kernels must include hadgem", 'report_kernels = c("hadgem", "cam5", "cack")', 'report_kernels = c("cam5", "cack")'),
   # every problem is reported at once, not just the first
   rejects("variant has.*\n.*report_kernels must not repeat",
-          text = sub('"cam5", "cack")', '"cam5", "cam5")', sub('= "veg_ice_thresh"', '= "nope"', base_text, fixed = TRUE), fixed = TRUE))
+          text = sub('"cam5", "cack")', '"cam5", "cam5")', sub('variant = "veg_ice_parts"', 'variant = "nope"', base_text, fixed = TRUE), fixed = TRUE))
 )
 
 # JSON for the manifests: full precision, one-element vectors kept as arrays, names kept,
@@ -157,7 +164,7 @@ named <- list(a = c(`11500` = 12000), b = "hadgem", c = 0.123456789012345, d = c
 jn <- config_json(named)
 stopifnot(
   grepl('"earth_area_m2":[510100000000000]', j, fixed = TRUE),
-  grepl('"variant":["veg_ice_thresh"]', j, fixed = TRUE),
+  grepl('"variant":["veg_ice_parts"]', j, fixed = TRUE),
   identical(config_json(back), j),
   isTRUE(all.equal(back, cfg)),
   identical(jn, '{"a":{"11500":[12000]},"b":["hadgem"],"c":[0.123456789012345],"d":[-172,-50]}'),
