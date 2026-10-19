@@ -1094,10 +1094,14 @@ Magnitudes are 3 to 5 times larger and 8-10 ka changes sign. Since the
 recipe is now hers, the residual is in the **data**: the April 2024
 versions of `veg_posts_interp_ice.RDS` and the calibration tables are not
 in git (the only committed copy is the one you sent on 2026-09-18), and
-no intermediate table or figure was ever committed. **Could you send the
-land-cover posterior and calibration data as they were in April 2024, or
-the saved forcing table / figure file behind the slide?** Either would
-turn this into a direct diff.
+no intermediate table or figure was ever committed.
+**Answered (Andria, via Chris, 2026-10-19):** she no longer has the code and data behind the
+slide and does not want to reproduce it. The aim is to get the method right and produce results
+we are confident in, even if they differ from the slide. The differences above stay as a note
+only. For comparison, the vegetation part of the full run of 2026-10-18 (study-area mean,
+HadGEM3 all-sky, steps with ice at either end left out) is -0.70, -0.68, +0.48, -0.71, -0.51,
+-0.77 and +1.34 W/m² from 0.05-0.5 to 10-12 ka; the 6-8 and 8-10 ka bars have the opposite
+sign to the slide. Chris sent her that figure on 2026-10-19.
 
 The IPCC panel does match: CO2 2.16, methane 0.54, water vapour 0.05,
 albedo (land use) -0.20 and aerosols -1.06 are AR6 values and reproduce
@@ -1106,7 +1110,7 @@ the slide's x axis really is a global-mean W/m² scale shared by both
 panels. That is strong evidence for the global-equivalent reading of
 assumption A8.
 
-**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Express the regional effect as a global-equivalent flux (area-weighted, over Earth's area) for the IPCC comparison, and distinguish this direct albedo effect from IPCC effective radiative forcing. The rest of C5 (slide 18's numbers) stays open.
+**Decided 2026-10-14 (Chris, to be reviewed by Andria; a config switch, with the original as the legacy setting):** Express the regional effect as a global-equivalent flux (area-weighted, over Earth's area) for the IPCC comparison, and distinguish this direct albedo effect from IPCC effective radiative forcing. Slide 18's numbers: not pursued (Andria, 2026-10-19; see above).
 
 ### C6. Consecutive-slice differences and interval length
 Forcing is defined per consecutive pair of slices. The pairs span
