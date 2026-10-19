@@ -798,6 +798,17 @@ is computed with a fixed glacier albedo and with a scaled one, and script
 **What we need from you.** Which combination do the talk and paper
 report, and how different are the continental totals between them?
 
+**Measured 2026-10-19** (full run of 2026-10-18, commit 4ba4d2a; study-area mean, HadGEM3 all-sky,
+W/m²; from `forcing_by_period_variant_sensitivity.csv`), threshold against area-weighted mix, fixed
+glacier albedo: 6-8 ka 1.05 against 1.10; 8-10 ka 4.90 against 4.55 (-7%); 10-12 ka 4.27 against
+4.43 (+4%); after 6 ka within about 0.05. Chris asked (2026-10-19) whether the ice should be
+counted by fraction, like the water masking, rather than all-or-nothing at 50%.
+**Arithmetic checked 2026-10-19** (read-only, hand-made cells through `pair_albedo_differences()`,
+scratch script): the mixed variant equals the exact change of f·ice + (1-f)·vegetation albedo for
+retreat, advance, partial and full cases, to rounding. Algebraically its error is f_young·(ice
+albedo old − ice albedo young), which is zero because the glacier albedo depends on the month
+only. It uses the readvance-adjusted fractions, so question C2 applies to it as to the threshold.
+
 ### C2. Ice readvances are averaged away
 **What the code does.** Script 7a (lines 452-459) looks for cells where
 the ice fraction increases from an older to a younger slice, and replaces
