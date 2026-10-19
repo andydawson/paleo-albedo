@@ -137,11 +137,14 @@ list(
       # The kernels carried through, HadGEM3 first as the headline (A3; C3, C4).
       # Must include hadgem.
       report_kernels = c("hadgem", "cam5", "cack"),
-      # The variants compared in the sensitivity table and figure, HadGEM3 only (A2).
-      # veg_thresh and ice_thresh have missing values (no-ice cells); the
-      # aggregation drops them.
+      # The variants compared in the sensitivity table and figure, HadGEM3 only (A2):
+      # the totals, and both of Andria's vegetation/ice splits, each adding up to its
+      # total (veg_thresh + ice_thresh = veg_ice_thresh, by kind of step;
+      # veg_part + ice_part = veg_ice_parts, by area share). Script 9 gives a
+      # threshold component that does not apply 0, so mixed cells stay in.
       sensitivity_variants = c("veg_thresh", "ice_thresh", "veg_ice_thresh",
-                               "veg_icesc_thresh", "veg_ice_parts", "veg_icesc_parts"),
+                               "veg_part", "ice_part", "veg_ice_parts",
+                               "veg_icesc_thresh", "veg_icesc_parts"),
       # Script 10: the width of the latitude bands its breakdown uses, degrees (bands
       # start at multiples of it; the outer two are cut at the domain's limits). Shapes a
       # breakdown only, never a total (Chris, 2026-10-15, question B2d).
