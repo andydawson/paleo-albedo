@@ -1161,3 +1161,43 @@ forcing and says nothing by itself about snow; the snow estimate is the next ste
 
 **Outputs.** Script 9's four tables are unchanged (anchor `interp-forcing-2026-10-08`); one new
 table and one figure.
+
+## Vegetation-only and ice-only bars add up (script 9 sensitivity figure), 2026-10-19
+
+**The error (ours, not Andria's).** Script 9, written on 2026-09-21, sums each forcing column over
+a period's slice-pairs with missing values counted as missing. The threshold components
+(`veg_thresh`, `ice_thresh`) are missing by design for the kind of step they do not describe
+(`R/differences.R`), so a cell with both kinds of step in a period dropped out of both bars: at
+8-10 ka, 343 cells carrying 99% of the total. Found by Opus on 2026-10-18 and confirmed by Astra
+(`2026-10-18_forcing_code_check_codex_gpt6astra.md`). The headline was computed separately and was
+never affected.
+
+**The fix (Chris, 2026-10-19).** With the corrected arithmetic (`difference_method = "endpoint"`),
+a step's part that does not apply counts as 0 when the step's total is known ("by kind of step":
+ice change if ice at either end, otherwise vegetation change), so the two parts add up to the
+total. `R/forcing_components.R` (new, tested in `tests/test_forcing_components.R`); script 9
+applies it to a copy used only for the sensitivity table. Andria's area-share split (`veg_part`,
+`ice_part`) is added to the figure, so it shows both splits, each with its total; which split the
+paper reports waits for her (question C1). The figure has plain labels: totals and their parts.
+
+**Legacy configuration unchanged (Chris).** With `legacy_components` the helper returns the table
+untouched: the original arithmetic breaks the one-kind-per-step rule in 108 rows of 9 cells (the 3
+ice advances recorded as no change, and the 6 double counts), and the legacy configuration exists
+to reproduce the original outputs. All four script 9 tables still match
+`tests/anchors/interp-forcing-2026-10-08` byte for byte; only the figure's labels differ.
+
+**Outputs changed (current configuration only).** `forcing_by_period_variant_sensitivity.csv` and
+its figure. Example, HadGEM3 study-area mean, 8-10 ka: vegetation -0.77 and ice +5.67 W/m² (total
+4.90) by kind of step; -0.75 and +5.30 (total 4.55) by area share. The headline table, the EGU
+recipe and the IPCC tables are byte-identical to the 18 October run.
+
+**Note for existing run folders.** `analysis$forcing$sensitivity_variants` changed, so script 9
+stops on a run folder whose script 8 manifest records the old settings: rerun script 8 there
+first (or set `run$allow_stale`).
+
+**Reviews and verification.** First version: Opus (standing in for Fable, whose usage limit was
+reached) and Astra independently found the legacy stop, plus smaller points; all applied.
+Re-reviews: both "ready to merge" (`2026-10-19_variant_components_{review,rereview}_{opus,codex_gpt6astra}.md`).
+Verification: `2026-10-19_variant-components-4` (current, PASS) and
+`2026-10-19_variant-components-legacy` (legacy anchors, PASS). Follow-up decided by Chris: the
+headline setting is to accept totals only, done with the switch to partial ice.
