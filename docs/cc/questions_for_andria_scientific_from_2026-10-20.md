@@ -117,3 +117,40 @@ cover mixes have no close modern counterparts. Checks are under way.*
 7. **Would a snow-aware estimate built from albedo per cover class** (evergreen, deciduous, open;
    snowy and snow-free) be enough as a comparison for the paper, or should it replace the model if
    the model's cover effect stays unstable?
+
+## 3. The rebuilt satellite albedo: choices made, and questions still open
+
+*From the two independent reviews of the rebuilt MODIS albedo (20 October). Chris decided the
+following on 20 October; they replace the wording in the earlier file (question on snow in the
+satellite albedo), which said the land rule follows NASA's processing and that "no minimum" follows
+published climatologies; both reviews found those statements wrong.*
+
+**Decided (for your review).**
+- A pixel counts as land if the product labels it land on more than half of the days it has a
+  reading (2000-2009). Days without a retrieval are blank and are ignored. Keeping only land pixels is
+  our choice: NASA also processes coastlines and shallow water.
+- Days when the noon sun is more than 75 degrees from overhead are left out (as Jia et al. 2022 do);
+  versions with 70 degrees (NASA's guidance that values beyond 70 are suspect) and with no cut-off are
+  kept for comparison. Your raster shows no such cut-off: its winter values reach the north as far as a
+  noon sun 80-85 degrees from overhead.
+- Snow: the product's own daily snow flag. The build keeps snowy, snow-free and unknown-snow day
+  totals so that the snowy and snow-free albedo mix back exactly to the all-days value.
+- Averaging: within each year, the mean over all usable land pixel-days of the cell; then the years
+  weighted equally. A mean, not a median, because forcing is linear in albedo (our judgement).
+
+**Open questions.**
+1. **Shoreline pixels.** The product labels pixels touching a lake shore or coastline as a separate
+   class. Should they count as land? They contain some water (darker), but in lake country they are a
+   large part of the land: on one Minnesota-Ontario tile, 18% of the pixels with readings are mostly
+   labelled shoreline. The build will keep both options open until you decide.
+2. **What should "today's snow share" mean?** The share of usable satellite retrievals flagged snowy
+   (what the build gives, which depends on cloud, quality and sun-angle screening), or a snow fraction
+   defined independently (for example from a snow-cover product)?
+3. **Noon albedo.** The calibration albedo is the blue-sky albedo at local solar noon. Is that the right
+   input for the monthly radiative kernels, or should it be weighted by the day's sunlight?
+4. **Minimum coverage.** Should a cell-month need a minimum share of its land observed before it is
+   used in the calibration? In July 2005, 30% of cells had full-quality retrievals for under 90% of
+   their land (mostly Alaska and south of 30 N), and there the full-quality and any-quality values
+   differ by 0.014-0.020 on average.
+5. **Days with unknown snow status.** If some days have albedo but no snow flag, keep them in the
+   all-days value (current) or leave them out so the two-part snow mix is exact?
