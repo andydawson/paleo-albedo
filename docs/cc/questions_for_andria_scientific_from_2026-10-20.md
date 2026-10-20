@@ -78,3 +78,28 @@ outside the range of today's mixes.
 mixed conifer-deciduous cover before? Do you know whether your albedo
 raster excluded water? And do you agree that the hemlock decline should
 give a brighter surface, and so cooling, in this region?
+
+## 2. Questions raised by the independent review of the hemlock result
+
+*From Astra's interpretation of the northeast result, 20 October
+(`2026-10-20_northeast_cover_effect_interpretation_codex_gpt6astra.md`). Its leading explanation:
+in today's data, evergreen share follows latitude so closely that the model cannot tell the effect
+of evergreen cover apart from the effect of being further north (colder, snowier); and the 4.5 ka
+cover mixes have no close modern counterparts. Checks are under way.*
+
+1. **What should the vegetation forcing represent?** The effect of past vegetation under today's
+   climate and snow, or the total albedo change including past changes in snow? The model has no
+   input for past snow.
+2. **Which modern observations best show hemlock being replaced by deciduous forest in the
+   northeast?** We would use them to test the direction of the model's effect.
+3. **What do the pollen-based cover fractions measure:** share of land area, of vegetated area, or
+   canopy cover? And how should shrubs map onto satellite land-cover classes?
+4. **Which years does the "modern" (50 BP) vegetation slice represent,** and is it a fair match for
+   satellite albedo from 2000-2009?
+5. **Was taking the albedo at the cell centre deliberate?** Could the rebuilt land-only cell averages
+   become the calibration albedo instead?
+6. **Past cover mixes with no modern counterpart:** should their forcing be left out, given as a
+   bounded range, or shown separately as unsupported?
+7. **Would a snow-aware estimate built from albedo per cover class** (evergreen, deciduous, open;
+   snowy and snow-free) be enough as a comparison for the paper, or should it replace the model if
+   the model's cover effect stays unstable?
