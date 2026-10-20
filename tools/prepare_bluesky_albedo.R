@@ -517,36 +517,50 @@ build_tag = function(file, name = 'paleoRF_build') {
 }
 
 # What is wrong with a monthly file, if anything (an empty result means it is usable). It must
-# open, have our layers and settings tag, lie on its tile's grid, and every layer must read in
-# full and obey what the reduction guarantees: counts are whole and non-negative; snowy plus
-# snow-free days are at most all days; a sum of albedos lies between 0 and its number of days
-# (albedo is in 0-1); land and shoreline days are at most the days with a class; and the versions
-# nest (a stricter version never keeps more days). A file failing any of this is not accepted, so
-# its day files are not deleted.
+# open, have our layers and settings tag, be on the MODIS sinusoidal grid of its tile, and every
+# layer must read in full and obey what the reduction guarantees: counts are whole, non-negative
+# and at most the days of the month the build uses (max_days); snowy plus snow-free days are at
+# most all days; a sum of albedos lies between 0 and its number of days (albedo is in 0-1), and
+# so does the rest of the "all" sum once the snowy and snow-free sums are taken out (the days of
+# unknown snow status); land and shoreline days are at most the days with a class; and the
+# versions nest (a stricter version never keeps more days). A file failing any of this is not
+# accepted, so its day files are not deleted.
 tile_of = function(file) sub('_.*', '', basename(file))
-output_problems = function(file, tag = SETTINGS_TAG, template = tile_template(tile_of(file))) {
+# The number of days a monthly file can count, from its name (<tile>_<year>_<month>[.tmp].tif):
+# the days of that month the build uses (27 in March 2000, which starts on the 5th); 31 otherwise.
+days_of_file = function(file) {
+  m = regmatches(basename(file), regexec('_(\\d{4})_(\\d{2})(\\.tmp)?\\.tif$', basename(file)))[[1]]
+  if (!length(m)) return(31)
+  length(month_days(as.Date(sprintf('%s-%s-01', m[2], m[3]))))
+}
+output_problems = function(file, tag = SETTINGS_TAG, template = tile_template(tile_of(file)), max_days = days_of_file(file)) {
   r = tryCatch(rast(file), error = function(e) NULL)
   if (is.null(r)) return('cannot be opened')
   if (!identical(names(r), TILE_LAYERS)) return('does not have the expected layers')
   if (!identical(build_tag(file), tag)) return('was made with other settings')
+  if (!grepl('Sinusoidal', crs(r)) || !grepl('6371007.181', crs(r))) return('is not on the MODIS sinusoidal projection')
   if (nrow(r) != nrow(template) || ncol(r) != ncol(template) ||
       max(abs(as.vector(ext(r)) - as.vector(ext(template)))) > 0.01) return('is not on its tile grid')
   tryCatch({
     get = function(name) values(r[[name]], mat = FALSE)
-    whole = function(x) all(is.finite(x) & x >= 0 & x == round(x))
+    whole = function(x) all(is.finite(x) & x >= 0 & x == round(x) & x <= max_days)
     within = function(s, n) all(is.finite(s) & s >= -1e-4 & s <= n * (1 + 1e-6) + 1e-4)  # float32 sums
     problems = character(0)
     n_all = list()
     for (v in VERSIONS$name) {
       x = setNames(lapply(paste(v, SUMS, sep = '_'), get), SUMS)
-      if (!whole(x$n_all) || !whole(x$n_snow) || !whole(x$n_free)) problems = c(problems, paste(v, 'counts not whole and non-negative'))
+      if (!whole(x$n_all) || !whole(x$n_snow) || !whole(x$n_free))
+        problems = c(problems, paste(v, 'counts not whole, non-negative and at most', max_days, 'days'))
       if (any(x$n_snow + x$n_free > x$n_all)) problems = c(problems, paste(v, 'snowy plus snow-free days exceed all days'))
       if (!within(x$s_all, x$n_all) || !within(x$s_snow, x$n_snow) || !within(x$s_free, x$n_free))
         problems = c(problems, paste(v, 'albedo sums outside 0 to their number of days'))
+      if (!within(x$s_all - x$s_snow - x$s_free, x$n_all - x$n_snow - x$n_free))
+        problems = c(problems, paste(v, 'unknown-snow sum outside 0 to its number of days'))
       n_all[[v]] = x$n_all
     }
     land = get('land_days'); shore = get('shore_days'); read = get('read_days')
-    if (!whole(land) || !whole(shore) || !whole(read)) problems = c(problems, 'land, shoreline or class days not whole and non-negative')
+    if (!whole(land) || !whole(shore) || !whole(read))
+      problems = c(problems, paste('land, shoreline or class days not whole, non-negative and at most', max_days, 'days'))
     if (any(land + shore > read)) problems = c(problems, 'land plus shoreline days exceed the days with a class')
     if (any(n_all$full_70 > n_all$full_75) || any(n_all$full_75 > n_all$full_nocut) || any(n_all$full_75 > n_all$any_75))
       problems = c(problems, 'the versions do not nest')

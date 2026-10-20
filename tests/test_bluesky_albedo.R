@@ -226,7 +226,8 @@ WORK_DIR <- "data/modis_albedo"
 tpl <- rast(nrows = 40, ncols = 40, crs = SIN_CRS, extent = ext(0, 40 * 463.3127, 0, 40 * 463.3127))
 consistent <- function() {
   set.seed(1)
-  n_all <- sample(0:31, ncell(tpl), replace = TRUE); n_snow <- floor(n_all / 3); n_free <- n_all - n_snow - (n_all > 5)
+  n_all <- sample(0:30, ncell(tpl), replace = TRUE)     # 0-30: room for one more day within 31
+  n_snow <- floor(n_all / 3); n_free <- n_all - n_snow - (n_all > 5)
   a <- runif(ncell(tpl), 0.05, 0.9)
   vals <- list(n_all = n_all, n_snow = n_snow, n_free = n_free, s_all = n_all * a, s_snow = n_snow * a, s_free = n_free * a)
   layers <- c(unlist(lapply(VERSIONS$name, function(v) setNames(vals, paste(v, SUMS, sep = "_"))), recursive = FALSE),
@@ -243,6 +244,12 @@ r <- consistent(); r[["full_75_n_snow"]] <- r[["full_75_n_all"]] + 1; bad_layer 
 r <- consistent(); r[["full_70_n_all"]] <- r[["full_70_n_all"]] + 1; r[["full_70_n_free"]] <- r[["full_70_n_free"]] + 1
 not_nested <- write_tile(r, "not_nested.tif")
 r <- consistent(); r[["any_75_s_free"]] <- r[["any_75_n_free"]] + 0.5; too_bright <- write_tile(r, "too_bright.tif")
+# Snowy sums at their largest possible value (albedo 1 on every snowy day): each sum is within its
+# own bounds, but the "all" sum no longer leaves room for them, so the unknown-snow part is negative.
+r <- consistent(); r[["full_nocut_s_snow"]] <- r[["full_nocut_n_snow"]]
+unknown_negative <- write_tile(r, "unknown_negative.tif")
+r <- consistent(); r[["read_days"]] <- r[["read_days"]] + 10; too_many_days <- write_tile(r, "h00v00_2005_07.tif")  # 41 > 31 days
+wrong_crs <- { r <- consistent(); crs(r) <- "EPSG:4326"; write_tile(r, "wrong_crs.tif") }
 cut_short <- file.path(tmp, "cut.tif"); writeBin(readBin(good, "raw", file.size(good))[1:floor(0.9 * file.size(good))], cut_short)
 other_grid <- rast(nrows = 40, ncols = 40, crs = SIN_CRS, extent = ext(463.3127, 41 * 463.3127, 0, 40 * 463.3127))
 # The July 2005 shortcut (zenith taken as 0) has a tag of its own, so its files are never reused
@@ -256,9 +263,14 @@ stopifnot(valid_output(good, template = tpl),
           problem(old_tag, template = tpl) == "was made with other settings",
           grepl("full_75 snowy plus snow-free days exceed all days", problem(bad_layer, template = tpl)),
           problem(not_nested, template = tpl) == "the versions do not nest",
-          problem(too_bright, template = tpl) == "any_75 albedo sums outside 0 to their number of days",
+          grepl("any_75 albedo sums outside 0 to their number of days", problem(too_bright, template = tpl)),   # and its unknown part goes negative
           !valid_output(cut_short, template = tpl),       # GDAL loses the trailing names or the data
-          problem(good, template = other_grid) == "is not on its tile grid")
+          problem(good, template = other_grid) == "is not on its tile grid",
+          problem(unknown_negative, template = tpl) == "full_nocut unknown-snow sum outside 0 to its number of days",
+          problem(too_many_days, template = tpl) == "land, shoreline or class days not whole, non-negative and at most 31 days",
+          days_of_file("h11v04_2000_03.tif") == 27, days_of_file("h11v04_2000_03.tmp.tif") == 27,
+          days_of_file("h11v04_2004_02.tif") == 29, days_of_file("good.tif") == 31,
+          problem(wrong_crs, template = tpl) == "is not on the MODIS sinusoidal projection")
 
 # End to end, cell step: small monthly files for two "tiles" and two years -> land vote -> tile
 # totals -> cell table. Cell A (10.5, 0.5) spans both tiles: pixel p (tile 1) has 0.15 in 2005 and
