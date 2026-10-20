@@ -1,9 +1,13 @@
 # prepare_bluesky_albedo.R: monthly blue-sky albedo, 2000-2009, over the land part of each
-# 1-degree cell, built from the MODIS daily albedo. Run once, from the repository root,
-# after tools/download_era5_radiation.R:
+# 1-degree cell, built from the MODIS daily albedo as delivered by NASA's AppEEARS service.
+# Run once, from the repository root, after tools/download_era5_radiation.R, in steps that
+# are repeated month by month (see "How the build runs" below):
 #
-#   Rscript tools/prepare_bluesky_albedo.R            # everything (restartable)
-#   Rscript tools/prepare_bluesky_albedo.R test       # one tile and one month, as a check
+#   Rscript tools/prepare_bluesky_albedo.R requests 2005-08 2005-09   # request files for those months
+#   Rscript tools/prepare_bluesky_albedo.R collect                    # check and file the downloads
+#   Rscript tools/prepare_bluesky_albedo.R build                      # reduce them to monthly files
+#   Rscript tools/prepare_bluesky_albedo.R cells                      # the cell table, at the end
+#   Rscript tools/prepare_bluesky_albedo.R test h11v04                # July 2005 check (see below)
 #
 # It writes data/albedo_modis_cells.csv (committed), which script 2 reads when config.R
 # chooses the rebuilt albedo; Andria's raster data/blue_sky_monthly_2000-2009.tif stays the
@@ -35,15 +39,33 @@
 #                have equal area, so a plain mean is the area mean; Oleson et al. 2003,
 #                doi:10.1029/2002GL016749, aggregate MODIS albedo by area).
 #
-# Needs a NASA Earthdata login in ~/.netrc ("machine urs.earthdata.nasa.gov login ...
-# password ..."). Each tile and month is downloaded into data/modis_albedo/staging/,
-# reduced to one monthly file in data/modis_albedo/monthly/, and the downloaded day files
-# are then deleted, so the disk never holds more than a few tile-months of raw data. A
-# tile-month whose monthly file exists is skipped, so the script can be rerun after an
-# interruption. Nothing under data/modis_albedo/ or data/era5/ is committed.
+# How the build runs. AppEEARS cuts the six layers the build uses out of NASA's MODIS files
+# for the study area and returns one GeoTIFF per layer and day on the MODIS sinusoidal grid,
+# about 11 GB a month. Its scripted access has refused Chris's login since 2026-10-16, so
+# requests and downloads go through the AppEEARS website, driven with Claude in Chrome (Chris,
+# 2026-10-20); Chris stays signed in, and approves each batch of submissions and downloads:
+#   1. "requests" writes one request file per month to data/modis_albedo/requests/.
+#   2. On https://appeears.earthdatacloud.nasa.gov: Extract -> Area Sample -> "Upload a request
+#      file" (on the options page, before the form), then submit.
+#   3. When it has finished: Explore -> the request's download page -> every file, into
+#      ~/Downloads.
+#   4. "collect" checks every downloaded GeoTIFF against the request's SHA-256 list and moves
+#      the month into data/modis_albedo/appeears/<year-month>/.
+#   5. "build" reduces each collected month, tile by tile, to data/modis_albedo/monthly/
+#      <tile>_<year>_<month>.tif, then deletes that month's day files, so the disk holds only
+#      the months waiting to be built (about 11 GB each).
+#   6. Once every month is built, "cells" writes the cell table.
+# Every step can be rerun: requests are not written for months already collected or built, a
+# month already collected is not collected again, and a tile-month whose file exists is skipped.
+#
+# "test" builds July 2005 from data/modis_albedo/appeears_full_2005-07/ (downloaded 2026-10-19,
+# requested before the noon solar zenith layer was added, so the 70-degree rule is not applied;
+# the July noon sun is everywhere within 61 degrees of the zenith) into
+# data/modis_albedo/test_appeears/, to compare with the tile built from NASA's original files on 2026-10-17 by the first version of this
+# script (commit e97ec44), and, with "test all", with Andria's raster. Nothing under
+# data/modis_albedo/ or data/era5/ is committed.
 
 library(terra)
-library(curl)
 library(jsonlite)
 
 # --- settings ------------------------------------------------------------------------------
@@ -58,6 +80,18 @@ FULL_QA     = c(0, 2, 4, 6)                      # full inversions (odd codes ar
 MAX_ZENITH  = 70
 LAND_CLASS  = 1
 STREAMS     = c('full_all', 'full_snowfree', 'full_snowy', 'any_all', 'any_snowfree', 'any_snowy')
+
+APPEEARS_DIR = file.path(WORK_DIR, 'appeears')  # collected months, one folder each
+DOWNLOADS   = path.expand('~/Downloads')         # where the browser saves the AppEEARS files
+
+# The layers, as AppEEARS names its files (<product>_<layer>), with their scale and fill.
+LAYERS = data.frame(
+  name  = c('bsa', 'wsa', 'qa', 'snow', 'sza', 'land'),
+  file  = c('MCD43A3.061_Albedo_BSA_shortwave', 'MCD43A3.061_Albedo_WSA_shortwave',
+            'MCD43A3.061_BRDF_Albedo_Band_Mandatory_Quality_shortwave', 'MCD43A2.061_Snow_BRDF_Albedo',
+            'MCD43A2.061_BRDF_Albedo_LocalSolarNoon', 'MCD43A2.061_BRDF_Albedo_LandWaterType'),
+  scale = c(0.001, 0.001, 1, 1, 1, 1),
+  fill  = c(32767, 32767, 255, 255, 255, 255))
 
 # --- the sinusoidal grid ------------------------------------------------------------------
 # MODIS tiles: 36 x 18 tiles of 2,400 x 2,400 pixels on a sphere of radius 6,371,007.181 m.
@@ -87,56 +121,90 @@ tiles_for_cells = function(cells) {
   sort(unique(sprintf('h%02dv%02d', floor((xy[, 1] - X0) / TILE_SIZE), floor((Y0 - xy[, 2]) / TILE_SIZE))))
 }
 
-# --- finding and downloading the day files --------------------------------------------------
-# NASA's Common Metadata Repository lists every file with its download link; no login needed.
-granule_urls = function(product, tile, days) {
-  q = sprintf(paste0('https://cmr.earthdata.nasa.gov/search/granules.json?short_name=%s&version=061',
-                     '&temporal=%sT00:00:00Z,%sT23:59:59Z&page_size=2000',
-                     '&readable_granule_name=%s.*.%s.*&options[readable_granule_name][pattern]=true'),
-              product, min(days) - 16, max(days) + 16, product, tile)
-  entries = fromJSON(rawToChar(curl_fetch_memory(q)$content), simplifyVector = FALSE)$feed$entry
-  want = sprintf('%s.A%s.%s.', product, format(days, '%Y%j'), tile)
-  urls = setNames(rep(NA_character_, length(days)), want)
-  for (e in entries) {
-    hit = which(startsWith(e$producer_granule_id, want))
-    if (!length(hit)) next
-    href = vapply(e$links, function(l) l$href, '')
-    href = href[grepl('^https://.*\\.hdf$', href)]
-    if (length(href)) urls[hit] = href[1]
-  }
-  urls
+# --- AppEEARS requests and downloads --------------------------------------------------------
+task_name = function(month) paste0('paleoRF_MCD43_', format(month, '%Y-%m'))
+
+# The request area: the box around the cells' outlines, its edges given every half degree so
+# that the box keeps its shape when AppEEARS projects it to the sinusoidal grid.
+request_area = function(cells) {
+  x = c(min(cells$x) - 0.5, max(cells$x) + 0.5); y = c(min(cells$y) - 0.5, max(cells$y) + 0.5)
+  sx = seq(x[1], x[2], by = 0.5); sy = seq(y[1], y[2], by = 0.5)
+  ring = rbind(cbind(sx, y[1]), cbind(x[2], sy[-1]), cbind(rev(sx)[-1], y[2]), cbind(x[1], rev(sy)[-1]))
+  unname(ring)                                   # closed: the last point is the first
 }
 
-earthdata_handle = function(cookies) {
-  new_handle(netrc = 1L, followlocation = 1L, unrestricted_auth = 1L,
-             cookiefile = cookies, cookiejar = cookies)
+# One month's request file, in the form AppEEARS's "Upload a request file" accepts.
+write_request = function(month, ring) {
+  last = seq(month, by = 'month', length.out = 2)[2] - 1
+  request = list(
+    task_type = 'area', task_name = task_name(month),
+    params = list(
+      dates  = list(list(startDate = format(max(month, FIRST_DAY), '%m-%d-%Y'),
+                         endDate = format(min(last, LAST_DAY), '%m-%d-%Y'))),
+      layers = lapply(LAYERS$file, function(f) list(product = sub('_.*', '', f), layer = sub('^[^_]*_', '', f))),
+      output = list(format = list(type = 'geotiff'), projection = 'native'),
+      geo = list(type = 'FeatureCollection', features = list(list(
+        type = 'Feature', properties = setNames(list(), character(0)),
+        geometry = list(type = 'Polygon', coordinates = list(ring)))))))
+  file = file.path(WORK_DIR, 'requests', paste0(task_name(month), '.json'))
+  dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
+  write_json(request, file, auto_unbox = TRUE, digits = NA, pretty = TRUE)
+  file
 }
 
-download_files = function(urls, dir, cookies) {
-  dest = file.path(dir, basename(urls))
-  for (i in seq_along(urls)) {
-    if (is.na(urls[i]) || file.exists(dest[i])) next
-    for (attempt in 1:5) {
-      ok = !inherits(try(curl_download(urls[i], dest[i], handle = earthdata_handle(cookies), quiet = TRUE),
-                         silent = TRUE), 'try-error')
-      if (ok && file.size(dest[i]) > 1e6) break
-      if (file.exists(dest[i])) file.remove(dest[i])
-      Sys.sleep(10 * attempt)
+# Moves each finished month from the browser's download folder into APPEEARS_DIR, once every
+# GeoTIFF on the request's SHA-256 list ("<task name without underscores>-sha256sums.txt",
+# as AppEEARS names it) is there and matches. A copy the browser saved twice ("name (1).tif")
+# is left where it is.
+collect_downloads = function() {
+  lists = list.files(DOWNLOADS, pattern = '^paleoRFMCD43\\d{4}-\\d{2}-sha256sums\\.txt$', full.names = TRUE)
+  if (!length(lists)) cat('no request checksum lists in', DOWNLOADS, '\n')
+  for (l in lists) {
+    month = sub('^paleoRFMCD43(\\d{4}-\\d{2}).*', '\\1', basename(l))
+    dest = file.path(APPEEARS_DIR, month)
+    if (dir.exists(dest)) { cat(month, ': already collected\n'); next }
+    sums = read.table(l, col.names = c('sha256', 'file'), colClasses = 'character')
+    sums = sums[grepl('\\.tif$', sums$file), ]
+    here = file.path(DOWNLOADS, sums$file)
+    if (!all(file.exists(here))) {
+      cat(month, ':', sum(!file.exists(here)), 'of', nrow(sums), 'files not downloaded yet\n'); next
     }
-    if (!file.exists(dest[i])) stop('could not download ', urls[i])
+    got = vapply(here, function(f) as.character(openssl::sha256(file(f))), '')
+    if (any(got != sums$sha256))
+      stop(month, ': ', sum(got != sums$sha256), ' files differ from their SHA-256, e.g. ',
+           sums$file[got != sums$sha256][1], '; download them again')
+    dir.create(dest, recursive = TRUE)
+    if (!all(file.rename(c(here, l), file.path(dest, c(sums$file, basename(l))))))
+      stop(month, ': could not move the files into ', dest)
+    cat(month, ':', nrow(sums), 'files checked and moved to', dest, '\n')
   }
-  ifelse(is.na(urls), NA_character_, dest)
 }
 
 # --- reading one day ----------------------------------------------------------------------
-# A layer of an HDF4-EOS file, as plain numbers: fill values become NA, the scale factor is
+# The file of each layer for each day (rows: days, columns: LAYERS$name), NA where AppEEARS
+# sent none: on a day with no MODIS file there is no output file either.
+day_files = function(day_dir, days) {
+  present = list.files(day_dir, pattern = '\\.tif$')
+  do.call(cbind, setNames(lapply(LAYERS$file, function(l) {
+    f = sprintf('%s_doy%s000000_aid0001.tif', l, format(days, '%Y%j'))
+    ifelse(f %in% present, file.path(day_dir, f), NA_character_)
+  }), LAYERS$name))
+}
+
+# One layer of one day, cut out of AppEEARS's study-area mosaic for one tile, as plain
+# numbers: the mosaic is on the MODIS grid itself, so the tile is a whole-pixel window of it
+# (pixels outside the request area are NA). Fill values become NA, and the scale factor is
 # applied here rather than by GDAL so that nothing is applied twice.
-read_layer = function(file, layer, scale = 1, fill) {
-  r = rast(sprintf('HDF4_EOS:EOS_GRID:"%s":MOD_Grid_BRDF:%s', file, layer))
+read_layer = function(file, template, name) {
+  r = rast(file)
+  if (!grepl('Sinusoidal', crs(r)) || !grepl('6371007.181', crs(r))) stop(file, ' is not on the MODIS sinusoidal grid')
   scoff(r) = cbind(1, 0)
+  r = crop(r, ext(template), snap = 'near', extend = TRUE)
+  if (nrow(r) != nrow(template) || ncol(r) != ncol(template) ||
+      max(abs(as.vector(ext(r)) - as.vector(ext(template)))) > 0.01) stop(file, ': the tile window is not whole pixels')
   v = values(r, mat = FALSE)
-  v[v == fill] = NA
-  v * scale
+  v[v == LAYERS$fill[LAYERS$name == name]] = NA
+  v * LAYERS$scale[LAYERS$name == name]
 }
 
 # --- the diffuse fraction from ERA5 ---------------------------------------------------------
@@ -172,15 +240,15 @@ diffuse_fraction = function(era5, lon, lat, date) {
 }
 
 # --- one tile and one month -----------------------------------------------------------------
-process_tile_month = function(tile, month, cookies) {
-  out = file.path(WORK_DIR, 'monthly', sprintf('%s_%s.tif', tile, format(month, '%Y_%m')))
+# need_zenith = FALSE only for the July 2005 test (see the header).
+process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE) {
+  out = file.path(out_dir, sprintf('%s_%s.tif', tile, format(month, '%Y_%m')))
   if (file.exists(out)) return(out)
   days = seq(month, seq(month, by = 'month', length.out = 2)[2] - 1, by = 'day')
   days = days[days >= FIRST_DAY & days <= LAST_DAY]
-  staging = file.path(WORK_DIR, 'staging', paste(tile, format(month, '%Y_%m'), sep = '_'))
-  dir.create(staging, recursive = TRUE, showWarnings = FALSE)
-  a3 = download_files(granule_urls('MCD43A3', tile, days), staging, cookies)
-  a2 = download_files(granule_urls('MCD43A2', tile, days), staging, cookies)
+  files = day_files(day_dir, days)
+  needed = if (need_zenith) LAYERS$name else setdiff(LAYERS$name, 'sza')
+  if (need_zenith && all(is.na(files[, 'sza']))) stop('no noon solar zenith files in ', day_dir)
 
   template = tile_template(tile)
   ll = pixel_lonlat(template)
@@ -192,13 +260,14 @@ process_tile_month = function(tile, month, cookies) {
   days_n = sums
   land = NULL
   for (d in seq_along(days)) {
-    if (is.na(a3[d]) || is.na(a2[d])) next          # a day with no file counts as no data
-    bsa  = read_layer(a3[d], 'Albedo_BSA_shortwave', 0.001, 32767)
-    wsa  = read_layer(a3[d], 'Albedo_WSA_shortwave', 0.001, 32767)
-    qa   = read_layer(a3[d], 'BRDF_Albedo_Band_Mandatory_Quality_shortwave', 1, 255)
-    snow = read_layer(a2[d], 'Snow_BRDF_Albedo', 1, 255)
-    sza  = read_layer(a2[d], 'BRDF_Albedo_LocalSolarNoon', 1, 255)
-    if (is.null(land)) land = read_layer(a2[d], 'BRDF_Albedo_LandWaterType', 1, 255) == LAND_CLASS
+    if (anyNA(files[d, needed])) next                # a day with no file counts as no data
+    get  = function(name) read_layer(files[d, name], template, name)
+    bsa  = get('bsa')
+    wsa  = get('wsa')
+    qa   = get('qa')
+    snow = get('snow')
+    sza  = if (need_zenith) get('sza') else rep(0, ncell(template))
+    if (is.null(land)) land = get('land') == LAND_CLASS
     f = diffuse_fraction(era5, ll[, 1], ll[, 2], days[d])
     blue = (1 - f) * bsa + f * wsa
     usable = !is.na(blue) & !is.na(qa) & qa <= 7 & !is.na(sza) & sza <= MAX_ZENITH & land %in% TRUE
@@ -217,8 +286,17 @@ process_tile_month = function(tile, month, cookies) {
   names(r) = c(STREAMS, paste0('days_', STREAMS), 'land')
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   writeRaster(r, out, gdal = 'COMPRESS=DEFLATE', datatype = 'FLT4S')
-  unlink(staging, recursive = TRUE)                  # the raw day files are no longer needed
   out
+}
+
+# Every tile of one month, WORKERS at a time; stops if any failed (rerunning retries them).
+build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
+  done = parallel::mclapply(tiles, function(tile)
+    tryCatch(process_tile_month(tile, month, day_dir, out_dir, need_zenith),
+             error = function(e) paste('FAILED', tile, conditionMessage(e))),
+    mc.cores = WORKERS, mc.preschedule = FALSE)
+  failed = grep('^FAILED', unlist(done), value = TRUE)
+  if (length(failed)) { writeLines(failed); stop(length(failed), ' tiles of ', format(month, '%Y-%m'), ' failed') }
 }
 
 abind_time = function(...) {                          # join [lon, lat, time] arrays along time
@@ -232,8 +310,8 @@ abind_time = function(...) {                          # join [lon, lat, time] ar
 # Per 1-degree cell: the mean of those values over the cell's land pixels that have one (equal-
 # area pixels, so this is the area mean), summed tile by tile and divided at the end because a
 # cell can span several tiles.
-cell_sums = function(tile, cell_keys) {
-  files = list.files(file.path(WORK_DIR, 'monthly'), pattern = paste0('^', tile, '_.*\\.tif$'), full.names = TRUE)
+cell_sums = function(tile, cell_keys, monthly_dir) {
+  files = list.files(monthly_dir, pattern = paste0('^', tile, '_.*\\.tif$'), full.names = TRUE)
   if (!length(files)) return(NULL)
   month_of = as.integer(sub('.*_(\\d{2})\\.tif$', '\\1', files))
   ll = pixel_lonlat(tile_template(tile))
@@ -262,8 +340,8 @@ cell_sums = function(tile, cell_keys) {
   do.call(rbind, out)
 }
 
-cell_table = function(tiles, cells) {
-  parts = do.call(rbind, lapply(tiles, cell_sums, cell_keys = paste(cells$x, cells$y)))
+cell_table = function(tiles, cells, monthly_dir) {
+  parts = do.call(rbind, lapply(tiles, cell_sums, cell_keys = paste(cells$x, cells$y), monthly_dir = monthly_dir))
   num = setdiff(names(parts), c('cell', 'month'))
   totals = aggregate(parts[num], by = parts[c('cell', 'month')], FUN = sum)
   xy = do.call(rbind, strsplit(totals$cell, ' '))
@@ -283,26 +361,61 @@ MONTHS_ABB = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'o
 # --- main -------------------------------------------------------------------------------------
 if (sys.nframe() == 0) {
   args = commandArgs(TRUE)
+  step = if (length(args)) args[1] else ''
   cells = readRDS(CELLS_FILE)[, c('x', 'y')]
   tiles = tiles_for_cells(cells)
   months = seq(as.Date('2000-03-01'), as.Date('2009-12-01'), by = 'month')
-  if ('test' %in% args) { tiles = 'h11v04'; months = as.Date('2005-07-01') }
-  cat(length(tiles), 'tiles:', paste(tiles, collapse = ' '), '\n')
-  cookies = tempfile('earthdata_cookies')
-  tasks = expand.grid(tile = tiles, month = months, stringsAsFactors = FALSE)
-  started = Sys.time()
-  done = parallel::mclapply(seq_len(nrow(tasks)), function(i)
-    tryCatch(process_tile_month(tasks$tile[i], tasks$month[i], cookies),
-             error = function(e) paste('FAILED', tasks$tile[i], tasks$month[i], conditionMessage(e))),
-    mc.cores = WORKERS, mc.preschedule = FALSE)
-  failed = grep('^FAILED', unlist(done), value = TRUE)
-  if (length(failed)) { writeLines(failed); stop(length(failed), ' tile-months failed; rerun to retry them') }
-  cat(sprintf('%d tile-months in %.1f h\n', nrow(tasks), as.numeric(difftime(Sys.time(), started, units = 'hours'))))
+  monthly_dir = file.path(WORK_DIR, 'monthly')
+  built = function(month) all(file.exists(file.path(monthly_dir, sprintf('%s_%s.tif', tiles, format(month, '%Y_%m')))))
 
-  # The cell table: one row per cell and month, every stream with its pixel, year and day
-  # numbers. In test mode it goes to a scratch file, not to data/.
-  table = cell_table(tiles, cells)
-  target = if ('test' %in% args) file.path(WORK_DIR, 'test_cells.csv') else OUT_FILE
-  write.csv(table, target, row.names = FALSE)
-  cat(target, ':', nrow(table), 'cell-months;', length(unique(paste(table$x, table$y))), 'cells\n')
+  if (step == 'requests') {
+    wanted = if (length(args) > 1) as.Date(paste0(args[-1], '-01'), optional = TRUE) else months
+    if (anyNA(wanted) || !all(wanted %in% months)) stop('months are written like 2005-08, from 2000-03 to 2009-12')
+    ring = request_area(cells)
+    for (i in seq_along(wanted)) {
+      m = wanted[i]
+      if (built(m) || dir.exists(file.path(APPEEARS_DIR, format(m, '%Y-%m')))) { cat(format(m, '%Y-%m'), ': already collected or built\n'); next }
+      cat(write_request(m, ring), '\n')
+    }
+
+  } else if (step == 'collect') {
+    collect_downloads()
+
+  } else if (step == 'build') {
+    cat(length(tiles), 'tiles:', paste(tiles, collapse = ' '), '\n')
+    for (day_dir in list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}$', full.names = TRUE)) {
+      started = Sys.time()
+      build_month(tiles, as.Date(paste0(basename(day_dir), '-01')), day_dir, monthly_dir)
+      unlink(day_dir, recursive = TRUE)              # the day files are no longer needed
+      cat(sprintf('%s: built in %.1f min; its day files deleted\n', basename(day_dir),
+                  as.numeric(difftime(Sys.time(), started, units = 'mins'))))
+    }
+
+  } else if (step == 'cells') {
+    missing = months[!vapply(seq_along(months), function(i) built(months[i]), TRUE)]
+    if (length(missing)) stop(length(missing), ' months not built yet, e.g. ', format(missing[1], '%Y-%m'))
+    table = cell_table(tiles, cells, monthly_dir)
+    write.csv(table, OUT_FILE, row.names = FALSE)
+    cat(OUT_FILE, ':', nrow(table), 'cell-months;', length(unique(paste(table$x, table$y))), 'cells\n')
+
+  } else if (step == 'test') {
+    # July 2005 into a folder of its own: one tile ("test h11v04"), or every tile and the cell
+    # table for that one month ("test all").
+    test_tiles = if (identical(args[2], 'all')) tiles else args[-1]
+    if (!length(test_tiles) || !all(test_tiles %in% tiles)) stop('test needs "all" or tiles of the study area, e.g. h11v04')
+    out_dir = file.path(WORK_DIR, 'test_appeears')
+    started = Sys.time()
+    build_month(test_tiles, as.Date('2005-07-01'), file.path(WORK_DIR, 'appeears_full_2005-07'), out_dir, need_zenith = FALSE)
+    cat(sprintf('%d tiles in %.1f min\n', length(test_tiles), as.numeric(difftime(Sys.time(), started, units = 'mins'))))
+    if (identical(args[2], 'all')) {
+      table = cell_table(tiles, cells, out_dir)
+      write.csv(table, file.path(out_dir, 'cells_2005_07.csv'), row.names = FALSE)
+      cat(file.path(out_dir, 'cells_2005_07.csv'), ':', nrow(table), 'cells\n')
+    }
+
+  } else {
+    cat('usage: Rscript tools/prepare_bluesky_albedo.R requests|collect|build|cells|test ...',
+        '(see the top of this file)\n')
+    quit(status = 2)
+  }
 }
