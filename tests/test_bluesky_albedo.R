@@ -234,12 +234,13 @@ consistent <- function() {
               list(land_days = floor(n_all / 2), shore_days = floor(n_all / 4), read_days = n_all))
   r <- rast(lapply(TILE_LAYERS, function(n) setValues(tpl, layers[[n]]))); names(r) <- TILE_LAYERS; r
 }
-write_tile <- function(r, name, tag = SETTINGS_TAG) {   # the tag is set last: changing a layer drops it
-  metags(r) <- c(paleoRF_build = tag); f <- file.path(tmp, name)
+write_tile <- function(r, name, tag = SETTINGS_TAG, sha = SCRIPT_SHA) {   # tags set last: changing a layer drops them
+  metags(r) <- c(paleoRF_build = tag, paleoRF_script_sha256 = sha); f <- file.path(tmp, name)
   writeRaster(r, f, overwrite = TRUE, gdal = "COMPRESS=DEFLATE", datatype = "FLT4S"); f
 }
 good <- write_tile(consistent(), "good.tif")
 old_tag <- write_tile(consistent(), "old.tif", tag = "reduction 1")
+old_script <- write_tile(consistent(), "old_script.tif", sha = "0123abcd")
 r <- consistent(); r[["full_75_n_snow"]] <- r[["full_75_n_all"]] + 1; bad_layer <- write_tile(r, "bad_layer.tif")   # not the last layer
 r <- consistent(); r[["full_70_n_all"]] <- r[["full_70_n_all"]] + 1; r[["full_70_n_free"]] <- r[["full_70_n_free"]] + 1
 not_nested <- write_tile(r, "not_nested.tif")
@@ -261,6 +262,8 @@ stopifnot(july_tag != SETTINGS_TAG, !valid_output(july_file, template = tpl), va
 problem <- function(f, ...) paste(output_problems(f, ...), collapse = "; ")
 stopifnot(valid_output(good, template = tpl),
           problem(old_tag, template = tpl) == "was made with other settings",
+          problem(old_script, template = tpl) == "was made by another version of the build script",
+          SCRIPT_SHA != "unknown", nchar(SCRIPT_SHA) == 64,
           grepl("full_75 snowy plus snow-free days exceed all days", problem(bad_layer, template = tpl)),
           problem(not_nested, template = tpl) == "the versions do not nest",
           grepl("any_75 albedo sums outside 0 to their number of days", problem(too_bright, template = tpl)),   # and its unknown part goes negative
@@ -271,6 +274,15 @@ stopifnot(valid_output(good, template = tpl),
           days_of_file("h11v04_2000_03.tif") == 27, days_of_file("h11v04_2000_03.tmp.tif") == 27,
           days_of_file("h11v04_2004_02.tif") == 29, days_of_file("good.tif") == 31,
           problem(wrong_crs, template = tpl) == "is not on the MODIS sinusoidal projection")
+
+# Reuse: an existing monthly file is taken as done only if its settings tag and script SHA-256 both
+# match; otherwise the build stops (before reading any data) and names the file.
+reuse_dir <- file.path(tmp, "reuse"); dir.create(reuse_dir)
+invisible(file.copy(old_script, file.path(reuse_dir, "h00v00_2005_07.tif")))
+stale_msg <- tryCatch(process_tile_month("h00v00", as.Date("2005-07-01"), tmp, reuse_dir), error = conditionMessage)
+invisible(file.copy(good, file.path(reuse_dir, "h00v01_2005_07.tif")))
+stopifnot(grepl("is stale: it was made by another version of this script", stale_msg),
+          identical(process_tile_month("h00v01", as.Date("2005-07-01"), tmp, reuse_dir), file.path(reuse_dir, "h00v01_2005_07.tif")))
 
 # End to end, cell step: small monthly files for two "tiles" and two years -> land vote -> tile
 # totals -> cell table. Cell A (10.5, 0.5) spans both tiles: pixel p (tile 1) has 0.15 in 2005 and
@@ -290,7 +302,7 @@ write_monthly <- function(tile, year, pixels) {          # pixels: one pixel() p
   m <- do.call(rbind, pixels)
   layers <- lapply(TILE_LAYERS, function(n) { sum_name <- sub("^(full|any)_[^_]+_", "", n)
     setValues(templates[[tile]], m[, if (n %in% c("land_days", "shore_days", "read_days")) n else sum_name]) })
-  r <- rast(layers); names(r) <- TILE_LAYERS; metags(r) <- c(paleoRF_build = SETTINGS_TAG)
+  r <- rast(layers); names(r) <- TILE_LAYERS; metags(r) <- c(paleoRF_build = SETTINGS_TAG, paleoRF_script_sha256 = SCRIPT_SHA)
   writeRaster(r, file.path(cdir, sprintf("%s_%d_07.tif", tile, year)), overwrite = TRUE)
 }
 none <- pixel()

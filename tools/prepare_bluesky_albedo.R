@@ -133,6 +133,17 @@ settings_tag = function(need_zenith = TRUE)
          '; full inversions ', paste(FULL_QA, collapse = ' '), '; from ', FIRST_DAY,
          if (need_zenith) '; noon zenith from the data' else '; noon zenith taken as 0 (July 2005 test only)')
 SETTINGS_TAG = settings_tag(TRUE)
+# The code that makes a file: this script's own SHA-256, written into every monthly file next to
+# the settings tag. A file is reused only if both match, so a corrected script never picks up
+# tiles made by an earlier version of itself. (Run with Rscript, the script is the --file
+# argument; sourced, e.g. by the tests, it is the file source() is reading.)
+SCRIPT_FILE = local({
+  reading = Filter(function(f) exists('ofile', envir = f, inherits = FALSE), sys.frames())  # inside source()
+  if (length(reading)) get('ofile', envir = reading[[length(reading)]])
+  else sub('^--file=', '', grep('^--file=', commandArgs(FALSE), value = TRUE))
+})
+SCRIPT_SHA = if (length(SCRIPT_FILE) == 1 && !is.na(SCRIPT_FILE) && file.exists(SCRIPT_FILE))
+  as.vector(as.character(openssl::sha256(file(SCRIPT_FILE)))) else 'unknown'   # as.vector: drop the 'hash' class
 
 APPEEARS_DIR = file.path(WORK_DIR, 'appeears')  # collected months, one folder each
 RECORDS_DIR = file.path(WORK_DIR, 'records')     # kept for good: checksum lists, AppEEARS's files, build records
@@ -454,6 +465,9 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   out = file.path(out_dir, sprintf('%s_%s.tif', tile, format(month, '%Y_%m')))
   if (file.exists(out)) {
     if (!identical(build_tag(out), settings_tag(need_zenith))) stop(out, ' was made with other settings; move it away first')
+    if (!identical(build_tag(out, 'paleoRF_script_sha256'), SCRIPT_SHA))
+      stop(out, ' is stale: it was made by another version of this script (SHA-256 ',
+           build_tag(out, 'paleoRF_script_sha256'), ', now ', SCRIPT_SHA, '); move it away first')
     return(out)
   }
   days = month_days(month)
@@ -500,7 +514,8 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   r = setValues(rast(template, nlyrs = length(TILE_LAYERS)), totals)
   names(r) = TILE_LAYERS
   # The tags travel with the file, so a later build that reuses it can still record how it was made.
-  metags(r) = c(paleoRF_build = settings_tag(need_zenith), paleoRF_created = format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z'),
+  metags(r) = c(paleoRF_build = settings_tag(need_zenith), paleoRF_script_sha256 = SCRIPT_SHA,
+                paleoRF_created = format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z'),
                 paleoRF_out_of_range = as.character(out_of_range))
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   # Written under a temporary name and renamed only once complete, so a crash cannot leave a
@@ -513,7 +528,8 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
 
 build_tag = function(file, name = 'paleoRF_build') {
   m = metags(rast(file))
-  m$value[m$name == name]
+  v = m$value[m$name == name]
+  if (length(v)) v else NA_character_
 }
 
 # What is wrong with a monthly file, if anything (an empty result means it is usable). It must
@@ -533,11 +549,13 @@ days_of_file = function(file) {
   if (!length(m)) return(31)
   length(month_days(as.Date(sprintf('%s-%s-01', m[2], m[3]))))
 }
-output_problems = function(file, tag = SETTINGS_TAG, template = tile_template(tile_of(file)), max_days = days_of_file(file)) {
+output_problems = function(file, tag = SETTINGS_TAG, template = tile_template(tile_of(file)), max_days = days_of_file(file),
+                           script_sha = SCRIPT_SHA) {
   r = tryCatch(rast(file), error = function(e) NULL)
   if (is.null(r)) return('cannot be opened')
   if (!identical(names(r), TILE_LAYERS)) return('does not have the expected layers')
   if (!identical(build_tag(file), tag)) return('was made with other settings')
+  if (!identical(build_tag(file, 'paleoRF_script_sha256'), script_sha)) return('was made by another version of the build script')
   if (!grepl('Sinusoidal', crs(r)) || !grepl('6371007.181', crs(r))) return('is not on the MODIS sinusoidal projection')
   if (nrow(r) != nrow(template) || ncol(r) != ncol(template) ||
       max(abs(as.vector(ext(r)) - as.vector(ext(template)))) > 0.01) return('is not on its tile grid')
@@ -597,7 +615,7 @@ build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
 # files are deleted: the code (git commit and the script's own SHA-256), the settings, the files checked
 # and the ERA5 files used.
 write_build_record = function(month, record_dir, n_files, tiles, delivery, tile_lines) {
-  script = sub('^--file=', '', grep('^--file=', commandArgs(FALSE), value = TRUE))
+  script = SCRIPT_FILE
   commit = tryCatch(system2('git', c('-C', dirname(script), 'rev-parse', 'HEAD'), stdout = TRUE, stderr = FALSE),
                     error = function(e) 'unknown', warning = function(w) 'unknown')
   era5 = file.path(ERA5_DIR, sprintf('era5_ssrd_fdir_%s.nc', format(c(month, seq(month, by = 'month', length.out = 2)[2]), '%Y_%m')))
@@ -606,7 +624,7 @@ write_build_record = function(month, record_dir, n_files, tiles, delivery, tile_
   # section, so the record of the first build survives.
   con = file(file.path(record_dir, 'build.txt'), open = 'a'); on.exit(close(con))
   writeLines(c('', paste('=== built:', format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z')),
-               paste('code:', script, 'commit', commit[1], 'sha256', as.character(openssl::sha256(file(script)))),
+               paste('code:', script, 'commit', commit[1], 'sha256', SCRIPT_SHA),
                paste('settings:', SETTINGS_TAG),
                paste('day files checked against the SHA-256 list:', n_files),
                delivery,
@@ -689,7 +707,7 @@ tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag, template 
     stop(tile, ': monthly files for ', length(have), ' months, expected ', length(want),
          if (length(setdiff(want, have))) paste(', missing e.g.', setdiff(want, have)[1]),
          if (length(setdiff(have, want))) paste(', unexpected e.g.', setdiff(have, want)[1]))
-  wrong = tf$file[vapply(tf$file, build_tag, '') != tag]
+  wrong = tf$file[!vapply(tf$file, function(f) identical(build_tag(f), tag), TRUE)]   # a missing tag counts as wrong
   if (length(wrong)) stop(length(wrong), ' monthly files were made with other settings, e.g. ', wrong[1])
   ll = pixel_lonlat(template)
   cell = paste(floor(ll[, 1]) + 0.5, floor(ll[, 2]) + 0.5)
@@ -799,6 +817,16 @@ if (sys.nframe() == 0) {
     table = cell_table(tiles, cells, monthly_dir, months)
     write.csv(table, OUT_FILE, row.names = FALSE)
     cat(OUT_FILE, ':', nrow(table), 'cell-months;', length(unique(paste(table$x, table$y))), 'cells\n')
+    # Beside the table: the land rule it used, and which versions of this script made the monthly
+    # files (the cell step does not require one version: a month whose day files are deleted cannot
+    # be rebuilt, so a later edit to this script must not make its files unusable; the record says).
+    files = list.files(monthly_dir, pattern = '^h\\d{2}v\\d{2}_\\d{4}_\\d{2}\\.tif$', full.names = TRUE)
+    shas = table(vapply(files, build_tag, '', name = 'paleoRF_script_sha256'))
+    writeLines(c(paste('cell table:', OUT_FILE, 'written', format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z')),
+                 paste('land rule:', LAND_RULE), paste('settings:', SETTINGS_TAG),
+                 paste('cell step script sha256:', SCRIPT_SHA),
+                 paste('monthly files by build script sha256:', names(shas), '-', shas, 'files')),
+               sub('\\.csv$', '_provenance.txt', OUT_FILE))
 
   } else if (step == 'test') {
     # July 2005 into a folder of its own: one tile ("test h11v04"), or every tile and the cell
