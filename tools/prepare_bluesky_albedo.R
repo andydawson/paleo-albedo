@@ -517,11 +517,19 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   metags(r) = c(paleoRF_build = settings_tag(need_zenith), paleoRF_script_sha256 = SCRIPT_SHA,
                 paleoRF_created = format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z'),
                 paleoRF_out_of_range = as.character(out_of_range))
+  publish_tile(r, out, settings_tag(need_zenith), template)
+}
+
+# Writes a monthly file under a temporary name, checks it in full (output_problems) and only then
+# gives it its real name. A crash cannot leave a partial file under the real name for a rerun to
+# reuse, and a file that fails its checks is left as "<name>.tmp.tif" for inspection: the tile
+# fails, so its day files are not deleted.
+publish_tile = function(r, out, tag, template) {
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
-  # Written under a temporary name and renamed only once complete, so a crash cannot leave a
-  # partial file under the real name for a rerun to reuse.
   tmp = sub('\\.tif$', '.tmp.tif', out)
   writeRaster(r, tmp, gdal = 'COMPRESS=DEFLATE', datatype = 'FLT4S', overwrite = TRUE)
+  problems = output_problems(tmp, tag = tag, template = template)
+  if (length(problems)) stop('the new file ', tmp, ' failed its checks (', paste(problems, collapse = '; '), '); left under that name')
   if (!file.rename(tmp, out)) stop('could not rename ', tmp)
   out
 }
@@ -588,7 +596,7 @@ output_problems = function(file, tag = SETTINGS_TAG, template = tile_template(ti
 valid_output = function(file, ...) !length(output_problems(file, ...))
 
 # Every tile of one month, WORKERS at a time. Stops unless every tile's file was written and is
-# valid: a worker that dies (out of memory, killed) returns no message at all, so success is
+# valid (new files are checked before they are named, reused ones here): a worker that dies (out of memory, killed) returns no message at all, so success is
 # checked against the expected files rather than by looking for failure messages. Rerunning
 # retries the missing tiles.
 build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
@@ -598,9 +606,10 @@ build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
     tryCatch(process_tile_month(tile, month, day_dir, out_dir, need_zenith),
              error = function(e) paste('FAILED', tile, conditionMessage(e))),
     mc.cores = WORKERS, mc.preschedule = FALSE)
+  # A new file was checked in full before it got its name (publish_tile); a reused one is checked here.
   problems = lapply(seq_along(tiles), function(i) {
     if (!identical(done[[i]], expected[i])) return(if (is.character(done[[i]])) done[[i]] else 'the worker died')
-    output_problems(expected[i], tag = settings_tag(need_zenith))
+    if (reused[i]) output_problems(expected[i], tag = settings_tag(need_zenith)) else character(0)
   })
   ok = lengths(problems) == 0
   for (i in which(!ok)) cat('FAILED', tiles[i], paste(problems[[i]], collapse = '; '), '\n')

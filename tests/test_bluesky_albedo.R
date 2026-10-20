@@ -284,6 +284,18 @@ invisible(file.copy(good, file.path(reuse_dir, "h00v01_2005_07.tif")))
 stopifnot(grepl("is stale: it was made by another version of this script", stale_msg),
           identical(process_tile_month("h00v01", as.Date("2005-07-01"), tmp, reuse_dir), file.path(reuse_dir, "h00v01_2005_07.tif")))
 
+# Publishing: a new monthly file is checked under its temporary name and renamed only if it passes;
+# a file that fails is left as ".tmp.tif" and the tile fails.
+pub <- file.path(tmp, "publish"); dir.create(pub)
+tagged <- function(r) { metags(r) <- c(paleoRF_build = SETTINGS_TAG, paleoRF_script_sha256 = SCRIPT_SHA); r }   # as process_tile_month does
+ok_out <- publish_tile(tagged(consistent()), file.path(pub, "h00v00_2005_07.tif"), SETTINGS_TAG, tpl)
+r <- consistent(); r[["full_75_n_snow"]] <- r[["full_75_n_all"]] + 1
+bad_msg <- tryCatch(publish_tile(tagged(r), file.path(pub, "h00v01_2005_07.tif"), SETTINGS_TAG, tpl), error = conditionMessage)
+stopifnot(identical(ok_out, file.path(pub, "h00v00_2005_07.tif")), file.exists(ok_out),
+          !file.exists(file.path(pub, "h00v00_2005_07.tmp.tif")),
+          grepl("failed its checks .*snowy plus snow-free days exceed all days", bad_msg),
+          !file.exists(file.path(pub, "h00v01_2005_07.tif")), file.exists(file.path(pub, "h00v01_2005_07.tmp.tif")))
+
 # End to end, cell step: small monthly files for two "tiles" and two years -> land vote -> tile
 # totals -> cell table. Cell A (10.5, 0.5) spans both tiles: pixel p (tile 1) has 0.15 in 2005 and
 # 0.25 in 2006, pixel q (tile 2) 0.55 in 2005 only, one day each (Astra's unequal-coverage case:
