@@ -132,11 +132,38 @@ jsonlite::write_json(wrong, file.path(rec, "paleoRFMCD432005-07-request.json"), 
 stopifnot(inherits(try(check_request(as.Date("2005-07-01"), rec), silent = TRUE), "try-error"))
 WORK_DIR <- "data/modis_albedo"
 
-# A monthly file is valid only with the expected layers and tag, and readable in full.
-good <- file.path(tmp, "good.tif"); r <- rast(nrows = 4, ncols = 4, nlyrs = length(TILE_LAYERS), vals = 1)
-names(r) <- TILE_LAYERS; metags(r) <- c(paleoRF_build = SETTINGS_TAG); writeRaster(r, good)
-old_tag <- file.path(tmp, "old.tif"); metags(r) <- c(paleoRF_build = "reduction 1"); writeRaster(r, old_tag)
-cut_short <- file.path(tmp, "cut.tif"); writeBin(readBin(good, "raw", file.size(good))[1:200], cut_short)
-stopifnot(valid_output(good), !valid_output(old_tag), !valid_output(cut_short))
+# A monthly file is accepted only if it lies on its tile grid, has our layers and tag, reads in
+# full, and its counts and sums are consistent: one pixel per row of the table below, every
+# version alike (nested versions may be equal).
+tpl <- rast(nrows = 40, ncols = 40, crs = SIN_CRS, extent = ext(0, 40 * 463.3127, 0, 40 * 463.3127))
+consistent <- function() {
+  set.seed(1)
+  n_all <- sample(0:31, ncell(tpl), replace = TRUE); n_snow <- floor(n_all / 3); n_free <- n_all - n_snow - (n_all > 5)
+  a <- runif(ncell(tpl), 0.05, 0.9)
+  vals <- list(n_all = n_all, n_snow = n_snow, n_free = n_free, s_all = n_all * a, s_snow = n_snow * a, s_free = n_free * a)
+  layers <- c(unlist(lapply(VERSIONS$name, function(v) setNames(vals, paste(v, SUMS, sep = "_"))), recursive = FALSE),
+              list(land_days = floor(n_all / 2), shore_days = floor(n_all / 4), read_days = n_all))
+  r <- rast(lapply(TILE_LAYERS, function(n) setValues(tpl, layers[[n]]))); names(r) <- TILE_LAYERS; r
+}
+write_tile <- function(r, name, tag = SETTINGS_TAG) {   # the tag is set last: changing a layer drops it
+  metags(r) <- c(paleoRF_build = tag); f <- file.path(tmp, name)
+  writeRaster(r, f, overwrite = TRUE, gdal = "COMPRESS=DEFLATE", datatype = "FLT4S"); f
+}
+good <- write_tile(consistent(), "good.tif")
+old_tag <- write_tile(consistent(), "old.tif", tag = "reduction 1")
+r <- consistent(); r[["full_75_n_snow"]] <- r[["full_75_n_all"]] + 1; bad_layer <- write_tile(r, "bad_layer.tif")   # not the last layer
+r <- consistent(); r[["full_70_n_all"]] <- r[["full_70_n_all"]] + 1; r[["full_70_n_free"]] <- r[["full_70_n_free"]] + 1
+not_nested <- write_tile(r, "not_nested.tif")
+r <- consistent(); r[["any_75_s_free"]] <- r[["any_75_n_free"]] + 0.5; too_bright <- write_tile(r, "too_bright.tif")
+cut_short <- file.path(tmp, "cut.tif"); writeBin(readBin(good, "raw", file.size(good))[1:floor(0.9 * file.size(good))], cut_short)
+other_grid <- rast(nrows = 40, ncols = 40, crs = SIN_CRS, extent = ext(463.3127, 41 * 463.3127, 0, 40 * 463.3127))
+problem <- function(f, ...) paste(output_problems(f, ...), collapse = "; ")
+stopifnot(valid_output(good, template = tpl),
+          problem(old_tag, template = tpl) == "was made with other settings",
+          grepl("full_75 snowy plus snow-free days exceed all days", problem(bad_layer, template = tpl)),
+          problem(not_nested, template = tpl) == "the versions do not nest",
+          problem(too_bright, template = tpl) == "any_75 albedo sums outside 0 to their number of days",
+          !valid_output(cut_short, template = tpl),       # GDAL loses the trailing names or the data
+          problem(good, template = other_grid) == "is not on its tile grid")
 
 cat("test_bluesky_albedo: all tests passed\n")
