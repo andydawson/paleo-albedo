@@ -6,6 +6,7 @@
 #   Rscript tools/prepare_bluesky_albedo.R requests 2005-08 2005-09   # request files for those months
 #   Rscript tools/prepare_bluesky_albedo.R collect                    # check and file the downloads
 #   Rscript tools/prepare_bluesky_albedo.R build                      # reduce them to monthly files
+#   Rscript tools/prepare_bluesky_albedo.R build 2005-03 keep         # one month, keeping its day files
 #   Rscript tools/prepare_bluesky_albedo.R cells                      # the cell table, at the end
 #   Rscript tools/prepare_bluesky_albedo.R test all                   # July 2005 check (see below)
 #
@@ -680,8 +681,19 @@ if (sys.nframe() == 0) {
     collect_downloads()
 
   } else if (step == 'build') {
+    # "build" builds every collected month and then deletes its day files; months may be named
+    # ("build 2005-03 2005-12"), and "keep" keeps the day files (Chris, 2026-10-20: the test
+    # months keep theirs, so they can be rebuilt after a later fix and checked against the raw files).
+    keep = 'keep' %in% args[-1]
+    named = grep('^\\d{4}-\\d{2}$', args[-1], value = TRUE)
+    if (length(setdiff(args[-1], c(named, 'keep')))) stop('build takes months like 2005-03 and/or "keep"')
+    day_dirs = list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}$', full.names = TRUE)
+    if (length(named)) {
+      if (!all(named %in% basename(day_dirs))) stop('not collected: ', paste(setdiff(named, basename(day_dirs)), collapse = ' '))
+      day_dirs = day_dirs[basename(day_dirs) %in% named]
+    }
     cat(length(tiles), 'tiles:', paste(tiles, collapse = ' '), '\n')
-    for (day_dir in list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}$', full.names = TRUE)) {
+    for (day_dir in day_dirs) {
       started = Sys.time()
       record_dir = file.path(RECORDS_DIR, basename(day_dir))
       list_file = list.files(record_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE)
@@ -692,10 +704,11 @@ if (sys.nframe() == 0) {
                    delivery_summary(delivery_table(day_dir, month_days(month), LAYERS$name), LAYERS$name))
       cat(basename(day_dir), ':', delivery, sep = '\n  ')
       tile_lines = build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid
-      write_build_record(month, record_dir, n_files, tiles, delivery, tile_lines)
-      unlink(day_dir, recursive = TRUE)              # only now are the day files no longer needed
-      cat(sprintf('%s: built in %.1f min; its day files deleted\n', basename(day_dir),
-                  as.numeric(difftime(Sys.time(), started, units = 'mins'))))
+      write_build_record(month, record_dir, n_files, tiles,
+                         c(delivery, if (keep) 'day files: kept (build ... keep)' else 'day files: deleted after this record'), tile_lines)
+      if (!keep) unlink(day_dir, recursive = TRUE)   # only now are the day files no longer needed
+      cat(sprintf('%s: built in %.1f min; its day files %s\n', basename(day_dir),
+                  as.numeric(difftime(Sys.time(), started, units = 'mins')), if (keep) 'kept' else 'deleted'))
     }
 
   } else if (step == 'cells') {
