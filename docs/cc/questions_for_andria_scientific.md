@@ -1,5 +1,9 @@
 # Open questions for Andria: scientific and technical
 
+**Frozen 20 October 2026.** This content went into the Word document on
+Andria's Google Drive, where her answers are being collected. New scientific
+questions go in `questions_for_andria_scientific_from_2026-10-20.md`.
+
 Maintained by Chris with Claude Code; kept current as work proceeds (see
 AGENTS.md). Simple and logistical questions are in
 `questions_for_andria_general.md`. Each entry says what the code does now,

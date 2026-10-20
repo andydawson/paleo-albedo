@@ -12,7 +12,9 @@ inputs/outputs.
 
 Two living documents must be kept current in every session:
 `docs/cc/questions_for_andria_general.md` (simple and logistical) and
-`docs/cc/questions_for_andria_scientific.md` (technical and scientific).
+`docs/cc/questions_for_andria_scientific_from_2026-10-20.md` (technical and
+scientific; the earlier `questions_for_andria_scientific.md` is frozen, as it
+went to Andria in a Word document on 20 October 2026).
 Whenever a question for the PI arises during the work, add it to the
 relevant file at once with a one-line note of where it came from; remove
 questions once answered, recording the answer in the relevant document.

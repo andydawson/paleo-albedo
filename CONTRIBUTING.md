@@ -46,8 +46,10 @@ repository is branched, committed, merged and backed up. Agent sessions read
   `tools/`.
 - Questions for Andria are collected continuously in
   `docs/cc/questions_for_andria_general.md` and
-  `docs/cc/questions_for_andria_scientific.md`; add to them as questions
-  arise, remove them when answered.
+  `docs/cc/questions_for_andria_scientific_from_2026-10-20.md`; add to them
+  as questions arise, remove them when answered. The earlier
+  `docs/cc/questions_for_andria_scientific.md` is frozen: it went to Andria
+  in a Word document on 20 October 2026.
 
 ## Coding practice
 
