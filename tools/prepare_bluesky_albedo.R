@@ -75,11 +75,21 @@ CELLS_FILE  = 'data/elev_interp_cells.RDS'      # the 1-degree cell centres the 
 ERA5_DIR    = 'data/era5'
 WORK_DIR    = 'data/modis_albedo'
 OUT_FILE    = 'data/albedo_modis_cells.csv'
-WORKERS     = 8                                  # tile-months processed at once
+WORKERS     = 6                                  # tile-months processed at once (several GB each)
 FULL_QA     = c(0, 2, 4, 6)                      # full inversions (odd codes are magnitude inversions)
-MAX_ZENITH  = 70
-LAND_CLASS  = 1
-STREAMS     = c('full_all', 'full_snowfree', 'full_snowy', 'any_all', 'any_snowfree', 'any_snowy')
+
+# The versions kept for every pixel and month. Main: full inversions, with the noon sun within
+# 75 degrees of the zenith (Jia et al. 2022). For comparison: any processed retrieval; the
+# 70-degree rule of NASA's validation page; and no low-sun rule at all.
+VERSIONS = data.frame(name       = c('full_75', 'any_75', 'full_70', 'full_nocut'),
+                      quality    = c('full',    'any',    'full',    'full'),
+                      max_zenith = c(75,        75,       70,        Inf))
+# What each version keeps per pixel and month: the number of qualifying days (all, snowy,
+# snow-free) and the sums of their blue-sky albedo. A day whose snow flag is missing counts
+# only in "all". Sums, not means, so that land and the averaging can be decided at the end.
+SUMS = c('n_all', 'n_snow', 'n_free', 's_all', 's_snow', 's_free')
+VERSION_LAYERS = as.vector(outer(SUMS, VERSIONS$name, function(s, v) paste(v, s, sep = '_')))
+TILE_LAYERS = c(VERSION_LAYERS, 'land_days', 'read_days')
 
 APPEEARS_DIR = file.path(WORK_DIR, 'appeears')  # collected months, one folder each
 DOWNLOADS   = path.expand('~/Downloads')         # where the browser saves the AppEEARS files
@@ -241,8 +251,51 @@ diffuse_fraction = function(era5, lon, lat, date) {
   pmin(pmax(f, 0), 1)
 }
 
+# --- the arithmetic, in small functions that tests/test_bluesky_albedo.R checks by hand ------
+# Blue-sky albedo: black-sky and white-sky albedo mixed by the diffuse fraction f.
+blue_sky = function(bsa, wsa, f) (1 - f) * bsa + f * wsa
+
+# Whether the noon sun is high enough for a version (Inf: no rule, so a missing angle passes).
+zenith_ok = function(sza, max_zenith) {
+  if (is.infinite(max_zenith)) rep(TRUE, length(sza)) else !is.na(sza) & sza <= max_zenith
+}
+
+# One day's contribution to a version's totals, pixel by pixel.
+day_totals = function(keep, snow, blue) {
+  snowy = keep & snow %in% 1
+  free  = keep & snow %in% 0
+  cbind(n_all = keep, n_snow = snowy, n_free = free,
+        s_all = ifelse(keep, blue, 0), s_snow = ifelse(snowy, blue, 0), s_free = ifelse(free, blue, 0))
+}
+
+# Land: a pixel whose land/water class says land (1) on more than half of the days it has one,
+# over the whole record (Chris, 2026-10-20). A blank class means no retrieval that day (checked
+# on the July 2005 download: blank class and no albedo coincide on every pixel-day), so blank
+# days are not counted; pixels that switch class are mostly shorelines.
+is_land = function(land_days, read_days) read_days > 0 & land_days > read_days / 2
+
+# The climatology of one version for each group (a cell and calendar month), from its totals per
+# year. Within a year every qualifying land pixel-day counts once; then each year with data weighs
+# the same. The snowy and snow-free means and the snow shares use the same weights (1 / days in
+# that year), so share_snowy x snowy + share_snowfree x snowfree (+ the share of days with no snow
+# flag x their mean) equals the all-days value exactly, as the snow-mixing plan needs.
+climatology = function(group, n_all, n_snow, n_free, s_all, s_snow, s_free) {
+  w = ifelse(n_all > 0, 1 / n_all, 0)
+  t = rowsum(cbind(years = n_all > 0, all = s_all * w, n_snow = n_snow * w, s_snow = s_snow * w,
+                   n_free = n_free * w, s_free = s_free * w), group)
+  per_year = function(x) ifelse(t[, 'years'] > 0, x / t[, 'years'], NA)
+  data.frame(group = rownames(t), years = t[, 'years'],
+             all = per_year(t[, 'all']),
+             snowfree = ifelse(t[, 'n_free'] > 0, t[, 's_free'] / t[, 'n_free'], NA),
+             snowy = ifelse(t[, 'n_snow'] > 0, t[, 's_snow'] / t[, 'n_snow'], NA),
+             share_snowfree = per_year(t[, 'n_free']), share_snowy = per_year(t[, 'n_snow']),
+             row.names = NULL)
+}
+
 # --- one tile and one month -----------------------------------------------------------------
-# need_zenith = FALSE only for the July 2005 test (see the header).
+# Per pixel: every version's totals (VERSION_LAYERS), and the days the land/water class said land
+# and the days it had any class. Nothing is filtered for land here; that is decided at the cell
+# step. need_zenith = FALSE only for the July 2005 test (see the header).
 process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE) {
   out = file.path(out_dir, sprintf('%s_%s.tif', tile, format(month, '%Y_%m')))
   if (file.exists(out)) return(out)
@@ -258,9 +311,7 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   era5 = list(lon = era5[[1]]$lon, lat = era5[[1]]$lat, time = do.call(c, lapply(era5, `[[`, 'time')),
               ssrd = do.call(abind_time, lapply(era5, `[[`, 'ssrd')), fdir = do.call(abind_time, lapply(era5, `[[`, 'fdir')))
 
-  sums = matrix(0, ncell(template), length(STREAMS), dimnames = list(NULL, STREAMS))
-  days_n = sums
-  land = NULL
+  totals = matrix(0, ncell(template), length(TILE_LAYERS), dimnames = list(NULL, TILE_LAYERS))
   out_of_range = 0
   for (d in seq_along(days)) {
     if (anyNA(files[d, needed])) next                # a day with no file counts as no data
@@ -275,23 +326,20 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
     qa   = get('qa')
     snow = get('snow')
     sza  = if (need_zenith) get('sza') else rep(0, ncell(template))
-    if (is.null(land)) land = get('land') == LAND_CLASS
-    f = diffuse_fraction(era5, ll[, 1], ll[, 2], days[d])
-    blue = (1 - f) * bsa + f * wsa
-    usable = !is.na(blue) & !is.na(qa) & qa <= 7 & !is.na(sza) & sza <= MAX_ZENITH & land %in% TRUE
+    land = get('land')
+    totals[, 'land_days'] = totals[, 'land_days'] + (land %in% 1)
+    totals[, 'read_days'] = totals[, 'read_days'] + !is.na(land)
+    blue = blue_sky(bsa, wsa, diffuse_fraction(era5, ll[, 1], ll[, 2], days[d]))
+    usable = !is.na(blue) & !is.na(qa) & qa <= 7
     full = usable & qa %in% FULL_QA
-    keep = cbind(full_all = full, full_snowfree = full & snow %in% 0, full_snowy = full & snow %in% 1,
-                 any_all = usable, any_snowfree = usable & snow %in% 0, any_snowy = usable & snow %in% 1)
-    sums = sums + ifelse(keep, blue, 0)
-    days_n = days_n + keep
+    for (i in seq_len(nrow(VERSIONS))) {
+      keep = (if (VERSIONS$quality[i] == 'full') full else usable) & zenith_ok(sza, VERSIONS$max_zenith[i])
+      cols = paste(VERSIONS$name[i], SUMS, sep = '_')
+      totals[, cols] = totals[, cols] + day_totals(keep, snow, blue)
+    }
   }
-  monthly = sums / days_n                            # NaN where no day qualified
-  monthly[!is.finite(monthly)] = NA
-  layers = c(lapply(STREAMS, function(s) setValues(template, monthly[, s])),
-             lapply(STREAMS, function(s) setValues(template, days_n[, s])),
-             list(setValues(template, as.numeric(land %in% TRUE))))
-  r = rast(layers)
-  names(r) = c(STREAMS, paste0('days_', STREAMS), 'land')
+  r = setValues(rast(template, nlyrs = length(TILE_LAYERS)), totals)
+  names(r) = TILE_LAYERS
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   writeRaster(r, out, gdal = 'COMPRESS=DEFLATE', datatype = 'FLT4S')
   if (out_of_range > 0) cat(sprintf('%s %s: %d pixel-days with albedo outside 0-1 dropped\n', tile, format(month, '%Y-%m'), out_of_range))
@@ -313,56 +361,80 @@ abind_time = function(...) {                          # join [lon, lat, time] ar
   array(unlist(a), dim = c(d[1], d[2], sum(vapply(a, function(x) dim(x)[3], 1))))
 }
 
-# --- climatology and cells --------------------------------------------------------------------
-# Per pixel and calendar month: the mean over years of the monthly means (each year with data
-# weighs the same), the number of such years and the mean number of qualifying days in them.
-# Per 1-degree cell: the mean of those values over the cell's land pixels that have one (equal-
-# area pixels, so this is the area mean), summed tile by tile and divided at the end because a
-# cell can span several tiles.
-cell_sums = function(tile, cell_keys, monthly_dir) {
-  files = list.files(monthly_dir, pattern = paste0('^', tile, '_.*\\.tif$'), full.names = TRUE)
-  if (!length(files)) return(NULL)
-  month_of = as.integer(sub('.*_(\\d{2})\\.tif$', '\\1', files))
+# --- land and cells ---------------------------------------------------------------------------
+# The monthly files of a tile, with their year and calendar month.
+tile_files = function(tile, monthly_dir) {
+  files = list.files(monthly_dir, pattern = paste0('^', tile, '_\\d{4}_\\d{2}\\.tif$'), full.names = TRUE)
+  data.frame(file = files, year = as.integer(sub('.*_(\\d{4})_\\d{2}\\.tif$', '\\1', files)),
+             month = as.integer(sub('.*_(\\d{2})\\.tif$', '\\1', files)))
+}
+
+# Pass 1: a tile's land pixels, from all its monthly files together (see is_land).
+tile_land = function(files) {
+  land_days = 0; read_days = 0
+  for (f in files) {
+    v = values(rast(f)[[c('land_days', 'read_days')]])
+    land_days = land_days + v[, 1]; read_days = read_days + v[, 2]
+  }
+  is_land(land_days, read_days)
+}
+
+# Pass 2: for each cell, year and calendar month, the version totals summed over the cell's land
+# pixels in this tile, its number of land pixels, and per version the number of land pixels with
+# at least one qualifying day. Sums, because a cell can span several tiles.
+tile_cell_totals = function(tile, cell_keys, monthly_dir) {
+  tf = tile_files(tile, monthly_dir)
+  if (!nrow(tf)) return(NULL)
   ll = pixel_lonlat(tile_template(tile))
   cell = paste(floor(ll[, 1]) + 0.5, floor(ll[, 2]) + 0.5)
-  land = values(rast(files[1])[['land']], mat = FALSE) == 1
-  keep = land & cell %in% cell_keys
+  keep = tile_land(tf$file) & cell %in% cell_keys
   if (!any(keep)) return(NULL)
-  out = list()
-  for (m in sort(unique(month_of))) {
-    yearly = lapply(files[month_of == m], function(f) values(rast(f)[[c(STREAMS, paste0('days_', STREAMS))]])[keep, , drop = FALSE])
-    value = simplify2array(lapply(yearly, function(y) y[, STREAMS, drop = FALSE]))          # pixel x stream x year
-    days  = simplify2array(lapply(yearly, function(y) y[, paste0('days_', STREAMS), drop = FALSE]))
-    years = apply(!is.na(value), c(1, 2), sum)
-    clim  = apply(value, c(1, 2), mean, na.rm = TRUE); clim[years == 0] = NA
-    mean_days = apply(ifelse(is.na(value), NA, days), c(1, 2), mean, na.rm = TRUE); mean_days[years == 0] = NA
-    has = !is.na(clim)
-    out[[length(out) + 1]] = data.frame(
-      cell = rownames(rowsum(rep(1, sum(keep)), cell[keep])), month = m,
-      land_pixels = rowsum(rep(1, sum(keep)), cell[keep])[, 1],
-      setNames(as.data.frame(rowsum(ifelse(has, clim, 0), cell[keep])), paste0('sum_', STREAMS)),
-      setNames(as.data.frame(rowsum(has * 1, cell[keep])), paste0('pixels_', STREAMS)),
-      setNames(as.data.frame(rowsum(ifelse(has, years, 0), cell[keep])), paste0('sumyears_', STREAMS)),
-      setNames(as.data.frame(rowsum(ifelse(has, mean_days, 0), cell[keep])), paste0('sumdays_', STREAMS)),
-      check.names = FALSE)
+  out = vector('list', nrow(tf))
+  for (i in seq_len(nrow(tf))) {
+    v = values(rast(tf$file[i])[[VERSION_LAYERS]])[keep, , drop = FALSE]
+    with_data = v[, paste0(VERSIONS$name, '_n_all'), drop = FALSE] > 0
+    colnames(with_data) = paste0(VERSIONS$name, '_pixels')
+    t = rowsum(cbind(land_pixels = 1, v, with_data), cell[keep])
+    out[[i]] = data.frame(cell = rownames(t), year = tf$year[i], month = tf$month[i], t, check.names = FALSE)
   }
   do.call(rbind, out)
 }
 
+# The cell table: per cell and calendar month, for each version, the climatology (see
+# climatology), the years with data, the coverage (mean over those years of the share of the
+# cell's land pixels with at least one qualifying day) and the qualifying days per land pixel in
+# a year with data.
 cell_table = function(tiles, cells, monthly_dir) {
-  parts = do.call(rbind, lapply(tiles, cell_sums, cell_keys = paste(cells$x, cells$y), monthly_dir = monthly_dir))
-  num = setdiff(names(parts), c('cell', 'month'))
-  totals = aggregate(parts[num], by = parts[c('cell', 'month')], FUN = sum)
-  xy = do.call(rbind, strsplit(totals$cell, ' '))
-  out = data.frame(x = as.numeric(xy[, 1]), y = as.numeric(xy[, 2]), month = MONTHS_ABB[totals$month],
-                   land_pixels = totals$land_pixels)
-  for (s in STREAMS) {
-    n = totals[[paste0('pixels_', s)]]
-    out[[s]]                    = round(ifelse(n > 0, totals[[paste0('sum_', s)]] / n, NA), 5)
-    out[[paste0('pixels_', s)]] = n
-    out[[paste0('years_', s)]]  = round(ifelse(n > 0, totals[[paste0('sumyears_', s)]] / n, NA), 2)
-    out[[paste0('days_', s)]]   = round(ifelse(n > 0, totals[[paste0('sumdays_', s)]] / n, NA), 2)
+  parts = parallel::mclapply(tiles, function(tile) tryCatch(tile_cell_totals(tile, paste(cells$x, cells$y), monthly_dir),
+                                                            error = function(e) paste('FAILED', tile, conditionMessage(e))),
+                             mc.cores = WORKERS, mc.preschedule = FALSE)
+  bad = !vapply(parts, function(p) is.null(p) || is.data.frame(p), TRUE)
+  if (any(bad)) stop('cell totals failed for ', sum(bad), ' tiles: ', paste(unlist(parts[bad]), collapse = '; '))
+  parts = do.call(rbind, parts)
+  num = setdiff(names(parts), c('cell', 'year', 'month'))
+  totals = aggregate(parts[num], by = parts[c('cell', 'year', 'month')], FUN = sum)
+  key = paste(totals$cell, totals$month)
+  out = data.frame(group = sort(unique(key)))
+  out$land_pixels = tapply(totals$land_pixels, key, max)[out$group]
+  for (v in VERSIONS$name) {
+    col = function(s) totals[[paste(v, s, sep = '_')]]
+    cl = climatology(key, col('n_all'), col('n_snow'), col('n_free'), col('s_all'), col('s_snow'), col('s_free'))
+    with_data = col('n_all') > 0
+    coverage = rowsum(ifelse(with_data, col('pixels') / totals$land_pixels, 0), key)[, 1]
+    days = rowsum(ifelse(with_data, col('n_all') / totals$land_pixels, 0), key)[, 1]
+    stopifnot(identical(cl$group, out$group), identical(names(coverage), out$group))
+    out[[v]]                         = round(cl$all, 5)
+    out[[paste0(v, '_snowfree')]]       = round(cl$snowfree, 5)
+    out[[paste0(v, '_snowy')]]          = round(cl$snowy, 5)
+    out[[paste0(v, '_share_snowfree')]] = round(cl$share_snowfree, 4)
+    out[[paste0(v, '_share_snowy')]]    = round(cl$share_snowy, 4)
+    out[[paste0(v, '_years')]]          = cl$years
+    out[[paste0(v, '_coverage')]]       = round(ifelse(cl$years > 0, coverage / cl$years, NA), 4)
+    out[[paste0(v, '_days')]]           = round(ifelse(cl$years > 0, days / cl$years, NA), 2)
   }
+  parts = do.call(rbind, strsplit(out$group, ' '))
+  out = data.frame(x = as.numeric(parts[, 1]), y = as.numeric(parts[, 2]), month = MONTHS_ABB[as.integer(parts[, 3])],
+                   out[setdiff(names(out), 'group')], check.names = FALSE)
   out[order(out$y, out$x, match(out$month, MONTHS_ABB)), ]
 }
 MONTHS_ABB = c('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')
@@ -412,7 +484,7 @@ if (sys.nframe() == 0) {
     # table for that one month ("test all").
     test_tiles = if (identical(args[2], 'all')) tiles else args[-1]
     if (!length(test_tiles) || !all(test_tiles %in% tiles)) stop('test needs "all" or tiles of the study area, e.g. h11v04')
-    out_dir = file.path(WORK_DIR, 'test_appeears')
+    out_dir = file.path(WORK_DIR, 'test_appeears_v2')
     started = Sys.time()
     build_month(test_tiles, as.Date('2005-07-01'), file.path(WORK_DIR, 'appeears_full_2005-07'), out_dir, need_zenith = FALSE)
     cat(sprintf('%d tiles in %.1f min\n', length(test_tiles), as.numeric(difftime(Sys.time(), started, units = 'mins'))))

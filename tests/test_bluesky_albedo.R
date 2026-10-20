@@ -1,0 +1,73 @@
+# Tests for the arithmetic of tools/prepare_bluesky_albedo.R, worked by hand (cases from the build
+# reviews of 20 October 2026). Run from the repository root: Rscript tests/test_bluesky_albedo.R
+suppressMessages(source("tools/prepare_bluesky_albedo.R"))
+near <- function(a, b, tol = 1e-12) isTRUE(all(abs(a - b) < tol))
+
+# Blue-sky mix: f = 0 gives black-sky, f = 1 white-sky, and values in between stay between them.
+stopifnot(
+  near(blue_sky(0.10, 0.30, 0), 0.10), near(blue_sky(0.10, 0.30, 1), 0.30),
+  near(blue_sky(0.10, 0.30, 0.25), 0.15),
+  all(blue_sky(0.10, 0.30, seq(0, 1, 0.1)) >= 0.10 & blue_sky(0.10, 0.30, seq(0, 1, 0.1)) <= 0.30)
+)
+
+# Equation of time: about -6 min in mid-July and +16 min in early November; leap years use 366 days.
+eot_by_hand <- function(doy, n) { g <- 2 * pi / n * (doy - 1)
+  229.18 * (0.000075 + 0.001868 * cos(g) - 0.032077 * sin(g) - 0.014615 * cos(2 * g) - 0.040849 * sin(2 * g)) }
+stopifnot(
+  abs(equation_of_time(as.Date("2005-07-15")) - (-5.78)) < 0.01,
+  abs(equation_of_time(as.Date("2005-11-03")) - 16.4) < 0.1,
+  near(equation_of_time(as.Date("2004-12-31")), eot_by_hand(366, 366)),
+  near(equation_of_time(as.Date("2005-12-31")), eot_by_hand(365, 365))
+)
+
+# Land: more than half of the days with a class say land; blank days do not count.
+stopifnot(identical(is_land(c(10, 6, 5, 0, 0), c(10, 10, 10, 3, 0)), c(TRUE, TRUE, FALSE, FALSE, FALSE)))
+
+# Low-sun rule: a missing angle passes only when there is no rule.
+stopifnot(identical(zenith_ok(c(60, 75, 80, NA), 75), c(TRUE, TRUE, FALSE, FALSE)),
+          identical(zenith_ok(c(60, NA), Inf), c(TRUE, TRUE)))
+
+# One day's totals: snowy, snow-free and unknown snow status; a day not kept adds nothing.
+d <- day_totals(keep = c(TRUE, TRUE, TRUE, FALSE), snow = c(1, 0, NA, 1), blue = c(0.8, 0.2, 0.5, 0.9))
+stopifnot(
+  identical(unname(d[, "n_all"]), c(1, 1, 1, 0)), identical(unname(d[, "n_snow"]), c(1, 0, 0, 0)),
+  identical(unname(d[, "n_free"]), c(0, 1, 0, 0)),
+  near(d[, "s_all"], c(0.8, 0.2, 0.5, 0)), near(d[, "s_snow"], c(0.8, 0, 0, 0)), near(d[, "s_free"], c(0, 0.2, 0, 0)),
+  # all = snowy + snow-free + unknown
+  identical(unname(d[, "n_all"] - d[, "n_snow"] - d[, "n_free"]), c(0, 0, 1, 0))
+)
+
+# Unequal coverage (Astra): cell A has pixel p (tile 1) with 0.15 and 0.25 in years 1 and 2, and
+# pixel q (tile 2) with 0.55 in year 1 only, one day each; cell B has 0.30 in both years. Pooling
+# pixel-days within each year and weighting the years equally gives A = (0.35 + 0.25) / 2 = 0.300.
+pixel_days <- data.frame(cell = c("A", "A", "A", "B", "B"), year = c(1, 2, 1, 1, 2), blue = c(0.15, 0.25, 0.55, 0.30, 0.30))
+per_year <- rowsum(cbind(n = 1, s = pixel_days$blue), paste(pixel_days$cell, pixel_days$year))
+cell_of <- sub(" .*", "", rownames(per_year))
+cl <- climatology(cell_of, per_year[, "n"], 0, per_year[, "n"], per_year[, "s"], 0, per_year[, "s"])
+stopifnot(identical(cl$group, c("A", "B")), near(cl$all, c(0.300, 0.300)), identical(cl$years, c(2, 2)))
+
+# Snow mixture (Astra's counterexample): one year, pixel A 10 snowy days at 0.8 and 10 snow-free
+# at 0.2, pixel B 2 snowy at 0.6 and 18 snow-free at 0.2. All days 14.8 / 40 = 0.37, and the mix of
+# snowy and snow-free by the snow share must give exactly that.
+cl <- climatology("c", n_all = 40, n_snow = 12, n_free = 28, s_all = 14.8, s_snow = 9.2, s_free = 5.6)
+stopifnot(near(cl$all, 0.37), near(cl$share_snowy, 0.3),
+          near(cl$share_snowy * cl$snowy + cl$share_snowfree * cl$snowfree, 0.37))
+
+# The same identity over several years with unequal days and some days of unknown snow status.
+n_all <- c(40, 7, 15); n_snow <- c(12, 0, 9); n_free <- c(25, 7, 5)
+s_snow <- c(9.2, 0, 5.4); s_free <- c(5.0, 1.1, 0.9); s_unknown <- c(1.5, 0, 0.2)
+cl <- climatology(rep("c", 3), n_all, n_snow, n_free, s_snow + s_free + s_unknown, s_snow, s_free)
+w <- 1 / n_all
+unknown_mean <- sum(s_unknown * w) / sum((n_all - n_snow - n_free) * w)
+share_unknown <- mean((n_all - n_snow - n_free) * w)
+stopifnot(near(cl$all, mean((s_snow + s_free + s_unknown) / n_all)),
+          near(cl$share_snowy + cl$share_snowfree + share_unknown, 1),
+          near(cl$share_snowy * cl$snowy + cl$share_snowfree * cl$snowfree + share_unknown * unknown_mean, cl$all))
+
+# No qualifying day at all gives no value, not zero; a year without data does not count.
+cl <- climatology(c("x", "x", "y"), n_all = c(0, 0, 0), n_snow = 0, n_free = 0, s_all = 0, s_snow = 0, s_free = 0)
+stopifnot(all(is.na(cl$all)), all(is.na(cl$snowy)), identical(cl$years, c(0, 0)))
+cl <- climatology(c("x", "x"), n_all = c(4, 0), n_snow = 0, n_free = c(4, 0), s_all = c(0.8, 0), s_snow = 0, s_free = c(0.8, 0))
+stopifnot(near(cl$all, 0.2), identical(cl$years, 1), is.na(cl$snowy))
+
+cat("test_bluesky_albedo: all tests passed\n")
