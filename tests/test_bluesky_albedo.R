@@ -117,6 +117,17 @@ stopifnot(damaged_stops,
           check_checksums(file.path(RECORDS_DIR, "2005-07", "paleoRFMCD432005-07-sha256sums.txt"),
                           file.path(APPEEARS_DIR, "2005-07")) == 3)
 
+# Collecting, interrupted at the last moment: the files are all in "<month>.partial" and the
+# checksum list is already in the records, but the folder was not renamed. Collect finishes it.
+dir.create(file.path(APPEEARS_DIR, "2005-08.partial"))
+names_aug <- sprintf("MCD43A3.061_Albedo_BSA_shortwave_doy2005%03d000000_aid0001.tif", 213:214)
+for (i in seq_along(names_aug)) writeLines(paste("aug", i), file.path(APPEEARS_DIR, "2005-08.partial", names_aug[i]))
+sha <- vapply(file.path(APPEEARS_DIR, "2005-08.partial", names_aug), function(f) as.character(openssl::sha256(file(f))), "")
+dir.create(file.path(RECORDS_DIR, "2005-08"))
+writeLines(paste(sha, names_aug), file.path(RECORDS_DIR, "2005-08", "paleoRFMCD432005-08-sha256sums.txt"))
+invisible(capture.output(collect_downloads()))
+stopifnot(setequal(list.files(file.path(APPEEARS_DIR, "2005-08")), names_aug), !dir.exists(file.path(APPEEARS_DIR, "2005-08.partial")))
+
 # Delivery: every GeoTIFF must be one of our layers on a day of the month, and every needed layer
 # must have at least one file; a day missing only the zenith is used by the no-rule version only,
 # a day missing another layer is skipped, and both are counted.

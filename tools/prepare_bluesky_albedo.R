@@ -22,9 +22,10 @@
 #                et al. 2018, doi:10.1016/j.rse.2018.02.001). Each daily value comes from the
 #                observations of a 16-day window centred on that day.
 #   Blue sky     (1 - f) x black-sky + f x white-sky, the isotropic approximation of the MCD43A3
-#                user guide (Lucht et al. 2000, doi:10.1109/36.841980; Roman et al. 2010,
-#                doi:10.1016/j.rse.2009.11.014, who note it is weakest for bright surfaces such as
-#                snow under a low sun), with f the all-sky diffuse fraction from ERA5,
+#                user guide (Lucht et al. 2000, doi:10.1109/36.841980), which the guide says is
+#                weakest at large solar angles over bright surfaces such as snow; Roman et al. 2010
+#                (doi:10.1016/j.rse.2009.11.014) found the full anisotropic form improves the
+#                biases only slightly. f is the all-sky diffuse fraction from ERA5,
 #                (ssrd - fdir) / ssrd (fdir is through a horizontal plane), in the hour containing
 #                local solar noon. The black-sky albedo is for local solar noon, so the result is
 #                the noon blue-sky albedo, not an albedo weighted by the day's sunlight.
@@ -34,25 +35,31 @@
 #   Low sun      noon solar zenith at most 75 degrees, as in the published climatology of Jia et
 #                al. 2022 (doi:10.1029/2021JD035987). Kept for comparison: 70 degrees (NASA's MODIS
 #                land validation page calls values beyond 70 degrees suspect) and no rule. The
-#                rule removes the north in winter: at 75 degrees, December keeps only cells south
-#                of about 53 N.
+#                product stores the zenith in whole degrees, so a stored 75 passes. The rule
+#                removes the north in winter: at 75 degrees, December keeps only cells south of
+#                about 53 N. A day whose zenith file is missing counts only for the no-rule version.
 #   Land         pixels whose land/water class (MCD43A2 BRDF_Albedo_LandWaterType) is land (1) on
 #                more than half of the days it has a class, over the whole record (Chris,
 #                2026-10-20). Our choice: the product is also made for coastal and shallow-water
 #                areas (MCD43 user guide). A blank class means no retrieval that day and is ignored.
+#                Shoreline days (class 2, "ocean coastlines and lake shorelines") are kept per pixel,
+#                so LAND_RULE = 'land_or_shore' can count them with land; whether to is still open.
 #   Snow         the MCD43A2 snow flag of each day (Wang et al. 2018): every version keeps all,
-#                snowy and snow-free days, so each cell has a snow share and snowy and snow-free
-#                albedos that mix back exactly to the all-days value.
+#                snowy and snow-free days; days with no snow flag count only in all. Each cell has
+#                snowy, snow-free and unknown-snow albedos and shares that mix back exactly to the
+#                all-days value (snowy and snow-free alone do so only where no day lacks a flag).
 #   Averaging    our judgement: within each year, every qualifying land pixel-day of a cell counts
 #                once; the years with data then weigh the same; no gap filling and no minimum
 #                number of days, the counts kept beside every value. Jia et al. 2022 likewise
 #                average each date over the years, but also drop the largest and smallest values;
 #                Duveiller et al. 2018 (doi:10.1038/s41467-017-02810-8) take the median of
 #                mid-month composites. We take the mean because forcing is linear in albedo.
-#   Cells        the 500 m sinusoidal pixels have equal area (MODIS grid), so pooling them is an
-#                area mean over the land pixels with data; Oleson et al. 2003
-#                (doi:10.1029/2002GL016749) aggregated MODIS albedo to a model grid "using area
-#                weighting". Pixels with more qualifying days weigh more within a year.
+#   Cells        the mean over the qualifying land pixel-days of each 1-degree cell within each
+#                year, then the years weighted equally (see Averaging). The 500 m sinusoidal pixels
+#                have equal area (MODIS grid), so every pixel-day stands for the same area, but
+#                pixels with more qualifying days weigh more: this is not the plain area mean of
+#                the pixels' own means. Oleson et al. 2003 (doi:10.1029/2002GL016749) aggregated
+#                MODIS albedo to a model grid "using area weighting".
 #
 # How the build runs. AppEEARS cuts the six layers the build uses out of NASA's MODIS files
 # for the study area and returns one GeoTIFF per layer and day on the MODIS sinusoidal grid,
@@ -66,12 +73,15 @@
 #      ~/Downloads.
 #   4. "collect" checks every downloaded GeoTIFF against the request's SHA-256 list, moves the
 #      month into data/modis_albedo/appeears/<year-month>/ (through "<year-month>.partial", so an
-#      interrupted move is finished by running collect again), and keeps the checksum list and
-#      AppEEARS's other files in data/modis_albedo/records/<year-month>/.
-#   5. "build" checks the month's files against the checksum list again, reduces them tile by
-#      tile to data/modis_albedo/monthly/<tile>_<year>_<month>.tif (per-pixel sums and counts,
-#      tagged with the settings), checks every tile's file, writes records/<year-month>/build.txt
-#      (code, settings, inputs), and only then deletes the month's day files.
+#      interrupted move is finished by running collect again, at whatever point it stopped), and
+#      keeps the checksum list and AppEEARS's other files in data/modis_albedo/records/<year-month>/.
+#   5. "build" checks the month's files against the checksum list again, checks that every layer
+#      was delivered and that the request asked for the right days and layers, reduces the month
+#      tile by tile to data/modis_albedo/monthly/<tile>_<year>_<month>.tif (per-pixel sums and
+#      counts, tagged with the settings, written under a temporary name), checks every layer of
+#      every tile's file, writes records/<year-month>/build.txt (code, settings, inputs, days used
+#      and skipped, each tile's origin), and only then deletes the month's day files ("keep"
+#      keeps them, as for the test months).
 #   6. Once every month is built, "cells" decides the land pixels and writes the cell table.
 # Every step can be rerun: requests are not written for months already collected or built, a
 # month already collected is not collected again, and a tile-month whose file exists is
@@ -218,6 +228,12 @@ check_checksums = function(list_file, where) {
 # ("name (1).tif") is not on the list and is left where it is.
 collect_downloads = function() {
   lists = list.files(DOWNLOADS, pattern = '^paleoRFMCD43\\d{4}-\\d{2}-sha256sums\\.txt$', full.names = TRUE)
+  # A collect interrupted after the checksum list went to the records but before the final
+  # rename: finish it from the list kept there.
+  stuck = sub('\\.partial$', '', list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}\\.partial$'))
+  stuck = stuck[!dir.exists(file.path(APPEEARS_DIR, stuck))]
+  kept = unlist(lapply(stuck, function(m) list.files(file.path(RECORDS_DIR, m), pattern = '-sha256sums\\.txt$', full.names = TRUE)))
+  lists = c(lists, kept[!basename(kept) %in% basename(lists)])
   if (!length(lists)) cat('no request checksum lists in', DOWNLOADS, '\n')
   for (l in lists) {
     month = sub('^paleoRFMCD43(\\d{4}-\\d{2}).*', '\\1', basename(l))
