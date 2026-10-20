@@ -232,7 +232,8 @@ collect_downloads = function() {
   # rename: finish it from the list kept there.
   stuck = sub('\\.partial$', '', list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}\\.partial$'))
   stuck = stuck[!dir.exists(file.path(APPEEARS_DIR, stuck))]
-  kept = unlist(lapply(stuck, function(m) list.files(file.path(RECORDS_DIR, m), pattern = '-sha256sums\\.txt$', full.names = TRUE)))
+  # (as.character: with no such month, unlist() gives NULL, which basename() refuses)
+  kept = as.character(unlist(lapply(stuck, function(m) list.files(file.path(RECORDS_DIR, m), pattern = '-sha256sums\\.txt$', full.names = TRUE))))
   lists = c(lists, kept[!basename(kept) %in% basename(lists)])
   if (!length(lists)) cat('no request checksum lists in', DOWNLOADS, '\n')
   for (l in lists) {

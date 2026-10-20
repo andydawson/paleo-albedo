@@ -117,6 +117,22 @@ stopifnot(damaged_stops,
           check_checksums(file.path(RECORDS_DIR, "2005-07", "paleoRFMCD432005-07-sha256sums.txt"),
                           file.path(APPEEARS_DIR, "2005-07")) == 3)
 
+# Collecting, the ordinary case: a fresh month with nothing half done (no "<month>.partial" at
+# all), then an idle run with nothing left to collect. Neither may fail.
+fresh <- file.path(tempdir(), "collect_fresh"); unlink(fresh, recursive = TRUE)
+saved <- list(DOWNLOADS, APPEEARS_DIR, RECORDS_DIR)
+DOWNLOADS <- file.path(fresh, "Downloads"); APPEEARS_DIR <- file.path(fresh, "appeears"); RECORDS_DIR <- file.path(fresh, "records")
+dir.create(DOWNLOADS, recursive = TRUE)
+names_sep <- sprintf("MCD43A3.061_Albedo_BSA_shortwave_doy2005%03d000000_aid0001.tif", 244:245)
+for (i in seq_along(names_sep)) writeLines(paste("sep", i), file.path(DOWNLOADS, names_sep[i]))
+sha <- vapply(file.path(DOWNLOADS, names_sep), function(f) as.character(openssl::sha256(file(f))), "")
+writeLines(paste(sha, names_sep), file.path(DOWNLOADS, "paleoRFMCD432005-09-sha256sums.txt"))
+invisible(capture.output(collect_downloads()))
+idle <- capture.output(collect_downloads())
+stopifnot(setequal(list.files(file.path(APPEEARS_DIR, "2005-09")), names_sep),
+          any(grepl("no request checksum lists", idle)))
+DOWNLOADS <- saved[[1]]; APPEEARS_DIR <- saved[[2]]; RECORDS_DIR <- saved[[3]]
+
 # Collecting, interrupted at the last moment: the files are all in "<month>.partial" and the
 # checksum list is already in the records, but the folder was not renamed. Collect finishes it.
 dir.create(file.path(APPEEARS_DIR, "2005-08.partial"))
