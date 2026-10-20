@@ -70,4 +70,35 @@ stopifnot(all(is.na(cl$all)), all(is.na(cl$snowy)), identical(cl$years, c(0, 0))
 cl <- climatology(c("x", "x"), n_all = c(4, 0), n_snow = 0, n_free = c(4, 0), s_all = c(0.8, 0), s_snow = 0, s_free = c(0.8, 0))
 stopifnot(near(cl$all, 0.2), identical(cl$years, 1), is.na(cl$snowy))
 
+# Collecting: an interrupted move (some files already in "<month>.partial") is finished by running
+# collect again; a damaged file stops it; the checksum list and request files are kept in records.
+tmp <- file.path(tempdir(), "collect_test"); unlink(tmp, recursive = TRUE)
+DOWNLOADS <- file.path(tmp, "Downloads"); APPEEARS_DIR <- file.path(tmp, "appeears"); RECORDS_DIR <- file.path(tmp, "records")
+dir.create(DOWNLOADS, recursive = TRUE)
+names_tif <- sprintf("MCD43A3.061_Albedo_BSA_shortwave_doy2005%03d000000_aid0001.tif", 182:184)
+for (i in seq_along(names_tif)) writeLines(paste("day", i), file.path(DOWNLOADS, names_tif[i]))
+sha <- vapply(file.path(DOWNLOADS, names_tif), function(f) as.character(openssl::sha256(file(f))), "")
+writeLines(paste(sha, names_tif), file.path(DOWNLOADS, "paleoRFMCD432005-07-sha256sums.txt"))
+writeLines("granules", file.path(DOWNLOADS, "paleoRFMCD432005-07-granule-list.txt"))
+dir.create(file.path(APPEEARS_DIR, "2005-07.partial"), recursive = TRUE)
+invisible(file.rename(file.path(DOWNLOADS, names_tif[1]), file.path(APPEEARS_DIR, "2005-07.partial", names_tif[1])))
+writeLines("damaged", file.path(DOWNLOADS, names_tif[2]))
+damaged_stops <- inherits(try(capture.output(collect_downloads()), silent = TRUE), "try-error")
+writeLines("day 2", file.path(DOWNLOADS, names_tif[2]))
+invisible(capture.output(collect_downloads()))
+stopifnot(damaged_stops,
+          setequal(list.files(file.path(APPEEARS_DIR, "2005-07")), names_tif),
+          !dir.exists(file.path(APPEEARS_DIR, "2005-07.partial")),
+          setequal(list.files(file.path(RECORDS_DIR, "2005-07")),
+                   c("paleoRFMCD432005-07-sha256sums.txt", "paleoRFMCD432005-07-granule-list.txt")),
+          check_checksums(file.path(RECORDS_DIR, "2005-07", "paleoRFMCD432005-07-sha256sums.txt"),
+                          file.path(APPEEARS_DIR, "2005-07")) == 3)
+
+# A monthly file is valid only with the expected layers and tag, and readable in full.
+good <- file.path(tmp, "good.tif"); r <- rast(nrows = 4, ncols = 4, nlyrs = length(TILE_LAYERS), vals = 1)
+names(r) <- TILE_LAYERS; metags(r) <- c(paleoRF_build = SETTINGS_TAG); writeRaster(r, good)
+old_tag <- file.path(tmp, "old.tif"); metags(r) <- c(paleoRF_build = "reduction 1"); writeRaster(r, old_tag)
+cut_short <- file.path(tmp, "cut.tif"); writeBin(readBin(good, "raw", file.size(good))[1:200], cut_short)
+stopifnot(valid_output(good), !valid_output(old_tag), !valid_output(cut_short))
+
 cat("test_bluesky_albedo: all tests passed\n")

@@ -90,8 +90,14 @@ VERSIONS = data.frame(name       = c('full_75', 'any_75', 'full_70', 'full_nocut
 SUMS = c('n_all', 'n_snow', 'n_free', 's_all', 's_snow', 's_free')
 VERSION_LAYERS = as.vector(outer(SUMS, VERSIONS$name, function(s, v) paste(v, s, sep = '_')))
 TILE_LAYERS = c(VERSION_LAYERS, 'land_days', 'read_days')
+# Written into every monthly file; a file with another tag is never reused, so a changed setting
+# cannot silently mix with outputs made before the change.
+SETTINGS_TAG = paste0('reduction 2 (2026-10-20); versions ',
+                      paste(VERSIONS$name, VERSIONS$quality, VERSIONS$max_zenith, collapse = ', '),
+                      '; full inversions ', paste(FULL_QA, collapse = ' '), '; from ', FIRST_DAY)
 
 APPEEARS_DIR = file.path(WORK_DIR, 'appeears')  # collected months, one folder each
+RECORDS_DIR = file.path(WORK_DIR, 'records')     # kept for good: checksum lists, AppEEARS's files, build records
 DOWNLOADS   = path.expand('~/Downloads')         # where the browser saves the AppEEARS files
 
 # The layers, as AppEEARS names its files (<product>_<layer>), with their scale and fill.
@@ -162,31 +168,53 @@ write_request = function(month, ring) {
   file
 }
 
+# Every GeoTIFF on a request's SHA-256 list ("<task name without underscores>-sha256sums.txt",
+# as AppEEARS names it) must be at `where` and match; stops otherwise.
+check_checksums = function(list_file, where) {
+  sums = read.table(list_file, col.names = c('sha256', 'file'), colClasses = 'character')
+  sums = sums[grepl('\\.tif$', sums$file), ]
+  if (length(where) == 1) where = file.path(where, sums$file)
+  if (!all(file.exists(where))) stop(sum(!file.exists(where)), ' of ', nrow(sums), ' files on ', basename(list_file), ' are missing')
+  got = vapply(where, function(f) as.character(openssl::sha256(file(f))), '')
+  if (any(got != sums$sha256))
+    stop(sum(got != sums$sha256), ' files differ from their SHA-256 on ', basename(list_file), ', e.g. ',
+         sums$file[got != sums$sha256][1], '; download them again')
+  nrow(sums)
+}
+
 # Moves each finished month from the browser's download folder into APPEEARS_DIR, once every
-# GeoTIFF on the request's SHA-256 list ("<task name without underscores>-sha256sums.txt",
-# as AppEEARS names it) is there and matches. A copy the browser saved twice ("name (1).tif")
-# is left where it is.
+# GeoTIFF on its checksum list is there and matches. The files go first into "<month>.partial",
+# which is renamed only when all are in, so an interrupted move is finished by running collect
+# again. The checksum list and AppEEARS's other files for the request (granule list, request,
+# metadata) go to RECORDS_DIR/<month>/, which is never deleted. A copy the browser saved twice
+# ("name (1).tif") is not on the list and is left where it is.
 collect_downloads = function() {
   lists = list.files(DOWNLOADS, pattern = '^paleoRFMCD43\\d{4}-\\d{2}-sha256sums\\.txt$', full.names = TRUE)
   if (!length(lists)) cat('no request checksum lists in', DOWNLOADS, '\n')
   for (l in lists) {
     month = sub('^paleoRFMCD43(\\d{4}-\\d{2}).*', '\\1', basename(l))
     dest = file.path(APPEEARS_DIR, month)
+    partial = paste0(dest, '.partial')
     if (dir.exists(dest)) { cat(month, ': already collected\n'); next }
     sums = read.table(l, col.names = c('sha256', 'file'), colClasses = 'character')
     sums = sums[grepl('\\.tif$', sums$file), ]
-    here = file.path(DOWNLOADS, sums$file)
-    if (!all(file.exists(here))) {
-      cat(month, ':', sum(!file.exists(here)), 'of', nrow(sums), 'files not downloaded yet\n'); next
+    moved = file.exists(file.path(partial, sums$file))
+    where = ifelse(moved, file.path(partial, sums$file), file.path(DOWNLOADS, sums$file))
+    if (!all(file.exists(where))) {
+      cat(month, ':', sum(!file.exists(where)), 'of', nrow(sums), 'files not downloaded yet\n'); next
     }
-    got = vapply(here, function(f) as.character(openssl::sha256(file(f))), '')
-    if (any(got != sums$sha256))
-      stop(month, ': ', sum(got != sums$sha256), ' files differ from their SHA-256, e.g. ',
-           sums$file[got != sums$sha256][1], '; download them again')
-    dir.create(dest, recursive = TRUE)
-    if (!all(file.rename(c(here, l), file.path(dest, c(sums$file, basename(l))))))
-      stop(month, ': could not move the files into ', dest)
-    cat(month, ':', nrow(sums), 'files checked and moved to', dest, '\n')
+    check_checksums(l, where)
+    dir.create(partial, recursive = TRUE, showWarnings = FALSE)
+    if (!all(file.rename(where[!moved], file.path(partial, sums$file[!moved]))))
+      stop(month, ': could not move every file into ', partial, '; run collect again to finish')
+    record = file.path(RECORDS_DIR, month)
+    dir.create(record, recursive = TRUE, showWarnings = FALSE)
+    prefix = sub('-sha256sums\\.txt$', '', basename(l))
+    side = list.files(DOWNLOADS, full.names = TRUE)
+    side = side[startsWith(basename(side), paste0(prefix, '-')) & !grepl('\\.tif$', side)]
+    if (!all(file.rename(side, file.path(record, basename(side))))) stop(month, ': could not move the request files into ', record)
+    if (!file.rename(partial, dest)) stop(month, ': could not rename ', partial)
+    cat(month, ':', nrow(sums), 'files checked and moved to', dest, '; request files kept in', record, '\n')
   }
 }
 
@@ -298,7 +326,10 @@ climatology = function(group, n_all, n_snow, n_free, s_all, s_snow, s_free) {
 # step. need_zenith = FALSE only for the July 2005 test (see the header).
 process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE) {
   out = file.path(out_dir, sprintf('%s_%s.tif', tile, format(month, '%Y_%m')))
-  if (file.exists(out)) return(out)
+  if (file.exists(out)) {
+    if (!identical(build_tag(out), SETTINGS_TAG)) stop(out, ' was made with other settings; move it away first')
+    return(out)
+  }
   days = seq(month, seq(month, by = 'month', length.out = 2)[2] - 1, by = 'day')
   days = days[days >= FIRST_DAY & days <= LAST_DAY]
   files = day_files(day_dir, days)
@@ -340,20 +371,59 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   }
   r = setValues(rast(template, nlyrs = length(TILE_LAYERS)), totals)
   names(r) = TILE_LAYERS
+  metags(r) = c(paleoRF_build = SETTINGS_TAG)
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   writeRaster(r, out, gdal = 'COMPRESS=DEFLATE', datatype = 'FLT4S')
   if (out_of_range > 0) cat(sprintf('%s %s: %d pixel-days with albedo outside 0-1 dropped\n', tile, format(month, '%Y-%m'), out_of_range))
   out
 }
 
-# Every tile of one month, WORKERS at a time; stops if any failed (rerunning retries them).
+build_tag = function(file) {
+  m = metags(rast(file))
+  m$value[m$name == 'paleoRF_build']
+}
+
+# A monthly file is usable if it opens, has the expected layers and tag, and its last layer can
+# be read in full (a file cut short by a crash fails here).
+valid_output = function(file) {
+  tryCatch({
+    r = rast(file)
+    v = values(r[[nlyr(r)]])
+    identical(names(r), TILE_LAYERS) && identical(build_tag(file), SETTINGS_TAG)
+  }, error = function(e) FALSE)
+}
+
+# Every tile of one month, WORKERS at a time. Stops unless every tile's file was written and is
+# valid: a worker that dies (out of memory, killed) returns no message at all, so success is
+# checked against the expected files rather than by looking for failure messages. Rerunning
+# retries the missing tiles.
 build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
   done = parallel::mclapply(tiles, function(tile)
     tryCatch(process_tile_month(tile, month, day_dir, out_dir, need_zenith),
              error = function(e) paste('FAILED', tile, conditionMessage(e))),
     mc.cores = WORKERS, mc.preschedule = FALSE)
-  failed = grep('^FAILED', unlist(done), value = TRUE)
-  if (length(failed)) { writeLines(failed); stop(length(failed), ' tiles of ', format(month, '%Y-%m'), ' failed') }
+  expected = file.path(out_dir, sprintf('%s_%s.tif', tiles, format(month, '%Y_%m')))
+  ok = vapply(seq_along(tiles), function(i) identical(done[[i]], expected[i]) && valid_output(expected[i]), TRUE)
+  for (i in which(!ok)) cat('FAILED', tiles[i], if (is.character(done[[i]])) done[[i]] else 'worker died or wrote no valid file', '\n')
+  if (!all(ok)) stop(sum(!ok), ' tiles of ', format(month, '%Y-%m'), ' failed; the day files are kept')
+}
+
+# What made a month's files, kept in RECORDS_DIR/<month>/build.txt after its day files are
+# deleted: the code (git commit and the script's own SHA-256), the settings, the files checked
+# and the ERA5 files used.
+write_build_record = function(month, record_dir, n_files, tiles) {
+  script = sub('^--file=', '', grep('^--file=', commandArgs(FALSE), value = TRUE))
+  commit = tryCatch(system2('git', c('-C', dirname(script), 'rev-parse', 'HEAD'), stdout = TRUE, stderr = FALSE),
+                    error = function(e) 'unknown', warning = function(w) 'unknown')
+  era5 = file.path(ERA5_DIR, sprintf('era5_ssrd_fdir_%s.nc', format(c(month, seq(month, by = 'month', length.out = 2)[2]), '%Y_%m')))
+  era5 = era5[file.exists(era5)]
+  writeLines(c(paste('built:', format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z')),
+               paste('code:', script, 'commit', commit[1], 'sha256', as.character(openssl::sha256(file(script)))),
+               paste('settings:', SETTINGS_TAG),
+               paste('day files checked against the SHA-256 list:', n_files),
+               paste('tiles:', length(tiles), '-', paste(tiles, collapse = ' ')),
+               paste('ERA5:', basename(era5), 'sha256', vapply(era5, function(f) as.character(openssl::sha256(file(f))), ''))),
+             file.path(record_dir, 'build.txt'))
 }
 
 abind_time = function(...) {                          # join [lon, lat, time] arrays along time
@@ -455,7 +525,9 @@ if (sys.nframe() == 0) {
     ring = request_area(cells)
     for (i in seq_along(wanted)) {
       m = wanted[i]
-      if (built(m) || dir.exists(file.path(APPEEARS_DIR, format(m, '%Y-%m')))) { cat(format(m, '%Y-%m'), ': already collected or built\n'); next }
+      if (built(m) || any(dir.exists(file.path(APPEEARS_DIR, paste0(format(m, '%Y-%m'), c('', '.partial')))))) {
+        cat(format(m, '%Y-%m'), ': already collected or built\n'); next
+      }
       cat(write_request(m, ring), '\n')
     }
 
@@ -466,8 +538,14 @@ if (sys.nframe() == 0) {
     cat(length(tiles), 'tiles:', paste(tiles, collapse = ' '), '\n')
     for (day_dir in list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}$', full.names = TRUE)) {
       started = Sys.time()
-      build_month(tiles, as.Date(paste0(basename(day_dir), '-01')), day_dir, monthly_dir)
-      unlink(day_dir, recursive = TRUE)              # the day files are no longer needed
+      record_dir = file.path(RECORDS_DIR, basename(day_dir))
+      list_file = list.files(record_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE)
+      if (length(list_file) != 1) stop(basename(day_dir), ': expected one checksum list in ', record_dir)
+      n_files = check_checksums(list_file, day_dir)   # the whole delivery is there and intact
+      month = as.Date(paste0(basename(day_dir), '-01'))
+      build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid
+      write_build_record(month, record_dir, n_files, tiles)
+      unlink(day_dir, recursive = TRUE)              # only now are the day files no longer needed
       cat(sprintf('%s: built in %.1f min; its day files deleted\n', basename(day_dir),
                   as.numeric(difftime(Sys.time(), started, units = 'mins'))))
     }
@@ -485,8 +563,11 @@ if (sys.nframe() == 0) {
     test_tiles = if (identical(args[2], 'all')) tiles else args[-1]
     if (!length(test_tiles) || !all(test_tiles %in% tiles)) stop('test needs "all" or tiles of the study area, e.g. h11v04')
     out_dir = file.path(WORK_DIR, 'test_appeears_v2')
+    test_dir = file.path(WORK_DIR, 'appeears_full_2005-07')
     started = Sys.time()
-    build_month(test_tiles, as.Date('2005-07-01'), file.path(WORK_DIR, 'appeears_full_2005-07'), out_dir, need_zenith = FALSE)
+    cat(check_checksums(list.files(test_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE), test_dir),
+        'day files match their SHA-256 list\n')
+    build_month(test_tiles, as.Date('2005-07-01'), test_dir, out_dir, need_zenith = FALSE)
     cat(sprintf('%d tiles in %.1f min\n', length(test_tiles), as.numeric(difftime(Sys.time(), started, units = 'mins'))))
     if (identical(args[2], 'all')) {
       table = cell_table(tiles, cells, out_dir)
