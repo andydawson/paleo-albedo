@@ -102,7 +102,11 @@ names_tif <- sprintf("MCD43A3.061_Albedo_BSA_shortwave_doy2005%03d000000_aid0001
 for (i in seq_along(names_tif)) writeLines(paste("day", i), file.path(DOWNLOADS, names_tif[i]))
 sha <- vapply(file.path(DOWNLOADS, names_tif), function(f) as.character(openssl::sha256(file(f))), "")
 writeLines(paste(sha, names_tif), file.path(DOWNLOADS, "paleoRFMCD432005-07-sha256sums.txt"))
-writeLines("granules", file.path(DOWNLOADS, "paleoRFMCD432005-07-granule-list.txt"))
+# AppEEARS's other files for the task use hyphens (task paleoRF_MCD43_2005-07), as on the real downloads.
+side_names <- c("paleoRF-MCD43-2005-07-granule-list.txt", "paleoRF-MCD43-2005-07-request.json",
+                "paleoRF-MCD43-2005-07-MCD43A2-061-metadata.xml", "paleoRF-MCD43-2005-07-MCD43A3-061-metadata.xml")
+for (f in side_names) writeLines("side", file.path(DOWNLOADS, f))
+writeLines("other task", file.path(DOWNLOADS, "paleoRF-MCD43-2005-08-request.json"))   # another month: left alone
 dir.create(file.path(APPEEARS_DIR, "2005-07.partial"), recursive = TRUE)
 invisible(file.rename(file.path(DOWNLOADS, names_tif[1]), file.path(APPEEARS_DIR, "2005-07.partial", names_tif[1])))
 writeLines("damaged", file.path(DOWNLOADS, names_tif[2]))
@@ -112,8 +116,8 @@ invisible(capture.output(collect_downloads()))
 stopifnot(damaged_stops,
           setequal(list.files(file.path(APPEEARS_DIR, "2005-07")), names_tif),
           !dir.exists(file.path(APPEEARS_DIR, "2005-07.partial")),
-          setequal(list.files(file.path(RECORDS_DIR, "2005-07")),
-                   c("paleoRFMCD432005-07-sha256sums.txt", "paleoRFMCD432005-07-granule-list.txt")),
+          setequal(list.files(file.path(RECORDS_DIR, "2005-07")), c("paleoRFMCD432005-07-sha256sums.txt", side_names)),
+          file.exists(file.path(DOWNLOADS, "paleoRF-MCD43-2005-08-request.json")),
           check_checksums(file.path(RECORDS_DIR, "2005-07", "paleoRFMCD432005-07-sha256sums.txt"),
                           file.path(APPEEARS_DIR, "2005-07")) == 3)
 
@@ -172,10 +176,16 @@ stopifnot(stray_stops, renamed_stops, missing_layer_stops)
 # The request file must ask for the month's days and our layers.
 WORK_DIR <- tmp; rec <- file.path(tmp, "rec_req"); dir.create(rec)
 invisible(write_request(as.Date("2005-07-01"), request_area(data.frame(x = c(-100.5, -99.5), y = c(40.5, 41.5)))))
-stopifnot(grepl("as expected", check_request(as.Date("2005-07-01"), rec)))
-wrong <- jsonlite::fromJSON(file.path(tmp, "requests", "paleoRF_MCD43_2005-07.json"), simplifyVector = FALSE)
-wrong$params$layers <- wrong$params$layers[1:5]
-jsonlite::write_json(wrong, file.path(rec, "paleoRFMCD432005-07-request.json"), auto_unbox = TRUE)
+only_ours <- check_request(as.Date("2005-07-01"), rec)
+stopifnot(grepl("as expected", only_ours), grepl("our own request file only", only_ours))
+# AppEEARS's copy, as it comes back: our request plus its own fields, named with hyphens.
+theirs <- jsonlite::fromJSON(file.path(tmp, "requests", "paleoRF_MCD43_2005-07.json"), simplifyVector = FALSE)
+theirs$task_id <- "abc"; theirs$status <- "done"; theirs$params$dates[[1]]$recurring <- FALSE
+jsonlite::write_json(theirs, file.path(rec, "paleoRF-MCD43-2005-07-request.json"), auto_unbox = TRUE)
+their_line <- check_request(as.Date("2005-07-01"), rec)
+stopifnot(grepl("as expected", their_line), grepl("AppEEARS's copy", their_line), grepl("paleoRF-MCD43-2005-07-request.json", their_line))
+wrong <- theirs; wrong$params$layers <- wrong$params$layers[1:5]
+jsonlite::write_json(wrong, file.path(rec, "paleoRF-MCD43-2005-07-request.json"), auto_unbox = TRUE)
 stopifnot(inherits(try(check_request(as.Date("2005-07-01"), rec), silent = TRUE), "try-error"))
 WORK_DIR <- "data/modis_albedo"
 

@@ -177,6 +177,13 @@ tiles_for_cells = function(cells) {
 
 # --- AppEEARS requests and downloads --------------------------------------------------------
 task_name = function(month) paste0('paleoRF_MCD43_', format(month, '%Y-%m'))
+# How AppEEARS names the files it returns for a task: the checksum list drops the underscores of
+# the task name ("paleoRFMCD432005-03-sha256sums.txt"), its other files turn them into hyphens
+# ("paleoRF-MCD43-2005-03-request.json", "...-granule-list.txt", "...-MCD43A3-061-metadata.xml").
+appeears_prefixes = function(month) {
+  if (is.character(month)) month = as.Date(paste0(month, '-01'))
+  c(gsub('_', '', task_name(month)), gsub('_', '-', task_name(month)))
+}
 
 # The request area: the box around the cells' outlines, its edges given every half degree so
 # that the box keeps its shape when AppEEARS projects it to the sinusoidal grid.
@@ -254,9 +261,9 @@ collect_downloads = function() {
       stop(month, ': could not move every file into ', partial, '; run collect again to finish')
     record = file.path(RECORDS_DIR, month)
     dir.create(record, recursive = TRUE, showWarnings = FALSE)
-    prefix = sub('-sha256sums\\.txt$', '', basename(l))
     side = list.files(DOWNLOADS, full.names = TRUE)
-    side = side[startsWith(basename(side), paste0(prefix, '-')) & !grepl('\\.tif$', side)]
+    ours = Reduce(`|`, lapply(paste0(appeears_prefixes(month), '-'), function(p) startsWith(basename(side), p)))
+    side = side[ours & !grepl('\\.tif$', side)]
     if (!all(file.rename(side, file.path(record, basename(side))))) stop(month, ': could not move the request files into ', record)
     if (!file.rename(partial, dest)) stop(month, ': could not rename ', partial)
     cat(month, ':', nrow(sums), 'files checked and moved to', dest, '; request files kept in', record, '\n')
@@ -303,11 +310,13 @@ delivery_summary = function(tab, needed) {
     paste('days with a file, by layer:', paste(sprintf('%s %d', LAYERS$name, colSums(tab[, LAYERS$name])), collapse = ', ')))
 }
 
-# The request behind a month, if its file is at hand (AppEEARS's copy in the records, or ours in
-# requests/): its dates and layers must be the month's days and our layers, else the build stops.
+# The request behind a month, if its file is at hand: AppEEARS's copy in the records if collect
+# filed it, else ours in requests/ (which only shows what we meant to ask; the record says which).
+# Its dates and layers must be the month's days and our layers, else the build stops.
 check_request = function(month, record_dir) {
-  candidates = c(list.files(record_dir, pattern = 'request.*\\.json$', full.names = TRUE),
-                 file.path(WORK_DIR, 'requests', paste0(task_name(month), '.json')))
+  theirs = list.files(record_dir, pattern = 'request.*\\.json$', full.names = TRUE)
+  ours = file.path(WORK_DIR, 'requests', paste0(task_name(month), '.json'))
+  candidates = c(theirs, ours)
   candidates = candidates[file.exists(candidates)]
   days = month_days(month)
   for (f in candidates) {                            # the first one that can be read
@@ -318,7 +327,9 @@ check_request = function(month, record_dir) {
     if (!identical(as.numeric(dates), as.numeric(range(days))))
       stop(f, ': requested ', paste(dates, collapse = ' to '), ', not ', paste(range(days), collapse = ' to '))
     if (!all(LAYERS$file %in% layers)) stop(f, ': does not request ', paste(setdiff(LAYERS$file, layers), collapse = ', '))
-    return(paste('request file:', f, '- dates and layers as expected'))
+    whose = if (f %in% theirs) "AppEEARS's copy, i.e. what it was asked to do" else
+      "our own request file only (AppEEARS's copy was not found in the records), i.e. what we meant to ask"
+    return(paste('request file:', f, '-', whose, '- dates and layers as expected'))
   }
   'request file: none found or readable; checked against the checksum list only'
 }
