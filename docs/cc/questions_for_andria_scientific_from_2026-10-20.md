@@ -62,6 +62,20 @@ outside the range of today's mixes.
   to the nearest modern mix is 0.12 in cover fraction, against 0.04 at 6 ka.
 - Checked for May with the selected model only; other months are not yet checked.
 
+**Three checks, 20 October (fits the hindcast uses).**
+- *No modern counterpart for most of the Holocene.* On the cover triangle, nearly every box cell
+  lies outside the range of all of today's North American cover mixes from 1 ka to 8 ka (99% at
+  1 ka, 100% at 4.5 ka, 98% at 6 ka; 15% at 0.2 ka). The past forest there had little open land
+  (about 6%); every modern cell with that much summergreen has more open land. Across the whole
+  study area, 10-15% of past cells lie outside today's range at each time slice.
+- *It is the conifer-to-deciduous swap.* Replacing evergreen by summergreen alone, with open land
+  held fixed, reproduces almost the whole modelled 6 to 4.5 ka change in every month (May -0.094
+  against -0.095).
+- *The sign depends on the location term.* Refitting May on the same data without the location
+  term turns the box's 6 to 4.5 ka change from -0.095 (darker) to +0.042 (brighter), but the fit to
+  today's albedo falls from 97% to 67% of deviance explained. The data cannot pin down the
+  evergreen effect here.
+
 **What we propose to check.**
 - The model's fitted albedo for pure evergreen and pure summergreen cover,
   month by month, against published values for conifer and deciduous
