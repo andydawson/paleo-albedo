@@ -97,6 +97,41 @@ stopifnot(damaged_stops,
           check_checksums(file.path(RECORDS_DIR, "2005-07", "paleoRFMCD432005-07-sha256sums.txt"),
                           file.path(APPEEARS_DIR, "2005-07")) == 3)
 
+# Delivery: every GeoTIFF must be one of our layers on a day of the month, and every needed layer
+# must have at least one file; a day missing only the zenith is used by the no-rule version only,
+# a day missing another layer is skipped, and both are counted.
+deliv <- file.path(tmp, "delivery"); dir.create(deliv)
+july <- month_days(as.Date("2005-07-01"))
+make_day_files <- function(dir, days, layers = LAYERS$file)
+  for (l in layers) invisible(file.create(file.path(dir, sprintf("%s_doy%s000000_aid0001.tif", l, format(days, "%Y%j")))))
+make_day_files(deliv, july)
+invisible(file.remove(file.path(deliv, sprintf("%s_doy%s000000_aid0001.tif", LAYERS$file[LAYERS$name == "sza"], "2005190"))))
+invisible(file.remove(file.path(deliv, sprintf("%s_doy%s000000_aid0001.tif", LAYERS$file[LAYERS$name == "snow"], "2005200"))))
+summary_lines <- delivery_summary(delivery_table(deliv, july, LAYERS$name), LAYERS$name)
+stopifnot(length(july) == 31,
+          grepl("with every needed layer: 29$", summary_lines[1]),
+          grepl("zenith .*: 1 \\(09\\)", summary_lines[2]),
+          grepl("skipped.*: 1 \\(19\\)", summary_lines[3]))
+invisible(file.create(file.path(deliv, "MCD43A3.061_Albedo_BSA_shortwave_doy2005213000000_aid0001.tif")))  # 1 August
+stray_stops <- inherits(try(delivery_table(deliv, july, LAYERS$name), silent = TRUE), "try-error")
+invisible(file.remove(file.path(deliv, "MCD43A3.061_Albedo_BSA_shortwave_doy2005213000000_aid0001.tif")))
+invisible(file.create(file.path(deliv, "MCD43A3.061_Albedo_BSA_v2_doy2005190000000_aid0001.tif")))  # renamed layer
+renamed_stops <- inherits(try(delivery_table(deliv, july, LAYERS$name), silent = TRUE), "try-error")
+invisible(file.remove(file.path(deliv, "MCD43A3.061_Albedo_BSA_v2_doy2005190000000_aid0001.tif")))
+invisible(file.remove(list.files(deliv, pattern = "Snow_BRDF_Albedo", full.names = TRUE)))  # a whole layer missing
+missing_layer_stops <- inherits(try(delivery_table(deliv, july, LAYERS$name), silent = TRUE), "try-error")
+stopifnot(stray_stops, renamed_stops, missing_layer_stops)
+
+# The request file must ask for the month's days and our layers.
+WORK_DIR <- tmp; rec <- file.path(tmp, "rec_req"); dir.create(rec)
+invisible(write_request(as.Date("2005-07-01"), request_area(data.frame(x = c(-100.5, -99.5), y = c(40.5, 41.5)))))
+stopifnot(grepl("as expected", check_request(as.Date("2005-07-01"), rec)))
+wrong <- jsonlite::fromJSON(file.path(tmp, "requests", "paleoRF_MCD43_2005-07.json"), simplifyVector = FALSE)
+wrong$params$layers <- wrong$params$layers[1:5]
+jsonlite::write_json(wrong, file.path(rec, "paleoRFMCD432005-07-request.json"), auto_unbox = TRUE)
+stopifnot(inherits(try(check_request(as.Date("2005-07-01"), rec), silent = TRUE), "try-error"))
+WORK_DIR <- "data/modis_albedo"
+
 # A monthly file is valid only with the expected layers and tag, and readable in full.
 good <- file.path(tmp, "good.tif"); r <- rast(nrows = 4, ncols = 4, nlyrs = length(TILE_LAYERS), vals = 1)
 names(r) <- TILE_LAYERS; metags(r) <- c(paleoRF_build = SETTINGS_TAG); writeRaster(r, good)

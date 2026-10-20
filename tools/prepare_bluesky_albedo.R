@@ -241,6 +241,66 @@ collect_downloads = function() {
   }
 }
 
+# --- what AppEEARS delivered for a month ------------------------------------------------------
+# The days of a month that the build uses (the record starts on FIRST_DAY).
+month_days = function(month) {
+  days = seq(month, seq(month, by = 'month', length.out = 2)[2] - 1, by = 'day')
+  days[days >= FIRST_DAY & days <= LAST_DAY]
+}
+
+# Which layers were delivered on which day (rows: days, columns: LAYERS$name). The checksum list
+# proves that what AppEEARS listed arrived intact, not that it processed every layer and day, so
+# this stops if any GeoTIFF in the folder is not one of our layers on a day of this month (a
+# renamed layer, a wrong month), or if a needed layer has no file at all (every day would be
+# skipped and the tiles would come out empty).
+delivery_table = function(day_dir, days, needed) {
+  tifs = list.files(day_dir, pattern = '\\.tif$')
+  named = grepl('_doy\\d{7}000000_aid0001\\.tif$', tifs)
+  layer = sub('_doy\\d{7}000000_aid0001\\.tif$', '', tifs)
+  day = as.Date(sub('.*_doy(\\d{7})000000_aid0001\\.tif$', '\\1', tifs), '%Y%j')
+  stray = !named | !(layer %in% LAYERS$file) | !(day %in% days)
+  if (any(stray)) stop(day_dir, ': ', sum(stray), ' files are not one of the layers on a day of this month, e.g. ', tifs[stray][1])
+  present = do.call(cbind, lapply(LAYERS$file, function(l) days %in% day[layer == l]))
+  colnames(present) = LAYERS$name
+  none = needed[colSums(present[, needed, drop = FALSE]) == 0]
+  if (length(none)) stop(day_dir, ': no file at all for ', paste(none, collapse = ', '), '; the delivery is incomplete')
+  data.frame(day = days, present, check.names = FALSE)
+}
+
+# How the days are used (the same rule as process_tile_month): a day missing an albedo, quality,
+# snow or land layer is skipped; a day missing only the noon zenith is used, but only by the
+# version with no low-sun rule. Lines for the build record, so that archive gaps stay visible.
+delivery_summary = function(tab, needed) {
+  core = intersect(setdiff(needed, 'sza'), LAYERS$name)
+  skipped = !apply(tab[, core, drop = FALSE], 1, all)
+  no_zenith = !skipped & 'sza' %in% needed & !tab$sza
+  dates = function(k) if (any(k)) paste(format(tab$day[k], '%d'), collapse = ' ') else '-'
+  c(sprintf('days in the month: %d; with every needed layer: %d', nrow(tab), sum(!skipped & !no_zenith)),
+    sprintf('days used without the noon zenith (no-low-sun-rule version only): %d (%s)', sum(no_zenith), dates(no_zenith)),
+    sprintf('days skipped, an albedo, quality, snow or land layer missing: %d (%s)', sum(skipped), dates(skipped)),
+    paste('days with a file, by layer:', paste(sprintf('%s %d', LAYERS$name, colSums(tab[, LAYERS$name])), collapse = ', ')))
+}
+
+# The request behind a month, if its file is at hand (AppEEARS's copy in the records, or ours in
+# requests/): its dates and layers must be the month's days and our layers, else the build stops.
+check_request = function(month, record_dir) {
+  candidates = c(list.files(record_dir, pattern = 'request.*\\.json$', full.names = TRUE),
+                 file.path(WORK_DIR, 'requests', paste0(task_name(month), '.json')))
+  candidates = candidates[file.exists(candidates)]
+  days = month_days(month)
+  for (f in candidates) {                            # the first one that can be read
+    req = tryCatch(jsonlite::fromJSON(f), error = function(e) NULL)
+    dates = tryCatch(as.Date(unlist(req$params$dates[1, c('startDate', 'endDate')]), '%m-%d-%Y'), error = function(e) NULL)
+    layers = tryCatch(paste(req$params$layers$product, req$params$layers$layer, sep = '_'), error = function(e) NULL)
+    if (length(dates) != 2 || anyNA(dates) || !length(layers)) next
+    if (!identical(as.numeric(dates), as.numeric(range(days))))
+      stop(f, ': requested ', paste(dates, collapse = ' to '), ', not ', paste(range(days), collapse = ' to '))
+    if (!all(LAYERS$file %in% layers)) stop(f, ': does not request ', paste(setdiff(LAYERS$file, layers), collapse = ', '))
+    return(paste('request file:', f, '- dates and layers as expected'))
+  }
+  'request file: none found or readable; checked against the checksum list only'
+}
+
 # --- reading one day ----------------------------------------------------------------------
 # The file of each layer for each day (rows: days, columns: LAYERS$name), NA where AppEEARS
 # sent none: on a day with no MODIS file there is no output file either.
@@ -357,10 +417,9 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
     if (!identical(build_tag(out), SETTINGS_TAG)) stop(out, ' was made with other settings; move it away first')
     return(out)
   }
-  days = seq(month, seq(month, by = 'month', length.out = 2)[2] - 1, by = 'day')
-  days = days[days >= FIRST_DAY & days <= LAST_DAY]
+  days = month_days(month)
   files = day_files(day_dir, days)
-  needed = if (need_zenith) LAYERS$name else setdiff(LAYERS$name, 'sza')
+  core = setdiff(LAYERS$name, 'sza')                 # without these a day cannot be used
   if (need_zenith && all(is.na(files[, 'sza']))) stop('no noon solar zenith files in ', day_dir)
 
   template = tile_template(tile)
@@ -372,7 +431,7 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   totals = matrix(0, ncell(template), length(TILE_LAYERS), dimnames = list(NULL, TILE_LAYERS))
   out_of_range = 0
   for (d in seq_along(days)) {
-    if (anyNA(files[d, needed])) next                # a day with no file counts as no data
+    if (anyNA(files[d, core])) next                  # counted in the build record (delivery_summary)
     get  = function(name) read_layer(files[d, name], template, name)
     bsa  = get('bsa')
     wsa  = get('wsa')
@@ -383,7 +442,9 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
     bsa[bad] = NA; wsa[bad] = NA
     qa   = get('qa')
     snow = get('snow')
-    sza  = if (need_zenith) get('sza') else rep(0, ncell(template))
+    # A missing zenith file leaves the zenith unknown: such a day counts only for the version with
+    # no low-sun rule. Without need_zenith (July 2005 test) the zenith is taken as 0.
+    sza  = if (!need_zenith) rep(0, ncell(template)) else if (is.na(files[d, 'sza'])) rep(NA, ncell(template)) else get('sza')
     land = get('land')
     totals[, 'land_days'] = totals[, 'land_days'] + (land %in% 1)
     totals[, 'shore_days'] = totals[, 'shore_days'] + (land %in% 2)
@@ -439,7 +500,7 @@ build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
 # What made a month's files, kept in RECORDS_DIR/<month>/build.txt after its day files are
 # deleted: the code (git commit and the script's own SHA-256), the settings, the files checked
 # and the ERA5 files used.
-write_build_record = function(month, record_dir, n_files, tiles) {
+write_build_record = function(month, record_dir, n_files, tiles, delivery) {
   script = sub('^--file=', '', grep('^--file=', commandArgs(FALSE), value = TRUE))
   commit = tryCatch(system2('git', c('-C', dirname(script), 'rev-parse', 'HEAD'), stdout = TRUE, stderr = FALSE),
                     error = function(e) 'unknown', warning = function(w) 'unknown')
@@ -449,6 +510,7 @@ write_build_record = function(month, record_dir, n_files, tiles) {
                paste('code:', script, 'commit', commit[1], 'sha256', as.character(openssl::sha256(file(script)))),
                paste('settings:', SETTINGS_TAG),
                paste('day files checked against the SHA-256 list:', n_files),
+               delivery,
                paste('tiles:', length(tiles), '-', paste(tiles, collapse = ' ')),
                paste('ERA5:', basename(era5), 'sha256', vapply(era5, function(f) as.character(openssl::sha256(file(f))), ''))),
              file.path(record_dir, 'build.txt'))
@@ -569,10 +631,13 @@ if (sys.nframe() == 0) {
       record_dir = file.path(RECORDS_DIR, basename(day_dir))
       list_file = list.files(record_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE)
       if (length(list_file) != 1) stop(basename(day_dir), ': expected one checksum list in ', record_dir)
-      n_files = check_checksums(list_file, day_dir)   # the whole delivery is there and intact
+      n_files = check_checksums(list_file, day_dir)   # what AppEEARS listed is there and intact
       month = as.Date(paste0(basename(day_dir), '-01'))
+      delivery = c(check_request(month, record_dir),  # and it is what we asked for, every layer
+                   delivery_summary(delivery_table(day_dir, month_days(month), LAYERS$name), LAYERS$name))
+      cat(basename(day_dir), ':', delivery, sep = '\n  ')
       build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid
-      write_build_record(month, record_dir, n_files, tiles)
+      write_build_record(month, record_dir, n_files, tiles, delivery)
       unlink(day_dir, recursive = TRUE)              # only now are the day files no longer needed
       cat(sprintf('%s: built in %.1f min; its day files deleted\n', basename(day_dir),
                   as.numeric(difftime(Sys.time(), started, units = 'mins'))))
@@ -595,6 +660,8 @@ if (sys.nframe() == 0) {
     started = Sys.time()
     cat(check_checksums(list.files(test_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE), test_dir),
         'day files match their SHA-256 list\n')
+    needed = setdiff(LAYERS$name, 'sza')             # requested before the zenith layer was added
+    cat(delivery_summary(delivery_table(test_dir, month_days(as.Date('2005-07-01')), needed), needed), sep = '\n')
     build_month(test_tiles, as.Date('2005-07-01'), test_dir, out_dir, need_zenith = FALSE)
     cat(sprintf('%d tiles in %.1f min\n', length(test_tiles), as.numeric(difftime(Sys.time(), started, units = 'mins'))))
     if (identical(args[2], 'all')) {
