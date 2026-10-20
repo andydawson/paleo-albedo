@@ -396,19 +396,25 @@ is_land = function(land_days, shore_days, read_days, rule = LAND_RULE) {
 
 # The climatology of one version for each group (a cell and calendar month), from its totals per
 # year. Within a year every qualifying land pixel-day counts once; then each year with data weighs
-# the same. The snowy and snow-free means and the snow shares use the same weights (1 / days in
-# that year), so share_snowy x snowy + share_snowfree x snowfree (+ the share of days with no snow
-# flag x their mean) equals the all-days value exactly, as the snow-mixing plan needs.
+# the same. The days split into snowy, snow-free and unknown snow status (no snow flag); their
+# means and shares use the same weights (1 / days in that year), so
+#   share_snowy x snowy + share_snowfree x snowfree + share_unknown x unknown = all
+# exactly, as the snow-mixing plan needs. Read this way, the snowy value is the average of each
+# year's snowy mean weighted by that year's snow share. A part with share 0 has no mean (NA) and
+# contributes nothing.
 climatology = function(group, n_all, n_snow, n_free, s_all, s_snow, s_free) {
   w = ifelse(n_all > 0, 1 / n_all, 0)
+  n_unknown = n_all - n_snow - n_free
+  s_unknown = ifelse(n_unknown > 0, s_all - s_snow - s_free, 0)
   t = rowsum(cbind(years = n_all > 0, all = s_all * w, n_snow = n_snow * w, s_snow = s_snow * w,
-                   n_free = n_free * w, s_free = s_free * w), group)
+                   n_free = n_free * w, s_free = s_free * w, n_unknown = n_unknown * w, s_unknown = s_unknown * w), group)
   per_year = function(x) ifelse(t[, 'years'] > 0, x / t[, 'years'], NA)
+  part_mean = function(part) ifelse(t[, paste0('n_', part)] > 0, t[, paste0('s_', part)] / t[, paste0('n_', part)], NA)
   data.frame(group = rownames(t), years = t[, 'years'],
              all = per_year(t[, 'all']),
-             snowfree = ifelse(t[, 'n_free'] > 0, t[, 's_free'] / t[, 'n_free'], NA),
-             snowy = ifelse(t[, 'n_snow'] > 0, t[, 's_snow'] / t[, 'n_snow'], NA),
+             snowfree = part_mean('free'), snowy = part_mean('snow'), unknown = part_mean('unknown'),
              share_snowfree = per_year(t[, 'n_free']), share_snowy = per_year(t[, 'n_snow']),
+             share_unknown = per_year(t[, 'n_unknown']),
              row.names = NULL)
 }
 
@@ -591,7 +597,7 @@ tile_land = function(files) {
 # Pass 2: for each cell, year and calendar month, the version totals summed over the cell's land
 # pixels in this tile, its number of land pixels, and per version the number of land pixels with
 # at least one qualifying day. Sums, because a cell can span several tiles.
-tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag) {
+tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag, template = tile_template(tile)) {
   tf = tile_files(tile, monthly_dir)
   # Exactly the months asked for, each made with the expected settings; anything else stops.
   have = sprintf('%d-%02d', tf$year, tf$month); want = format(months, '%Y-%m')
@@ -601,10 +607,10 @@ tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag) {
          if (length(setdiff(have, want))) paste(', unexpected e.g.', setdiff(have, want)[1]))
   wrong = tf$file[vapply(tf$file, build_tag, '') != tag]
   if (length(wrong)) stop(length(wrong), ' monthly files were made with other settings, e.g. ', wrong[1])
-  ll = pixel_lonlat(tile_template(tile))
+  ll = pixel_lonlat(template)
   cell = paste(floor(ll[, 1]) + 0.5, floor(ll[, 2]) + 0.5)
   keep = tile_land(tf$file) & cell %in% cell_keys
-  if (!any(keep)) return(NULL)
+  if (!any(keep)) return(data.frame())               # a tile with no land in the cells: empty, not missing
   out = vector('list', nrow(tf))
   for (i in seq_len(nrow(tf))) {
     v = values(rast(tf$file[i])[[VERSION_LAYERS]])[keep, , drop = FALSE]
@@ -616,17 +622,29 @@ tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag) {
   do.call(rbind, out)
 }
 
+# Every tile's totals must have come back as a table (an empty one for a tile with no land in the
+# cells). A worker that dies returns nothing (NULL), and an error returns a message: either stops,
+# since a lost tile would silently drop cells, or part of a cell spanning two tiles.
+combine_parts = function(parts, tiles) {
+  bad = which(!vapply(parts, is.data.frame, TRUE))
+  if (length(bad)) stop('cell totals failed for ', length(bad), ' tiles: ', paste(vapply(bad, function(i)
+    if (is.character(parts[[i]])) parts[[i]][1] else paste(tiles[i], 'worker died'), ''), collapse = '; '))
+  parts = parts[vapply(parts, nrow, 1) > 0]
+  if (!length(parts)) stop('no land pixels in any cell')
+  do.call(rbind, parts)
+}
+
 # The cell table: per cell and calendar month, for each version, the climatology (see
-# climatology), the years with data, the coverage (mean over those years of the share of the
+# climatology: all days, and snowy, snow-free and unknown-snow means with their shares), the years
+# with data, the coverage (mean over those years of the share of the
 # cell's land pixels with at least one qualifying day) and the qualifying days per land pixel in
 # a year with data.
-cell_table = function(tiles, cells, monthly_dir, months, tag = SETTINGS_TAG) {
-  parts = parallel::mclapply(tiles, function(tile) tryCatch(tile_cell_totals(tile, paste(cells$x, cells$y), monthly_dir, months, tag),
+cell_table = function(tiles, cells, monthly_dir, months, tag = SETTINGS_TAG, template_of = tile_template) {
+  parts = parallel::mclapply(tiles, function(tile) tryCatch(tile_cell_totals(tile, paste(cells$x, cells$y), monthly_dir, months, tag,
+                                                                             template_of(tile)),
                                                             error = function(e) paste('FAILED', tile, conditionMessage(e))),
                              mc.cores = WORKERS, mc.preschedule = FALSE)
-  bad = !vapply(parts, function(p) is.null(p) || is.data.frame(p), TRUE)
-  if (any(bad)) stop('cell totals failed for ', sum(bad), ' tiles: ', paste(unlist(parts[bad]), collapse = '; '))
-  parts = do.call(rbind, parts)
+  parts = combine_parts(parts, tiles)
   num = setdiff(names(parts), c('cell', 'year', 'month'))
   totals = aggregate(parts[num], by = parts[c('cell', 'year', 'month')], FUN = sum)
   key = paste(totals$cell, totals$month)
@@ -639,11 +657,13 @@ cell_table = function(tiles, cells, monthly_dir, months, tag = SETTINGS_TAG) {
     coverage = rowsum(ifelse(with_data, col('pixels') / totals$land_pixels, 0), key)[, 1]
     days = rowsum(ifelse(with_data, col('n_all') / totals$land_pixels, 0), key)[, 1]
     stopifnot(identical(cl$group, out$group), identical(names(coverage), out$group))
-    out[[v]]                         = round(cl$all, 5)
-    out[[paste0(v, '_snowfree')]]       = round(cl$snowfree, 5)
-    out[[paste0(v, '_snowy')]]          = round(cl$snowy, 5)
-    out[[paste0(v, '_share_snowfree')]] = round(cl$share_snowfree, 4)
-    out[[paste0(v, '_share_snowy')]]    = round(cl$share_snowy, 4)
+    out[[v]]                         = round(cl$all, 6)
+    out[[paste0(v, '_snowfree')]]       = round(cl$snowfree, 6)
+    out[[paste0(v, '_snowy')]]          = round(cl$snowy, 6)
+    out[[paste0(v, '_unknown')]]        = round(cl$unknown, 6)
+    out[[paste0(v, '_share_snowfree')]] = round(cl$share_snowfree, 6)
+    out[[paste0(v, '_share_snowy')]]    = round(cl$share_snowy, 6)
+    out[[paste0(v, '_share_unknown')]]  = round(cl$share_unknown, 6)
     out[[paste0(v, '_years')]]          = cl$years
     out[[paste0(v, '_coverage')]]       = round(ifelse(cl$years > 0, coverage / cl$years, NA), 4)
     out[[paste0(v, '_days')]]           = round(ifelse(cl$years > 0, days / cl$years, NA), 2)

@@ -81,11 +81,11 @@ n_all <- c(40, 7, 15); n_snow <- c(12, 0, 9); n_free <- c(25, 7, 5)
 s_snow <- c(9.2, 0, 5.4); s_free <- c(5.0, 1.1, 0.9); s_unknown <- c(1.5, 0, 0.2)
 cl <- climatology(rep("c", 3), n_all, n_snow, n_free, s_snow + s_free + s_unknown, s_snow, s_free)
 w <- 1 / n_all
-unknown_mean <- sum(s_unknown * w) / sum((n_all - n_snow - n_free) * w)
-share_unknown <- mean((n_all - n_snow - n_free) * w)
 stopifnot(near(cl$all, mean((s_snow + s_free + s_unknown) / n_all)),
-          near(cl$share_snowy + cl$share_snowfree + share_unknown, 1),
-          near(cl$share_snowy * cl$snowy + cl$share_snowfree * cl$snowfree + share_unknown * unknown_mean, cl$all))
+          near(cl$unknown, sum(s_unknown * w) / sum((n_all - n_snow - n_free) * w)),
+          near(cl$share_unknown, mean((n_all - n_snow - n_free) * w)),
+          near(cl$share_snowy + cl$share_snowfree + cl$share_unknown, 1),
+          near(cl$share_snowy * cl$snowy + cl$share_snowfree * cl$snowfree + cl$share_unknown * cl$unknown, cl$all))
 
 # No qualifying day at all gives no value, not zero; a year without data does not count.
 cl <- climatology(c("x", "x", "y"), n_all = c(0, 0, 0), n_snow = 0, n_free = 0, s_all = 0, s_snow = 0, s_free = 0)
@@ -191,5 +191,62 @@ stopifnot(valid_output(good, template = tpl),
           problem(too_bright, template = tpl) == "any_75 albedo sums outside 0 to their number of days",
           !valid_output(cut_short, template = tpl),       # GDAL loses the trailing names or the data
           problem(good, template = other_grid) == "is not on its tile grid")
+
+# End to end, cell step: small monthly files for two "tiles" and two years -> land vote -> tile
+# totals -> cell table. Cell A (10.5, 0.5) spans both tiles: pixel p (tile 1) has 0.15 in 2005 and
+# 0.25 in 2006, pixel q (tile 2) 0.55 in 2005 only, one day each (Astra's unequal-coverage case:
+# A = (0.35 + 0.25) / 2 = 0.300). Cell B (11.5, 0.5): pixel b has, in 2005, 1 snowy day at 0.8,
+# 2 snow-free at 0.2 and 1 of unknown snow status at 0.5, and in 2006 2 snow-free days at 0.3
+# (Opus's case: all 0.3625 = 0.125 x 0.8 + 0.75 x 0.26667 + 0.125 x 0.5); its pixel t is land on
+# 1 of its 2 days with a class (a tie, so not land) and shoreline on the other, with 0.9 in 2005.
+deg <- function(d) R_EARTH * d * pi / 180
+tpl1 <- rast(nrows = 2, ncols = 2, crs = SIN_CRS, extent = ext(deg(10), deg(10.5), 0, deg(1)))
+tpl2 <- rast(nrows = 2, ncols = 4, crs = SIN_CRS, extent = ext(deg(10.5), deg(11.5), 0, deg(1)))
+templates <- list(h01v01 = tpl1, h02v01 = tpl2)
+cdir <- file.path(tmp, "monthly_e2e"); dir.create(cdir)
+pixel <- function(n_all = 0, n_snow = 0, n_free = 0, s_all = 0, s_snow = 0, s_free = 0, land = 0, shore = 0, read = 0)
+  c(n_all = n_all, n_snow = n_snow, n_free = n_free, s_all = s_all, s_snow = s_snow, s_free = s_free, land_days = land, shore_days = shore, read_days = read)
+write_monthly <- function(tile, year, pixels) {          # pixels: one pixel() per cell of the tile, row by row from the top left
+  m <- do.call(rbind, pixels)
+  layers <- lapply(TILE_LAYERS, function(n) { sum_name <- sub("^(full|any)_[^_]+_", "", n)
+    setValues(templates[[tile]], m[, if (n %in% c("land_days", "shore_days", "read_days")) n else sum_name]) })
+  r <- rast(layers); names(r) <- TILE_LAYERS; metags(r) <- c(paleoRF_build = SETTINGS_TAG)
+  writeRaster(r, file.path(cdir, sprintf("%s_%d_07.tif", tile, year)), overwrite = TRUE)
+}
+none <- pixel()
+write_monthly("h01v01", 2005, list(pixel(1, 0, 1, 0.15, 0, 0.15, land = 1, read = 1), none, none, none))
+write_monthly("h01v01", 2006, list(pixel(1, 0, 1, 0.25, 0, 0.25, land = 1, read = 1), none, none, none))
+write_monthly("h02v01", 2005, list(pixel(1, 0, 1, 0.55, 0, 0.55, land = 1, read = 1), none,
+                                   pixel(4, 1, 2, 1.7, 0.8, 0.4, land = 4, read = 4), pixel(1, 0, 1, 0.9, 0, 0.9, land = 1, read = 1),
+                                   none, none, none, none))
+write_monthly("h02v01", 2006, list(none, none, pixel(2, 0, 2, 0.6, 0, 0.6, land = 2, read = 2), pixel(shore = 1, read = 1),
+                                   none, none, none, none))
+cells2 <- data.frame(x = c(10.5, 11.5), y = c(0.5, 0.5))
+yrs <- as.Date(c("2005-07-01", "2006-07-01"))
+ct <- cell_table(names(templates), cells2, cdir, yrs, template_of = function(t) templates[[t]])
+A <- ct[ct$x == 10.5, ]; B <- ct[ct$x == 11.5, ]
+mix <- function(row, v) { part <- function(p) ifelse(row[[paste0(v, "_share_", p)]] == 0, 0, row[[paste0(v, "_share_", p)]] * row[[paste0(v, "_", p)]])
+  part("snowy") + part("snowfree") + part("unknown") }
+stopifnot(nrow(ct) == 2, ct$month == c("jul", "jul"),
+          near(A$full_75, 0.300, 1e-6), A$full_75_years == 2, near(A$full_75_coverage, 0.75, 1e-6), A$land_pixels == 2,
+          B$land_pixels == 1, near(B$full_75, 0.3625, 1e-6),
+          near(B$full_75_share_snowy, 0.125, 1e-6), near(B$full_75_snowy, 0.8, 1e-6),
+          near(B$full_75_share_snowfree, 0.75, 1e-6), near(B$full_75_snowfree, 0.4 / 1.5, 1e-6),
+          near(B$full_75_share_unknown, 0.125, 1e-6), near(B$full_75_unknown, 0.5, 1e-6),
+          near(mix(B, "full_75"), B$full_75, 1e-5), near(mix(A, "any_75"), A$any_75, 1e-5),
+          is.na(A$full_75_snowy), A$full_75_share_snowy == 0)
+LAND_RULE <- "land_or_shore"                              # the tie pixel now counts: B in 2005 is 2.6 / 5
+ct_shore <- cell_table(names(templates), cells2, cdir, yrs, template_of = function(t) templates[[t]])
+LAND_RULE <- "land"
+stopifnot(ct_shore$land_pixels[ct_shore$x == 11.5] == 2, near(ct_shore$full_75[ct_shore$x == 11.5], (2.6 / 5 + 0.3) / 2, 1e-6))
+# A missing month, a file with another tag, a dead worker or an error stop the cell step.
+missing_month_stops <- inherits(try(cell_table(names(templates), cells2, cdir, c(yrs, as.Date("2007-07-01")),
+                                               template_of = function(t) templates[[t]]), silent = TRUE), "try-error")
+wrong_tag_stops <- inherits(try(cell_table(names(templates), cells2, cdir, yrs, tag = "reduction 1",
+                                           template_of = function(t) templates[[t]]), silent = TRUE), "try-error")
+dead_stops <- inherits(try(combine_parts(list(data.frame(a = 1), NULL), c("h01v01", "h02v01")), silent = TRUE), "try-error")
+error_stops <- inherits(try(combine_parts(list(data.frame(a = 1), "FAILED h02v01 boom"), c("h01v01", "h02v01")), silent = TRUE), "try-error")
+stopifnot(missing_month_stops, wrong_tag_stops, dead_stops, error_stops,
+          identical(combine_parts(list(data.frame(a = 1), data.frame()), c("h01v01", "h02v01")), data.frame(a = 1)))
 
 cat("test_bluesky_albedo: all tests passed\n")
