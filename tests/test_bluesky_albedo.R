@@ -173,6 +173,37 @@ invisible(file.remove(list.files(deliv, pattern = "Snow_BRDF_Albedo", full.names
 missing_layer_stops <- inherits(try(delivery_table(deliv, july, LAYERS$name), silent = TRUE), "try-error")
 stopifnot(stray_stops, renamed_stops, missing_layer_stops)
 
+# Keeping day files: a month built with "keep" keeps them, and a later build without names skips
+# it (its files and first build record survive); naming it rebuilds it and still keeps the files.
+# A month built without "keep" has its day files deleted. The tiles themselves are not built here:
+# build_month is replaced by a stand-in that only reports, as the real one does when all tiles pass.
+kb <- file.path(tempdir(), "keep_test"); unlink(kb, recursive = TRUE)
+saved <- list(APPEEARS_DIR, RECORDS_DIR, WORK_DIR, build_month)
+APPEEARS_DIR <- file.path(kb, "appeears"); RECORDS_DIR <- file.path(kb, "records"); WORK_DIR <- kb
+build_month <- function(tiles, month, day_dir, out_dir, ...) paste("tile", tiles, ": made in this run")
+for (m in c("2005-03", "2005-04")) {
+  dd <- file.path(APPEEARS_DIR, m); dir.create(dd, recursive = TRUE); dir.create(file.path(RECORDS_DIR, m), recursive = TRUE)
+  make_day_files(dd, month_days(as.Date(paste0(m, "-01"))))
+  tifs <- list.files(dd)
+  writeLines(paste(vapply(file.path(dd, tifs), function(f) as.character(openssl::sha256(file(f))), ""), tifs),
+             file.path(RECORDS_DIR, m, paste0("paleoRFMCD43", m, "-sha256sums.txt")))
+}
+record <- function(m) readLines(file.path(RECORDS_DIR, m, "build.txt"))
+invisible(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-03", keep = TRUE)))
+first_record <- record("2005-03")
+out <- capture.output(build_collected("h00v00", file.path(kb, "monthly")))   # unnamed, no "keep"
+stopifnot(dir.exists(file.path(APPEEARS_DIR, "2005-03")), file.exists(file.path(APPEEARS_DIR, "2005-03", KEEP_MARKER)),
+          identical(record("2005-03"), first_record),                       # skipped: record untouched
+          any(grepl("2005-03 : built earlier with \"keep\"; skipped", out)),
+          !dir.exists(file.path(APPEEARS_DIR, "2005-04")),                  # an ordinary month: built, files deleted
+          any(grepl("day files: deleted after this record", record("2005-04"))),
+          any(grepl("day files: kept", first_record)))
+invisible(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-03")))   # named, no "keep"
+stopifnot(dir.exists(file.path(APPEEARS_DIR, "2005-03")),                  # still kept
+          sum(grepl("^=== built:", record("2005-03"))) == 2,               # a second section, the first kept
+          identical(record("2005-03")[seq_along(first_record)], first_record))
+APPEEARS_DIR <- saved[[1]]; RECORDS_DIR <- saved[[2]]; WORK_DIR <- saved[[3]]; build_month <- saved[[4]]
+
 # The request file must ask for the month's days and our layers.
 WORK_DIR <- tmp; rec <- file.path(tmp, "rec_req"); dir.create(rec)
 invisible(write_request(as.Date("2005-07-01"), request_area(data.frame(x = c(-100.5, -99.5), y = c(40.5, 41.5)))))

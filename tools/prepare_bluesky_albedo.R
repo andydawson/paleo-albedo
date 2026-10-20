@@ -579,8 +579,8 @@ build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
           vapply(expected, build_tag, '', name = 'paleoRF_created'), vapply(expected, build_tag, '', name = 'paleoRF_out_of_range'))
 }
 
-# What made a month's files, kept in RECORDS_DIR/<month>/build.txt after its day files are
-# deleted: the code (git commit and the script's own SHA-256), the settings, the files checked
+# What made a month's files, added to RECORDS_DIR/<month>/build.txt, which stays after its day
+# files are deleted: the code (git commit and the script's own SHA-256), the settings, the files checked
 # and the ERA5 files used.
 write_build_record = function(month, record_dir, n_files, tiles, delivery, tile_lines) {
   script = sub('^--file=', '', grep('^--file=', commandArgs(FALSE), value = TRUE))
@@ -588,7 +588,10 @@ write_build_record = function(month, record_dir, n_files, tiles, delivery, tile_
                     error = function(e) 'unknown', warning = function(w) 'unknown')
   era5 = file.path(ERA5_DIR, sprintf('era5_ssrd_fdir_%s.nc', format(c(month, seq(month, by = 'month', length.out = 2)[2]), '%Y_%m')))
   era5 = era5[file.exists(era5)]
-  writeLines(c(paste('built:', format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z')),
+  # Appended, never overwritten: a month built again (e.g. a kept test month after a fix) adds a
+  # section, so the record of the first build survives.
+  con = file(file.path(record_dir, 'build.txt'), open = 'a'); on.exit(close(con))
+  writeLines(c('', paste('=== built:', format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z')),
                paste('code:', script, 'commit', commit[1], 'sha256', as.character(openssl::sha256(file(script)))),
                paste('settings:', SETTINGS_TAG),
                paste('day files checked against the SHA-256 list:', n_files),
@@ -596,7 +599,46 @@ write_build_record = function(month, record_dir, n_files, tiles, delivery, tile_
                paste('tiles:', length(tiles), '-', paste(tiles, collapse = ' ')),
                tile_lines,
                paste('ERA5:', basename(era5), 'sha256', vapply(era5, function(f) as.character(openssl::sha256(file(f))), ''))),
-             file.path(record_dir, 'build.txt'))
+             con)
+}
+
+# Builds collected months (all of them, or those named) and deletes their day files, unless "keep"
+# is asked for. A month built with "keep" gets a KEEP file in its day folder and keeps its day
+# files for good: a later build without names skips it, and a build that names it rebuilds it but
+# still keeps its files. Only removing its KEEP file by hand lets a build delete them.
+KEEP_MARKER = 'KEEP'
+build_collected = function(tiles, monthly_dir, named = character(0), keep = FALSE) {
+  day_dirs = list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}$', full.names = TRUE)
+  if (length(named)) {
+    if (!all(named %in% basename(day_dirs))) stop('not collected: ', paste(setdiff(named, basename(day_dirs)), collapse = ' '))
+    day_dirs = day_dirs[basename(day_dirs) %in% named]
+  }
+  cat(length(tiles), 'tiles:', paste(tiles, collapse = ' '), '\n')
+  for (day_dir in day_dirs) {
+    kept_before = file.exists(file.path(day_dir, KEEP_MARKER))
+    if (kept_before && !length(named)) {
+      cat(basename(day_dir), ': built earlier with "keep"; skipped (name it to rebuild it)\n'); next
+    }
+    keep_this = keep || kept_before
+    started = Sys.time()
+    record_dir = file.path(RECORDS_DIR, basename(day_dir))
+    list_file = list.files(record_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE)
+    if (length(list_file) != 1) stop(basename(day_dir), ': expected one checksum list in ', record_dir)
+    n_files = check_checksums(list_file, day_dir)   # what AppEEARS listed is there and intact
+    month = as.Date(paste0(basename(day_dir), '-01'))
+    delivery = c(check_request(month, record_dir),  # and it is what we asked for, every layer
+                 delivery_summary(delivery_table(day_dir, month_days(month), LAYERS$name), LAYERS$name))
+    cat(basename(day_dir), ':', delivery, sep = '\n  ')
+    tile_lines = build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid
+    if (keep_this) writeLines('Built with "keep": this folder\'s day files are kept. Remove this file to let a build delete them.',
+                              file.path(day_dir, KEEP_MARKER))
+    write_build_record(month, record_dir, n_files, tiles,
+                       c(delivery, if (keep_this) 'day files: kept (built with "keep"; KEEP file in the day folder)'
+                                   else 'day files: deleted after this record'), tile_lines)
+    if (!keep_this) unlink(day_dir, recursive = TRUE)   # only now are the day files no longer needed
+    cat(sprintf('%s: built in %.1f min; its day files %s\n', basename(day_dir),
+                as.numeric(difftime(Sys.time(), started, units = 'mins')), if (keep_this) 'kept' else 'deleted'))
+  }
 }
 
 abind_time = function(...) {                          # join [lon, lat, time] arrays along time
@@ -735,29 +777,7 @@ if (sys.nframe() == 0) {
     keep = 'keep' %in% args[-1]
     named = grep('^\\d{4}-\\d{2}$', args[-1], value = TRUE)
     if (length(setdiff(args[-1], c(named, 'keep')))) stop('build takes months like 2005-03 and/or "keep"')
-    day_dirs = list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}$', full.names = TRUE)
-    if (length(named)) {
-      if (!all(named %in% basename(day_dirs))) stop('not collected: ', paste(setdiff(named, basename(day_dirs)), collapse = ' '))
-      day_dirs = day_dirs[basename(day_dirs) %in% named]
-    }
-    cat(length(tiles), 'tiles:', paste(tiles, collapse = ' '), '\n')
-    for (day_dir in day_dirs) {
-      started = Sys.time()
-      record_dir = file.path(RECORDS_DIR, basename(day_dir))
-      list_file = list.files(record_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE)
-      if (length(list_file) != 1) stop(basename(day_dir), ': expected one checksum list in ', record_dir)
-      n_files = check_checksums(list_file, day_dir)   # what AppEEARS listed is there and intact
-      month = as.Date(paste0(basename(day_dir), '-01'))
-      delivery = c(check_request(month, record_dir),  # and it is what we asked for, every layer
-                   delivery_summary(delivery_table(day_dir, month_days(month), LAYERS$name), LAYERS$name))
-      cat(basename(day_dir), ':', delivery, sep = '\n  ')
-      tile_lines = build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid
-      write_build_record(month, record_dir, n_files, tiles,
-                         c(delivery, if (keep) 'day files: kept (build ... keep)' else 'day files: deleted after this record'), tile_lines)
-      if (!keep) unlink(day_dir, recursive = TRUE)   # only now are the day files no longer needed
-      cat(sprintf('%s: built in %.1f min; its day files %s\n', basename(day_dir),
-                  as.numeric(difftime(Sys.time(), started, units = 'mins')), if (keep) 'kept' else 'deleted'))
-    }
+    build_collected(tiles, monthly_dir, named, keep)
 
   } else if (step == 'cells') {
     missing = months[!vapply(seq_along(months), function(i) built(months[i]), TRUE)]
