@@ -106,10 +106,16 @@ VERSIONS = data.frame(name       = c('full_75', 'any_75', 'full_70', 'full_nocut
 # only in "all". Sums, not means, so that land and the averaging can be decided at the end.
 SUMS = c('n_all', 'n_snow', 'n_free', 's_all', 's_snow', 's_free')
 VERSION_LAYERS = as.vector(outer(SUMS, VERSIONS$name, function(s, v) paste(v, s, sep = '_')))
-TILE_LAYERS = c(VERSION_LAYERS, 'land_days', 'read_days')
+TILE_LAYERS = c(VERSION_LAYERS, 'land_days', 'shore_days', 'read_days')
+# Which pixels count as land at the cell step (see is_land). 'land': class 1 (land) on more than
+# half of the days with a class, as Chris decided on 2026-10-20. 'land_or_shore': classes 1 or 2
+# (ocean coastlines and lake shorelines) together on more than half. The shoreline days are kept
+# per pixel so that this choice, still open for Chris and Andria, can be made after the day files
+# are deleted.
+LAND_RULE   = 'land'
 # Written into every monthly file; a file with another tag is never reused, so a changed setting
 # cannot silently mix with outputs made before the change.
-SETTINGS_TAG = paste0('reduction 2 (2026-10-20); versions ',
+SETTINGS_TAG = paste0('reduction 3 (2026-10-20); versions ',
                       paste(VERSIONS$name, VERSIONS$quality, VERSIONS$max_zenith, collapse = ', '),
                       '; full inversions ', paste(FULL_QA, collapse = ' '), '; from ', FIRST_DAY)
 
@@ -314,10 +320,14 @@ day_totals = function(keep, snow, blue) {
 }
 
 # Land: a pixel whose land/water class says land (1) on more than half of the days it has one,
-# over the whole record (Chris, 2026-10-20). A blank class means no retrieval that day (checked
-# on the July 2005 download: blank class and no albedo coincide on every pixel-day), so blank
-# days are not counted; pixels that switch class are mostly shorelines.
-is_land = function(land_days, read_days) read_days > 0 & land_days > read_days / 2
+# over the whole record (Chris, 2026-10-20); with rule 'land_or_shore', land or shoreline (2)
+# together. A blank class means no retrieval that day (checked on the July 2005 download: blank
+# class and no albedo coincide on every pixel-day), so blank days are not counted. A tie (exactly
+# half) is not land.
+is_land = function(land_days, shore_days, read_days, rule = LAND_RULE) {
+  yes = switch(rule, land = land_days, land_or_shore = land_days + shore_days, stop('unknown land rule ', rule))
+  read_days > 0 & yes > read_days / 2
+}
 
 # The climatology of one version for each group (a cell and calendar month), from its totals per
 # year. Within a year every qualifying land pixel-day counts once; then each year with data weighs
@@ -376,6 +386,7 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
     sza  = if (need_zenith) get('sza') else rep(0, ncell(template))
     land = get('land')
     totals[, 'land_days'] = totals[, 'land_days'] + (land %in% 1)
+    totals[, 'shore_days'] = totals[, 'shore_days'] + (land %in% 2)
     totals[, 'read_days'] = totals[, 'read_days'] + !is.na(land)
     blue = blue_sky(bsa, wsa, diffuse_fraction(era5, ll[, 1], ll[, 2], days[d]))
     usable = !is.na(blue) & !is.na(qa) & qa <= 7
@@ -458,12 +469,12 @@ tile_files = function(tile, monthly_dir) {
 
 # Pass 1: a tile's land pixels, from all its monthly files together (see is_land).
 tile_land = function(files) {
-  land_days = 0; read_days = 0
+  land_days = 0; shore_days = 0; read_days = 0
   for (f in files) {
-    v = values(rast(f)[[c('land_days', 'read_days')]])
-    land_days = land_days + v[, 1]; read_days = read_days + v[, 2]
+    v = values(rast(f)[[c('land_days', 'shore_days', 'read_days')]])
+    land_days = land_days + v[, 1]; shore_days = shore_days + v[, 2]; read_days = read_days + v[, 3]
   }
-  is_land(land_days, read_days)
+  is_land(land_days, shore_days, read_days)
 }
 
 # Pass 2: for each cell, year and calendar month, the version totals summed over the cell's land

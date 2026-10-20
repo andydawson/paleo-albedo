@@ -20,8 +20,11 @@ stopifnot(
   near(equation_of_time(as.Date("2005-12-31")), eot_by_hand(365, 365))
 )
 
-# Land: more than half of the days with a class say land; blank days do not count.
-stopifnot(identical(is_land(c(10, 6, 5, 0, 0), c(10, 10, 10, 3, 0)), c(TRUE, TRUE, FALSE, FALSE, FALSE)))
+# Land: more than half of the days with a class say land; blank days do not count; a tie is not
+# land. With the 'land_or_shore' rule, shoreline days count with land days.
+stopifnot(identical(is_land(c(10, 6, 5, 0, 0), 0, c(10, 10, 10, 3, 0)), c(TRUE, TRUE, FALSE, FALSE, FALSE)),
+          identical(is_land(c(3, 3, 0), c(0, 3, 6), c(10, 10, 10)), c(FALSE, FALSE, FALSE)),
+          identical(is_land(c(3, 3, 0), c(0, 3, 6), c(10, 10, 10), 'land_or_shore'), c(FALSE, TRUE, TRUE)))
 
 # Low-sun rule: a missing angle passes only when there is no rule.
 stopifnot(identical(zenith_ok(c(60, 75, 80, NA), 75), c(TRUE, TRUE, FALSE, FALSE)),
