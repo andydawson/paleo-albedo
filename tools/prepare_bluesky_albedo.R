@@ -79,7 +79,7 @@
 # "test" builds July 2005 from data/modis_albedo/appeears_full_2005-07/ (downloaded 2026-10-19,
 # before the noon solar zenith layer was added to the requests, so the zenith is taken as 0:
 # valid only for July, when the noon sun is everywhere within 61 degrees of the zenith) into
-# data/modis_albedo/test_appeears_v2/, and with "test all" also that month's cell table, to
+# data/modis_albedo/test_appeears_v3/, and with "test all" also that month's cell table, to
 # compare with Andria's raster. Nothing under data/modis_albedo/ or data/era5/ is committed.
 
 library(terra)
@@ -114,10 +114,14 @@ TILE_LAYERS = c(VERSION_LAYERS, 'land_days', 'shore_days', 'read_days')
 # are deleted.
 LAND_RULE   = 'land'
 # Written into every monthly file; a file with another tag is never reused, so a changed setting
-# cannot silently mix with outputs made before the change.
-SETTINGS_TAG = paste0('reduction 3 (2026-10-20); versions ',
-                      paste(VERSIONS$name, VERSIONS$quality, VERSIONS$max_zenith, collapse = ', '),
-                      '; full inversions ', paste(FULL_QA, collapse = ' '), '; from ', FIRST_DAY)
+# cannot silently mix with outputs made before the change. The July 2005 test, which takes the
+# noon zenith as 0, has a tag of its own, so its files can never pass for real-zenith ones.
+settings_tag = function(need_zenith = TRUE)
+  paste0('reduction 3 (2026-10-20); versions ',
+         paste(VERSIONS$name, VERSIONS$quality, VERSIONS$max_zenith, collapse = ', '),
+         '; full inversions ', paste(FULL_QA, collapse = ' '), '; from ', FIRST_DAY,
+         if (need_zenith) '; noon zenith from the data' else '; noon zenith taken as 0 (July 2005 test only)')
+SETTINGS_TAG = settings_tag(TRUE)
 
 APPEEARS_DIR = file.path(WORK_DIR, 'appeears')  # collected months, one folder each
 RECORDS_DIR = file.path(WORK_DIR, 'records')     # kept for good: checksum lists, AppEEARS's files, build records
@@ -414,7 +418,7 @@ climatology = function(group, n_all, n_snow, n_free, s_all, s_snow, s_free) {
 process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE) {
   out = file.path(out_dir, sprintf('%s_%s.tif', tile, format(month, '%Y_%m')))
   if (file.exists(out)) {
-    if (!identical(build_tag(out), SETTINGS_TAG)) stop(out, ' was made with other settings; move it away first')
+    if (!identical(build_tag(out), settings_tag(need_zenith))) stop(out, ' was made with other settings; move it away first')
     return(out)
   }
   days = month_days(month)
@@ -460,20 +464,21 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   }
   r = setValues(rast(template, nlyrs = length(TILE_LAYERS)), totals)
   names(r) = TILE_LAYERS
-  metags(r) = c(paleoRF_build = SETTINGS_TAG)
+  # The tags travel with the file, so a later build that reuses it can still record how it was made.
+  metags(r) = c(paleoRF_build = settings_tag(need_zenith), paleoRF_created = format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z'),
+                paleoRF_out_of_range = as.character(out_of_range))
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   # Written under a temporary name and renamed only once complete, so a crash cannot leave a
   # partial file under the real name for a rerun to reuse.
   tmp = sub('\\.tif$', '.tmp.tif', out)
   writeRaster(r, tmp, gdal = 'COMPRESS=DEFLATE', datatype = 'FLT4S', overwrite = TRUE)
   if (!file.rename(tmp, out)) stop('could not rename ', tmp)
-  if (out_of_range > 0) cat(sprintf('%s %s: %d pixel-days with albedo outside 0-1 dropped\n', tile, format(month, '%Y-%m'), out_of_range))
   out
 }
 
-build_tag = function(file) {
+build_tag = function(file, name = 'paleoRF_build') {
   m = metags(rast(file))
-  m$value[m$name == 'paleoRF_build']
+  m$value[m$name == name]
 }
 
 # What is wrong with a monthly file, if anything (an empty result means it is usable). It must
@@ -520,24 +525,29 @@ valid_output = function(file, ...) !length(output_problems(file, ...))
 # checked against the expected files rather than by looking for failure messages. Rerunning
 # retries the missing tiles.
 build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
+  expected = file.path(out_dir, sprintf('%s_%s.tif', tiles, format(month, '%Y_%m')))
+  reused = file.exists(expected)
   done = parallel::mclapply(tiles, function(tile)
     tryCatch(process_tile_month(tile, month, day_dir, out_dir, need_zenith),
              error = function(e) paste('FAILED', tile, conditionMessage(e))),
     mc.cores = WORKERS, mc.preschedule = FALSE)
-  expected = file.path(out_dir, sprintf('%s_%s.tif', tiles, format(month, '%Y_%m')))
   problems = lapply(seq_along(tiles), function(i) {
     if (!identical(done[[i]], expected[i])) return(if (is.character(done[[i]])) done[[i]] else 'the worker died')
-    output_problems(expected[i])
+    output_problems(expected[i], tag = settings_tag(need_zenith))
   })
   ok = lengths(problems) == 0
   for (i in which(!ok)) cat('FAILED', tiles[i], paste(problems[[i]], collapse = '; '), '\n')
   if (!all(ok)) stop(sum(!ok), ' tiles of ', format(month, '%Y-%m'), ' failed; the day files are kept')
+  # One line per tile for the build record: made now or reused, when, and albedo values dropped.
+  sprintf('tile %s: %s, made %s, albedo values outside 0-1 dropped: %s', tiles,
+          ifelse(reused, 'reused from an earlier run', 'made in this run'),
+          vapply(expected, build_tag, '', name = 'paleoRF_created'), vapply(expected, build_tag, '', name = 'paleoRF_out_of_range'))
 }
 
 # What made a month's files, kept in RECORDS_DIR/<month>/build.txt after its day files are
 # deleted: the code (git commit and the script's own SHA-256), the settings, the files checked
 # and the ERA5 files used.
-write_build_record = function(month, record_dir, n_files, tiles, delivery) {
+write_build_record = function(month, record_dir, n_files, tiles, delivery, tile_lines) {
   script = sub('^--file=', '', grep('^--file=', commandArgs(FALSE), value = TRUE))
   commit = tryCatch(system2('git', c('-C', dirname(script), 'rev-parse', 'HEAD'), stdout = TRUE, stderr = FALSE),
                     error = function(e) 'unknown', warning = function(w) 'unknown')
@@ -549,6 +559,7 @@ write_build_record = function(month, record_dir, n_files, tiles, delivery) {
                paste('day files checked against the SHA-256 list:', n_files),
                delivery,
                paste('tiles:', length(tiles), '-', paste(tiles, collapse = ' ')),
+               tile_lines,
                paste('ERA5:', basename(era5), 'sha256', vapply(era5, function(f) as.character(openssl::sha256(file(f))), ''))),
              file.path(record_dir, 'build.txt'))
 }
@@ -579,9 +590,16 @@ tile_land = function(files) {
 # Pass 2: for each cell, year and calendar month, the version totals summed over the cell's land
 # pixels in this tile, its number of land pixels, and per version the number of land pixels with
 # at least one qualifying day. Sums, because a cell can span several tiles.
-tile_cell_totals = function(tile, cell_keys, monthly_dir) {
+tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag) {
   tf = tile_files(tile, monthly_dir)
-  if (!nrow(tf)) return(NULL)
+  # Exactly the months asked for, each made with the expected settings; anything else stops.
+  have = sprintf('%d-%02d', tf$year, tf$month); want = format(months, '%Y-%m')
+  if (!setequal(have, want) || length(have) != length(want))
+    stop(tile, ': monthly files for ', length(have), ' months, expected ', length(want),
+         if (length(setdiff(want, have))) paste(', missing e.g.', setdiff(want, have)[1]),
+         if (length(setdiff(have, want))) paste(', unexpected e.g.', setdiff(have, want)[1]))
+  wrong = tf$file[vapply(tf$file, build_tag, '') != tag]
+  if (length(wrong)) stop(length(wrong), ' monthly files were made with other settings, e.g. ', wrong[1])
   ll = pixel_lonlat(tile_template(tile))
   cell = paste(floor(ll[, 1]) + 0.5, floor(ll[, 2]) + 0.5)
   keep = tile_land(tf$file) & cell %in% cell_keys
@@ -601,8 +619,8 @@ tile_cell_totals = function(tile, cell_keys, monthly_dir) {
 # climatology), the years with data, the coverage (mean over those years of the share of the
 # cell's land pixels with at least one qualifying day) and the qualifying days per land pixel in
 # a year with data.
-cell_table = function(tiles, cells, monthly_dir) {
-  parts = parallel::mclapply(tiles, function(tile) tryCatch(tile_cell_totals(tile, paste(cells$x, cells$y), monthly_dir),
+cell_table = function(tiles, cells, monthly_dir, months, tag = SETTINGS_TAG) {
+  parts = parallel::mclapply(tiles, function(tile) tryCatch(tile_cell_totals(tile, paste(cells$x, cells$y), monthly_dir, months, tag),
                                                             error = function(e) paste('FAILED', tile, conditionMessage(e))),
                              mc.cores = WORKERS, mc.preschedule = FALSE)
   bad = !vapply(parts, function(p) is.null(p) || is.data.frame(p), TRUE)
@@ -673,8 +691,8 @@ if (sys.nframe() == 0) {
       delivery = c(check_request(month, record_dir),  # and it is what we asked for, every layer
                    delivery_summary(delivery_table(day_dir, month_days(month), LAYERS$name), LAYERS$name))
       cat(basename(day_dir), ':', delivery, sep = '\n  ')
-      build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid
-      write_build_record(month, record_dir, n_files, tiles, delivery)
+      tile_lines = build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid
+      write_build_record(month, record_dir, n_files, tiles, delivery, tile_lines)
       unlink(day_dir, recursive = TRUE)              # only now are the day files no longer needed
       cat(sprintf('%s: built in %.1f min; its day files deleted\n', basename(day_dir),
                   as.numeric(difftime(Sys.time(), started, units = 'mins'))))
@@ -683,7 +701,7 @@ if (sys.nframe() == 0) {
   } else if (step == 'cells') {
     missing = months[!vapply(seq_along(months), function(i) built(months[i]), TRUE)]
     if (length(missing)) stop(length(missing), ' months not built yet, e.g. ', format(missing[1], '%Y-%m'))
-    table = cell_table(tiles, cells, monthly_dir)
+    table = cell_table(tiles, cells, monthly_dir, months)
     write.csv(table, OUT_FILE, row.names = FALSE)
     cat(OUT_FILE, ':', nrow(table), 'cell-months;', length(unique(paste(table$x, table$y))), 'cells\n')
 
@@ -692,7 +710,7 @@ if (sys.nframe() == 0) {
     # table for that one month ("test all").
     test_tiles = if (identical(args[2], 'all')) tiles else args[-1]
     if (!length(test_tiles) || !all(test_tiles %in% tiles)) stop('test needs "all" or tiles of the study area, e.g. h11v04')
-    out_dir = file.path(WORK_DIR, 'test_appeears_v2')
+    out_dir = file.path(WORK_DIR, 'test_appeears_v3')
     test_dir = file.path(WORK_DIR, 'appeears_full_2005-07')
     started = Sys.time()
     cat(check_checksums(list.files(test_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE), test_dir),
@@ -702,7 +720,7 @@ if (sys.nframe() == 0) {
     build_month(test_tiles, as.Date('2005-07-01'), test_dir, out_dir, need_zenith = FALSE)
     cat(sprintf('%d tiles in %.1f min\n', length(test_tiles), as.numeric(difftime(Sys.time(), started, units = 'mins'))))
     if (identical(args[2], 'all')) {
-      table = cell_table(tiles, cells, out_dir)
+      table = cell_table(tiles, cells, out_dir, as.Date('2005-07-01'), settings_tag(FALSE))
       write.csv(table, file.path(out_dir, 'cells_2005_07.csv'), row.names = FALSE)
       cat(file.path(out_dir, 'cells_2005_07.csv'), ':', nrow(table), 'cells\n')
     }

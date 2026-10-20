@@ -157,6 +157,12 @@ not_nested <- write_tile(r, "not_nested.tif")
 r <- consistent(); r[["any_75_s_free"]] <- r[["any_75_n_free"]] + 0.5; too_bright <- write_tile(r, "too_bright.tif")
 cut_short <- file.path(tmp, "cut.tif"); writeBin(readBin(good, "raw", file.size(good))[1:floor(0.9 * file.size(good))], cut_short)
 other_grid <- rast(nrows = 40, ncols = 40, crs = SIN_CRS, extent = ext(463.3127, 41 * 463.3127, 0, 40 * 463.3127))
+# The July 2005 shortcut (zenith taken as 0) has a tag of its own, so its files are never reused
+# by a build with the real zenith, nor accepted as such.
+july_tag <- settings_tag(FALSE)
+july_file <- write_tile(consistent(), "july.tif", tag = july_tag)
+stopifnot(july_tag != SETTINGS_TAG, !valid_output(july_file, template = tpl), valid_output(july_file, tag = july_tag, template = tpl))
+
 problem <- function(f, ...) paste(output_problems(f, ...), collapse = "; ")
 stopifnot(valid_output(good, template = tpl),
           problem(old_tag, template = tpl) == "was made with other settings",
