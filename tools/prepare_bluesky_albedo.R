@@ -212,7 +212,9 @@ read_layer = function(file, template, name) {
 # local solar noon. Local solar noon in UTC hours is 12 - longitude / 15 - EoT / 60, with the
 # equation of time EoT in minutes (Spencer 1971, as given by NOAA's solar calculator notes).
 equation_of_time = function(date) {
-  g = 2 * pi / 365 * (as.numeric(format(date, '%j')) - 1)
+  year = as.numeric(format(date, '%Y'))
+  days_in_year = ifelse(year %% 4 == 0 & (year %% 100 != 0 | year %% 400 == 0), 366, 365)  # NOAA: 366 in leap years
+  g = 2 * pi / days_in_year * (as.numeric(format(date, '%j')) - 1)
   229.18 * (0.000075 + 0.001868 * cos(g) - 0.032077 * sin(g) - 0.014615 * cos(2 * g) - 0.040849 * sin(2 * g))
 }
 
@@ -259,11 +261,17 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   sums = matrix(0, ncell(template), length(STREAMS), dimnames = list(NULL, STREAMS))
   days_n = sums
   land = NULL
+  out_of_range = 0
   for (d in seq_along(days)) {
     if (anyNA(files[d, needed])) next                # a day with no file counts as no data
     get  = function(name) read_layer(files[d, name], template, name)
     bsa  = get('bsa')
     wsa  = get('wsa')
+    # The product's valid range allows stored values above 1 after scaling; an albedo outside
+    # 0-1 is physically impossible, so it is treated as no retrieval and counted.
+    bad  = !is.na(bsa) & (bsa < 0 | bsa > 1) | !is.na(wsa) & (wsa < 0 | wsa > 1)
+    out_of_range = out_of_range + sum(bad)
+    bsa[bad] = NA; wsa[bad] = NA
     qa   = get('qa')
     snow = get('snow')
     sza  = if (need_zenith) get('sza') else rep(0, ncell(template))
@@ -286,6 +294,7 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   names(r) = c(STREAMS, paste0('days_', STREAMS), 'land')
   dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
   writeRaster(r, out, gdal = 'COMPRESS=DEFLATE', datatype = 'FLT4S')
+  if (out_of_range > 0) cat(sprintf('%s %s: %d pixel-days with albedo outside 0-1 dropped\n', tile, format(month, '%Y-%m'), out_of_range))
   out
 }
 
