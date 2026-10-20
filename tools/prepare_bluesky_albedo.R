@@ -483,6 +483,7 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
 
   totals = matrix(0, ncell(template), length(TILE_LAYERS), dimnames = list(NULL, TILE_LAYERS))
   out_of_range = 0
+  with_albedo = 0; no_diffuse = 0                    # pixel-days with an albedo; of those, without a diffuse fraction
   for (d in seq_along(days)) {
     if (anyNA(files[d, core])) next                  # counted in the build record (delivery_summary)
     get  = function(name) read_layer(files[d, name], template, name)
@@ -502,7 +503,13 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
     totals[, 'land_days'] = totals[, 'land_days'] + (land %in% 1)
     totals[, 'shore_days'] = totals[, 'shore_days'] + (land %in% 2)
     totals[, 'read_days'] = totals[, 'read_days'] + !is.na(land)
-    blue = blue_sky(bsa, wsa, diffuse_fraction(era5, ll[, 1], ll[, 2], days[d]))
+    f = diffuse_fraction(era5, ll[, 1], ll[, 2], days[d])
+    # A retrieval with no diffuse fraction (ERA5 hour or point not found, or no sunlight in that
+    # hour) is lost; counted, so that a timing or grid mismatch, which would empty every tile
+    # while each still passed its checks as valid zeros, shows up (build_month warns).
+    has_albedo = !is.na(bsa) & !is.na(wsa)
+    with_albedo = with_albedo + sum(has_albedo); no_diffuse = no_diffuse + sum(has_albedo & is.na(f))
+    blue = blue_sky(bsa, wsa, f)
     usable = !is.na(blue) & !is.na(qa) & qa <= 7
     full = usable & qa %in% FULL_QA
     for (i in seq_len(nrow(VERSIONS))) {
@@ -516,7 +523,8 @@ process_tile_month = function(tile, month, day_dir, out_dir, need_zenith = TRUE)
   # The tags travel with the file, so a later build that reuses it can still record how it was made.
   metags(r) = c(paleoRF_build = settings_tag(need_zenith), paleoRF_script_sha256 = SCRIPT_SHA,
                 paleoRF_created = format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z'),
-                paleoRF_out_of_range = as.character(out_of_range))
+                paleoRF_out_of_range = as.character(out_of_range),
+                paleoRF_with_albedo = as.character(with_albedo), paleoRF_no_diffuse = as.character(no_diffuse))
   publish_tile(r, out, settings_tag(need_zenith), template)
 }
 
@@ -614,10 +622,26 @@ build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
   ok = lengths(problems) == 0
   for (i in which(!ok)) cat('FAILED', tiles[i], paste(problems[[i]], collapse = '; '), '\n')
   if (!all(ok)) stop(sum(!ok), ' tiles of ', format(month, '%Y-%m'), ' failed; the day files are kept')
-  # One line per tile for the build record: made now or reused, when, and albedo values dropped.
-  sprintf('tile %s: %s, made %s, albedo values outside 0-1 dropped: %s', tiles,
+  # One line per tile for the build record: made now or reused, when, albedo values dropped, and
+  # retrievals lost for want of a diffuse fraction; a warning (not a stop) where that share is large.
+  with_albedo = as.numeric(vapply(expected, build_tag, '', name = 'paleoRF_with_albedo'))
+  no_diffuse = as.numeric(vapply(expected, build_tag, '', name = 'paleoRF_no_diffuse'))
+  cat(no_diffuse_warnings(tiles, no_diffuse, with_albedo), sep = '\n')
+  sprintf('tile %s: %s, made %s, albedo values outside 0-1 dropped: %s, retrievals without a diffuse fraction: %s of %s', tiles,
           ifelse(reused, 'reused from an earlier run', 'made in this run'),
-          vapply(expected, build_tag, '', name = 'paleoRF_created'), vapply(expected, build_tag, '', name = 'paleoRF_out_of_range'))
+          vapply(expected, build_tag, '', name = 'paleoRF_created'), vapply(expected, build_tag, '', name = 'paleoRF_out_of_range'),
+          no_diffuse, with_albedo)
+}
+
+# Tiles where more than NO_DIFFUSE_WARN of the retrievals found no diffuse fraction. A few are
+# expected near the edge of the polar night (no sunlight in the noon hour); many would mean the
+# ERA5 hours or grid do not match the MODIS days and pixels.
+NO_DIFFUSE_WARN = 0.001
+no_diffuse_warnings = function(tiles, no_diffuse, with_albedo) {
+  share = ifelse(with_albedo > 0, no_diffuse / with_albedo, 0)
+  big = which(is.na(share) | share > NO_DIFFUSE_WARN)
+  sprintf('WARNING tile %s: %s of %s retrievals (%.2f%%) had no diffuse fraction and were lost', tiles[big],
+          no_diffuse[big], with_albedo[big], 100 * share[big])
 }
 
 # What made a month's files, added to RECORDS_DIR/<month>/build.txt, which stays after its day

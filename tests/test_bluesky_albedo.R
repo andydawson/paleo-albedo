@@ -40,6 +40,10 @@ stopifnot(
   near((1000 - 750) / 1000, 0.25)
 )
 
+# Lost retrievals: a warning only for tiles where more than 0.1% found no diffuse fraction.
+w <- no_diffuse_warnings(c("h01v01", "h02v01", "h03v01", "h04v01"), c(0, 1, 50, 0), c(1e5, 1e5, 1e4, 0))
+stopifnot(length(w) == 1, grepl("^WARNING tile h03v01: 50 of 10000 retrievals \\(0.50%\\)", w))
+
 # Land: more than half of the days with a class say land; blank days do not count; a tie is not
 # land. With the 'land_or_shore' rule, shoreline days count with land days.
 stopifnot(identical(is_land(c(10, 6, 5, 0, 0), 0, c(10, 10, 10, 3, 0)), c(TRUE, TRUE, FALSE, FALSE, FALSE)),
