@@ -74,23 +74,27 @@
 #   4. "collect" checks every downloaded GeoTIFF against the request's SHA-256 list, moves the
 #      month into data/modis_albedo/appeears/<year-month>/ (through "<year-month>.partial", so an
 #      interrupted move is finished by running collect again, at whatever point it stopped), and
-#      keeps the checksum list and AppEEARS's other files in data/modis_albedo/records/<year-month>/.
+#      keeps the checksum list and AppEEARS's other files (its copy of the request, the granule
+#      list, metadata; named with hyphens) in data/modis_albedo/records/<year-month>/.
 #   5. "build" checks the month's files against the checksum list again, checks that every layer
-#      was delivered and that the request asked for the right days and layers, reduces the month
-#      tile by tile to data/modis_albedo/monthly/<tile>_<year>_<month>.tif (per-pixel sums and
-#      counts, tagged with the settings, written under a temporary name), checks every layer of
-#      every tile's file, writes records/<year-month>/build.txt (code, settings, inputs, days used
-#      and skipped, each tile's origin), and only then deletes the month's day files ("keep"
-#      keeps them, as for the test months).
-#   6. Once every month is built, "cells" decides the land pixels and writes the cell table.
+#      was delivered and that the request (AppEEARS's copy if filed) asked for the right days and
+#      layers, reduces the month tile by tile to data/modis_albedo/monthly/<tile>_<year>_<month>.tif
+#      (per-pixel sums and counts, tagged with the settings and this script's SHA-256), checks every
+#      layer of each new file under a temporary name before naming it, adds a section to
+#      records/<year-month>/build.txt (code, settings, inputs, days used and skipped, each tile's
+#      origin, retrievals lost), and only then deletes the month's day files. "keep" keeps them for
+#      good (a KEEP file in the day folder; later builds without month names skip that month).
+#   6. Once every month is built, "cells" decides the land pixels and writes the cell table, with
+#      a note beside it of the land rule and the script versions that made the monthly files.
 # Every step can be rerun: requests are not written for months already collected or built, a
-# month already collected is not collected again, and a tile-month whose file exists is
-# skipped, unless it was made with other settings, which stops the build.
+# month already collected is not collected again, and a tile-month whose file exists is reused,
+# unless it was made with other settings or by another version of this script, which stops the
+# build.
 #
 # "test" builds July 2005 from data/modis_albedo/appeears_full_2005-07/ (downloaded 2026-10-19,
 # before the noon solar zenith layer was added to the requests, so the zenith is taken as 0:
 # valid only for July, when the noon sun is everywhere within 61 degrees of the zenith) into
-# data/modis_albedo/test_appeears_v3/, and with "test all" also that month's cell table, to
+# data/modis_albedo/test_appeears_v4/, and with "test all" also that month's cell table, to
 # compare with Andria's raster. Nothing under data/modis_albedo/ or data/era5/ is committed.
 
 library(terra)
@@ -866,7 +870,7 @@ if (sys.nframe() == 0) {
     # table for that one month ("test all").
     test_tiles = if (identical(args[2], 'all')) tiles else args[-1]
     if (!length(test_tiles) || !all(test_tiles %in% tiles)) stop('test needs "all" or tiles of the study area, e.g. h11v04')
-    out_dir = file.path(WORK_DIR, 'test_appeears_v3')
+    out_dir = file.path(WORK_DIR, 'test_appeears_v4')
     test_dir = file.path(WORK_DIR, 'appeears_full_2005-07')
     started = Sys.time()
     cat(check_checksums(list.files(test_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE), test_dir),
