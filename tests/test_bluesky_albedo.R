@@ -20,6 +20,26 @@ stopifnot(
   near(equation_of_time(as.Date("2005-12-31")), eot_by_hand(365, 365))
 )
 
+# Diffuse fraction from made-up ERA5 values: everywhere f = 0.5 (ssrd 1000, fdir 500), except at
+# the grid point and hour each case should pick, where fdir = 750 gives f = 0.25. ERA5 accumulates
+# over the hour ending at its time stamp, so the stamp is the hour after local solar noon.
+era5 <- list(lon = c(-172.25, -172, -100.25, -100, -99.75), lat = c(45.25, 45, 44.75),
+             time = c(seq(as.POSIXct("2005-07-15 00:00", tz = "UTC"), by = "hour", length.out = 25),
+                      seq(as.POSIXct("2005-12-31 00:00", tz = "UTC"), by = "hour", length.out = 26)))
+era5$ssrd <- array(1000, c(5, 3, length(era5$time))); era5$fdir <- array(500, dim(era5$ssrd))
+at <- function(lon, lat, stamp) cbind(match(lon, era5$lon), match(lat, era5$lat), match(as.POSIXct(stamp, tz = "UTC"), era5$time))
+era5$fdir[at(-100, 45, "2005-07-15 19:00")] <- 750      # noon at -100 on 15 July is 18:46 UTC
+era5$fdir[at(-172, 45, "2006-01-01 00:00")] <- 750      # noon at -172 on 31 December is 23:30 UTC, next day's first stamp
+era5$ssrd[at(-99.75, 45, "2005-07-15 19:00")] <- 0      # no sunlight: no fraction
+stopifnot(
+  near(diffuse_fraction(era5, -100, 45, as.Date("2005-07-15")), 0.25),
+  near(diffuse_fraction(era5, -100.1, 45.1, as.Date("2005-07-15")), 0.25),   # nearest quarter-degree point
+  near(diffuse_fraction(era5, -100.2, 45.1, as.Date("2005-07-15")), 0.5),    # nearer to -100.25
+  near(diffuse_fraction(era5, -172, 45, as.Date("2005-12-31")), 0.25),
+  is.na(diffuse_fraction(era5, -99.75, 45, as.Date("2005-07-15"))),
+  near((1000 - 750) / 1000, 0.25)
+)
+
 # Land: more than half of the days with a class say land; blank days do not count; a tie is not
 # land. With the 'land_or_shore' rule, shoreline days count with land days.
 stopifnot(identical(is_land(c(10, 6, 5, 0, 0), 0, c(10, 10, 10, 3, 0)), c(TRUE, TRUE, FALSE, FALSE, FALSE)),
