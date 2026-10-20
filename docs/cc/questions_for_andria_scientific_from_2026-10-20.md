@@ -35,12 +35,32 @@ in our forcing, and the same may happen wherever the past cover mix lies
 outside the range of today's mixes.
 
 **Possible causes (not yet confirmed).**
+- The cover term is confounded with location: in the box, evergreen share rises
+  northwards with latitude, so the fitted cover surface can take a steep slope that the
+  location term offsets today but not when the cover changes in the past.
 - The model is extrapolating: past cover mixes in this region lie outside
   the mixes it was fitted on today, and the fitted smooth bends the wrong
   way there.
 - Water in the calibration albedo: lakes and coastline mixed into your
   0.25° albedo raster may have taught the model that some cover mixes are
   very dark.
+
+**Further evidence (20 October, same run).**
+- The forcing in the box is vegetation only after 9.5 ka; the ice part is zero there in
+  every period from 8 ka onwards.
+- The forcing follows the evergreen curve with no lag. Evergreen falls from 6 to 4.5 ka
+  (0.40 to 0.22), giving warming (+5.2 W/m2 over the box for 4-6 ka). It then recovers
+  from 4 to 0.5 ka (0.23 to 0.37), giving cooling (-2.9 for 2-4 ka, -1.7 for 0.5-2 ka).
+  The cooling after 4 ka is the same effect in reverse.
+- At a fixed place in the box, the May model gives albedo 0.06 for 10% evergreen and
+  0.49 for 60% evergreen (open land fixed at 6%). Both ends are implausible for forest.
+- The data the model was fitted on point the other way. Across the 83 box cells today,
+  May albedo falls as evergreen share rises (correlation -0.63). Evergreen share is almost
+  a function of latitude there (correlation 0.92), so the location term and the cover term
+  can trade off against each other (related to question B3 in the earlier file).
+- The 4.5 ka cover mixes lie outside the mixes the model was fitted on: the median distance
+  to the nearest modern mix is 0.12 in cover fraction, against 0.04 at 6 ka.
+- Checked for May with the selected model only; other months are not yet checked.
 
 **What we propose to check.**
 - The model's fitted albedo for pure evergreen and pure summergreen cover,
