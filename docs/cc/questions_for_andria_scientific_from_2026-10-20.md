@@ -134,7 +134,7 @@ published climatologies; both reviews found those statements wrong.*
   kept for comparison. Your raster shows no such cut-off: its winter values reach the north as far as a
   noon sun 80-85 degrees from overhead.
 - Snow: the product's own daily snow flag. The build keeps snowy, snow-free and unknown-snow day
-  totals so that the snowy and snow-free albedo mix back exactly to the all-days value.
+  totals; together with the unknown-snow part they mix back exactly to the all-days value.
 - Averaging: within each year, the mean over all usable land pixel-days of the cell; then the years
   weighted equally. A mean, not a median, because forcing is linear in albedo (our judgement).
 
