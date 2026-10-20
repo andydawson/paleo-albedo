@@ -7,37 +7,51 @@
 #   Rscript tools/prepare_bluesky_albedo.R collect                    # check and file the downloads
 #   Rscript tools/prepare_bluesky_albedo.R build                      # reduce them to monthly files
 #   Rscript tools/prepare_bluesky_albedo.R cells                      # the cell table, at the end
-#   Rscript tools/prepare_bluesky_albedo.R test h11v04                # July 2005 check (see below)
+#   Rscript tools/prepare_bluesky_albedo.R test all                   # July 2005 check (see below)
 #
-# It writes data/albedo_modis_cells.csv (committed), which script 2 reads when config.R
-# chooses the rebuilt albedo; Andria's raster data/blue_sky_monthly_2000-2009.tif stays the
-# legacy setting. Decided by Chris on 2026-10-15 (questions B2c, B5), each setting following
-# published practice:
+# It writes data/albedo_modis_cells.csv (committed), for script 2 to read when config.R chooses
+# the rebuilt albedo (not wired into script 2 yet); Andria's raster
+# data/blue_sky_monthly_2000-2009.tif stays the legacy setting. Settings decided by Chris on
+# 2026-10-15 (questions B2c, B5) and revised on 2026-10-20 after two independent reviews of the
+# build. Where a setting is our own judgement rather than published practice, it says so:
 #
-#   Product      MCD43A3 and MCD43A2 v6.1, daily, 500 m (Schaaf et al. 2002,
-#                doi:10.1016/S0034-4257(02)00091-3; Wang et al. 2018,
-#                doi:10.1016/j.rse.2018.02.001), shortwave broadband (0.3-5 um), from 5 March
-#                2000, the start of the validated record (MCD43 user guide).
-#   Blue sky     (1 - f) x black-sky + f x white-sky (Lucht et al. 2000, doi:10.1109/36.841980;
-#                Roman et al. 2010, doi:10.1016/j.rse.2009.11.014; MCD43A3 user guide), with f
-#                the all-sky diffuse fraction from ERA5, (ssrd - fdir) / ssrd, in the hour
-#                containing local solar noon (the black-sky albedo is for local solar noon).
+#   Product      MCD43A3 and MCD43A2 collection 6.1, daily, 500 m, shortwave broadband (0.3-5 um),
+#                from 5 March 2000, the start of the validated record (MCD43 user guide; algorithm:
+#                Schaaf et al. 2002, doi:10.1016/S0034-4257(02)00091-3; daily collection 6: Wang
+#                et al. 2018, doi:10.1016/j.rse.2018.02.001). Each daily value comes from the
+#                observations of a 16-day window centred on that day.
+#   Blue sky     (1 - f) x black-sky + f x white-sky, the isotropic approximation of the MCD43A3
+#                user guide (Lucht et al. 2000, doi:10.1109/36.841980; Roman et al. 2010,
+#                doi:10.1016/j.rse.2009.11.014, who note it is weakest for bright surfaces such as
+#                snow under a low sun), with f the all-sky diffuse fraction from ERA5,
+#                (ssrd - fdir) / ssrd (fdir is through a horizontal plane), in the hour containing
+#                local solar noon. The black-sky albedo is for local solar noon, so the result is
+#                the noon blue-sky albedo, not an albedo weighted by the day's sunlight.
 #   Quality      full BRDF inversions only (mandatory quality 0, 2, 4, 6), as the product team
-#                recommends (MCD43A3 user guide); all processed retrievals (0-7) are kept as
-#                the sensitivity (Wang et al. 2018 validate all qualities).
-#   Low sun      solar zenith at local noon at most 70 degrees (MCD43 user guide; NASA MODIS
-#                land validation page).
-#   Water        only pixels the product's own land/water class (MCD43A2
-#                BRDF_Albedo_LandWaterType) labels land (1), as NASA's processing does.
-#   Snow         three versions from the MCD43A2 day-of-interest snow flag (Wang et al. 2018):
-#                all days, snow-free days, snowy days.
-#   Averaging    days to a monthly mean in each year; years averaged with equal weight; no gap
-#                filling and no minimum number of days, the numbers kept beside every value
-#                (as the published climatologies do: Jia et al. 2022,
-#                doi:10.1029/2021JD035987; Duveiller et al. 2018, doi:10.1038/s41467-017-02810-8).
-#   Cells        the mean over the land pixels of each 1-degree cell (500 m sinusoidal pixels
-#                have equal area, so a plain mean is the area mean; Oleson et al. 2003,
-#                doi:10.1029/2002GL016749, aggregate MODIS albedo by area).
+#                recommends (MCD43A3 user guide); any processed retrieval (0-7) is kept for
+#                comparison (Wang et al. 2018 validate all qualities).
+#   Low sun      noon solar zenith at most 75 degrees, as in the published climatology of Jia et
+#                al. 2022 (doi:10.1029/2021JD035987). Kept for comparison: 70 degrees (NASA's MODIS
+#                land validation page calls values beyond 70 degrees suspect) and no rule. The
+#                rule removes the north in winter: at 75 degrees, December keeps only cells south
+#                of about 53 N.
+#   Land         pixels whose land/water class (MCD43A2 BRDF_Albedo_LandWaterType) is land (1) on
+#                more than half of the days it has a class, over the whole record (Chris,
+#                2026-10-20). Our choice: the product is also made for coastal and shallow-water
+#                areas (MCD43 user guide). A blank class means no retrieval that day and is ignored.
+#   Snow         the MCD43A2 snow flag of each day (Wang et al. 2018): every version keeps all,
+#                snowy and snow-free days, so each cell has a snow share and snowy and snow-free
+#                albedos that mix back exactly to the all-days value.
+#   Averaging    our judgement: within each year, every qualifying land pixel-day of a cell counts
+#                once; the years with data then weigh the same; no gap filling and no minimum
+#                number of days, the counts kept beside every value. Jia et al. 2022 likewise
+#                average each date over the years, but also drop the largest and smallest values;
+#                Duveiller et al. 2018 (doi:10.1038/s41467-017-02810-8) take the median of
+#                mid-month composites. We take the mean because forcing is linear in albedo.
+#   Cells        the 500 m sinusoidal pixels have equal area (MODIS grid), so pooling them is an
+#                area mean over the land pixels with data; Oleson et al. 2003
+#                (doi:10.1029/2002GL016749) aggregated MODIS albedo to a model grid "using area
+#                weighting". Pixels with more qualifying days weigh more within a year.
 #
 # How the build runs. AppEEARS cuts the six layers the build uses out of NASA's MODIS files
 # for the study area and returns one GeoTIFF per layer and day on the MODIS sinusoidal grid,
@@ -49,21 +63,24 @@
 #      file" (on the options page, before the form), then submit.
 #   3. When it has finished: Explore -> the request's download page -> every file, into
 #      ~/Downloads.
-#   4. "collect" checks every downloaded GeoTIFF against the request's SHA-256 list and moves
-#      the month into data/modis_albedo/appeears/<year-month>/.
-#   5. "build" reduces each collected month, tile by tile, to data/modis_albedo/monthly/
-#      <tile>_<year>_<month>.tif, then deletes that month's day files, so the disk holds only
-#      the months waiting to be built (about 11 GB each).
-#   6. Once every month is built, "cells" writes the cell table.
+#   4. "collect" checks every downloaded GeoTIFF against the request's SHA-256 list, moves the
+#      month into data/modis_albedo/appeears/<year-month>/ (through "<year-month>.partial", so an
+#      interrupted move is finished by running collect again), and keeps the checksum list and
+#      AppEEARS's other files in data/modis_albedo/records/<year-month>/.
+#   5. "build" checks the month's files against the checksum list again, reduces them tile by
+#      tile to data/modis_albedo/monthly/<tile>_<year>_<month>.tif (per-pixel sums and counts,
+#      tagged with the settings), checks every tile's file, writes records/<year-month>/build.txt
+#      (code, settings, inputs), and only then deletes the month's day files.
+#   6. Once every month is built, "cells" decides the land pixels and writes the cell table.
 # Every step can be rerun: requests are not written for months already collected or built, a
-# month already collected is not collected again, and a tile-month whose file exists is skipped.
+# month already collected is not collected again, and a tile-month whose file exists is
+# skipped, unless it was made with other settings, which stops the build.
 #
 # "test" builds July 2005 from data/modis_albedo/appeears_full_2005-07/ (downloaded 2026-10-19,
-# requested before the noon solar zenith layer was added, so the 70-degree rule is not applied;
-# the July noon sun is everywhere within 61 degrees of the zenith) into
-# data/modis_albedo/test_appeears/, to compare with the tile built from NASA's original files on 2026-10-17 by the first version of this
-# script (commit e97ec44), and, with "test all", with Andria's raster. Nothing under
-# data/modis_albedo/ or data/era5/ is committed.
+# before the noon solar zenith layer was added to the requests, so the zenith is taken as 0:
+# valid only for July, when the noon sun is everywhere within 61 degrees of the zenith) into
+# data/modis_albedo/test_appeears_v2/, and with "test all" also that month's cell table, to
+# compare with Andria's raster. Nothing under data/modis_albedo/ or data/era5/ is committed.
 
 library(terra)
 library(jsonlite)
