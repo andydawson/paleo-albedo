@@ -138,19 +138,32 @@ published climatologies; both reviews found those statements wrong.*
 - Averaging: within each year, the mean over all usable land pixel-days of the cell; then the years
   weighted equally. A mean, not a median, because forcing is linear in albedo (our judgement).
 
-**Open questions.**
+**Open question.**
 1. **Shoreline pixels.** The product labels pixels touching a lake shore or coastline as a separate
    class. Should they count as land? They contain some water (darker), but in lake country they are a
-   large part of the land: on one Minnesota-Ontario tile, 18% of the pixels with readings are mostly
-   labelled shoreline. The build will keep both options open until you decide.
-2. **What should "today's snow share" mean?** The share of usable satellite retrievals flagged snowy
-   (what the build gives, which depends on cloud, quality and sun-angle screening), or a snow fraction
-   defined independently (for example from a snow-cover product)?
-3. **Noon albedo.** The calibration albedo is the blue-sky albedo at local solar noon. Is that the right
-   input for the monthly radiative kernels, or should it be weighted by the day's sunlight?
-4. **Minimum coverage.** Should a cell-month need a minimum share of its land observed before it is
-   used in the calibration? In July 2005, 30% of cells had full-quality retrievals for under 90% of
-   their land (mostly Alaska and south of 30 N), and there the full-quality and any-quality values
-   differ by 0.014-0.020 on average.
-5. **Days with unknown snow status.** If some days have albedo but no snow flag, keep them in the
-   all-days value (current) or leave them out so the two-part snow mix is exact?
+   large part of the land: on one Minnesota-Ontario tile, the most common label of 18% of the pixels
+   with readings is "shoreline". The build keeps both options open; Chris will choose once the test
+   months show the difference, and your view is welcome.
+
+**Current defaults (Chris, 20 October). They can be changed later without rebuilding; tell us only if
+you disagree.**
+- *Today's snow share* = the share of usable satellite retrievals flagged snowy (it depends on cloud,
+  quality and sun-angle screening), rather than a snow fraction from a separate snow-cover product.
+- *No minimum coverage:* every cell-month with any usable retrieval is used, and the counts (years,
+  days, share of land observed) are kept beside each value. In July 2005, 30% of cells had
+  full-quality retrievals for under 90% of their land (mostly Alaska and south of 30 N); there the
+  full-quality and any-quality values differ by 0.014-0.020 on average.
+- *Days with unknown snow status* stay in the all-days value; their share and mean are reported, so
+  the snowy, snow-free and unknown parts mix back exactly.
+
+**Also decided (Chris, 20 October, for your review).**
+- *Noon albedo.* The calibration albedo is the blue-sky albedo at local solar noon, which is what the
+  MODIS albedo product provides (its direct-light albedo is defined for the noon sun; a
+  sunlight-weighted daily albedo would need a different product). This is common practice: Bright et
+  al. 2015 (Biogeosciences) use the MODIS direct-light albedo at local solar noon, Duveiller et al.
+  2018 use the same noon-based product, and the Copernicus albedo product also defines its
+  direct-light albedo at local noon. Your raster was very probably noon-based too, if it was made from
+  the MODIS albedo product. Caveat for the methods: the radiative kernels respond to a monthly albedo
+  that is in effect weighted by the day's sunlight; at low sun (snow, high latitudes) noon albedo is
+  somewhat lower. Because the forcing uses differences between time slices, much of that offset
+  should cancel (our reasoning, not yet checked).
