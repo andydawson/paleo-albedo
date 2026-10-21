@@ -164,7 +164,7 @@ invisible(file.remove(file.path(deliv, sprintf("%s_doy%s000000_aid0001.tif", LAY
 invisible(file.remove(file.path(deliv, sprintf("%s_doy%s000000_aid0001.tif", LAYERS$file[LAYERS$name == "snow"], "2005200"))))
 summary_lines <- delivery_summary(delivery_table(deliv, july, LAYERS$name), LAYERS$name)
 stopifnot(length(july) == 31,
-          grepl("with every needed layer: 29$", summary_lines[1]),
+          grepl("used by every version: 29$", summary_lines[1]),
           grepl("zenith .*: 1 \\(09\\)", summary_lines[2]),
           grepl("skipped.*: 1 \\(19\\)", summary_lines[3]))
 invisible(file.create(file.path(deliv, "MCD43A3.061_Albedo_BSA_shortwave_doy2005213000000_aid0001.tif")))  # 1 August
@@ -185,8 +185,8 @@ make_day_files(partial, july[16:31], LAYERS$file[LAYERS$name == "wsa"])
 no_usable_msg <- tryCatch(delivery_table(partial, july, LAYERS$name), error = conditionMessage)
 make_day_files(partial, july[1], LAYERS$file[LAYERS$name == "wsa"])
 one_day <- delivery_summary(delivery_table(partial, july, LAYERS$name), LAYERS$name)
-stopifnot(is.character(no_usable_msg), grepl("no day has every needed layer", no_usable_msg),
-          grepl("with every needed layer: 1$", one_day[1]), grepl("skipped.*: 30 ", one_day[3]))
+stopifnot(is.character(no_usable_msg), grepl("no day has every albedo, quality, snow and land layer \\(bsa, wsa, qa, snow, land\\)", no_usable_msg),
+          grepl("used by every version: 1$", one_day[1]), grepl("skipped.*: 30 ", one_day[3]))
 
 # Keeping day files: a month built with "keep" keeps them, and a later build without names skips
 # it (its files and first build record survive); naming it rebuilds it and still keeps the files.

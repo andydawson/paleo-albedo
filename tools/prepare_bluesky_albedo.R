@@ -324,8 +324,8 @@ month_days = function(month) {
 # proves that what AppEEARS listed arrived intact, not that it processed every layer and day, so
 # this stops if any GeoTIFF in the folder is not one of our layers on a day of this month (a
 # renamed layer, a wrong month), if a needed layer has no file at all, or if no day has every
-# needed layer (Chris, 2026-10-21): in either case every day would be skipped and the tiles would
-# come out empty, yet pass their checks as valid zeros.
+# albedo, quality, snow and land layer (Chris, 2026-10-21): in either case every day would be
+# skipped and the tiles would come out empty, yet pass their checks as valid zeros.
 delivery_table = function(day_dir, days, needed) {
   tifs = list.files(day_dir, pattern = '\\.tif$')
   named = grepl('_doy\\d{7}000000_aid0001\\.tif$', tifs)
@@ -338,7 +338,7 @@ delivery_table = function(day_dir, days, needed) {
   none = needed[colSums(present[, needed, drop = FALSE]) == 0]
   if (length(none)) stop(day_dir, ': no file at all for ', paste(none, collapse = ', '), '; the delivery is incomplete')
   if (!any(usable_days(present, needed)))
-    stop(day_dir, ': no day has every needed layer (', paste(setdiff(needed, 'sza'), collapse = ', '),
+    stop(day_dir, ': no day has every albedo, quality, snow and land layer (', paste(setdiff(needed, 'sza'), collapse = ', '),
          '); every day would be skipped, so the delivery is incomplete')
   data.frame(day = days, present, check.names = FALSE)
 }
@@ -354,7 +354,7 @@ delivery_summary = function(tab, needed) {
   skipped = !usable_days(tab, needed)
   no_zenith = !skipped & 'sza' %in% needed & !tab$sza
   dates = function(k) if (any(k)) paste(format(tab$day[k], '%d'), collapse = ' ') else '-'
-  c(sprintf('days in the month: %d; with every needed layer: %d', nrow(tab), sum(!skipped & !no_zenith)),
+  c(sprintf('days in the month: %d; used by every version: %d', nrow(tab), sum(!skipped & !no_zenith)),
     sprintf('days used without the noon zenith (no-low-sun-rule version only): %d (%s)', sum(no_zenith), dates(no_zenith)),
     sprintf('days skipped, an albedo, quality, snow or land layer missing: %d (%s)', sum(skipped), dates(skipped)),
     paste('days with a file, by layer:', paste(sprintf('%s %d', LAYERS$name, colSums(tab[, LAYERS$name])), collapse = ', ')))
