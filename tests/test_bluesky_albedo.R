@@ -450,7 +450,7 @@ stopifnot(missing_month_stops, wrong_tag_stops, dead_stops, error_stops,
 # the same four files, but one without a script SHA-256 (made before the files recorded it) or
 # one with another SHA-256 among them, stop it and name the file; the tagged ones alone pass.
 script_check <- function(sha) {
-  d <- file.path(tmp, paste0("monthly_sha_", if (is.na(sha)) "none" else sha)); dir.create(d)
+  d <- file.path(tmp, paste0("monthly_sha_", if (is.na(sha)) "none" else sha)); unlink(d, recursive = TRUE); dir.create(d)
   invisible(file.copy(list.files(cdir, full.names = TRUE), d))
   write_monthly("h02v01", 2006, list(none, none, pixel(2, 0, 2, 0.6, 0, 0.6, land = 2, read = 2), pixel(shore = 1, read = 1),
                                      none, none, none, none), dir = d, sha = sha)
@@ -458,8 +458,26 @@ script_check <- function(sha) {
 }
 untagged_msg <- script_check(NA)
 other_msg <- script_check("0123abcd")
-stopifnot(is.character(untagged_msg), grepl("another version of this script, or do not say which, e.g. .*h02v01_2006_07.tif \\(SHA-256 NA", untagged_msg),
+stopifnot(is.character(untagged_msg),
+          grepl("another version of this script, not one listed in ACCEPTED_OLDER_SHAS, or do not say which, e.g. .*h02v01_2006_07.tif \\(SHA-256 NA",
+                untagged_msg),
           is.character(other_msg), grepl("h02v01_2006_07.tif \\(SHA-256 0123abcd, now ", other_msg),
           is.data.frame(script_check(SCRIPT_SHA)))
+# An older version listed in ACCEPTED_OLDER_SHAS, checked to compute the same numbers, is accepted
+# too (Chris, 2026-10-21), with the same result; one not listed, or a file with no SHA-256, is still
+# refused. The note beside the table counts each version's files and names those of older ones.
+older_sha <- strrep("ab", 32)
+ACCEPTED_OLDER_SHAS <- older_sha
+listed <- script_check(older_sha)
+unlisted_msg <- script_check(strrep("cd", 32))
+untagged_listed_msg <- script_check(NA)
+versions <- script_versions(list.files(file.path(tmp, paste0("monthly_sha_", older_sha)), full.names = TRUE))
+ACCEPTED_OLDER_SHAS <- c()
+stopifnot(is.data.frame(listed), isTRUE(all.equal(listed, ct)),
+          is.character(unlisted_msg), grepl(paste0("\\(SHA-256 ", strrep("cd", 32), ", now "), unlisted_msg),
+          is.character(untagged_listed_msg), grepl("or do not say which", untagged_listed_msg),
+          length(versions) == 2,
+          any(grepl(paste0(SCRIPT_SHA, " - 3 files \\(this version\\)$"), versions)),
+          any(grepl(paste0(older_sha, " - 1 files \\(an accepted older version\\): h02v01_2006_07.tif$"), versions)))
 
 cat("test_bluesky_albedo: all tests passed\n")

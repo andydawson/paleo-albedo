@@ -90,9 +90,13 @@
 #      build leaves it too; later builds without month names skip that month).
 #   6. Once every month is built, "cells" decides the land pixels and writes the cell table, with
 #      a note beside it of the land rule and the script versions that made the monthly files. It
-#      stops if any monthly file was made with other settings or by another version of this script
-#      (or does not record which), so after an edit to this script every month must be rebuilt, from
-#      day files downloaded again where they were deleted.
+#      stops if any monthly file was made with other settings, or by a version of this script that
+#      is neither this one nor one on the short list ACCEPTED_OLDER_SHAS, or does not record which
+#      version made it (Chris, 2026-10-21). After an edit to this script, either every month is rebuilt, from day files
+#      downloaded again where they were deleted, or the old version's SHA-256 is added to that list,
+#      once it has been checked to compute the same numbers (e.g. a change to comments only, seen
+#      in the diff); its entry says what changed and how that was checked. Reuse at build time
+#      stays strict: a tile file is reused only if this version made it.
 # Every step can be rerun: requests are not written for months already collected or built, a
 # month already collected is not collected again, and a tile-month whose file exists is reused,
 # unless it was made with other settings or by another version of this script, which stops the
@@ -162,6 +166,15 @@ require_script_sha = function() {
     stop('cannot tell which version of this script is running (its SHA-256 is "', SCRIPT_SHA,
          '"); run it with Rscript tools/prepare_bluesky_albedo.R from the repository root')
 }
+# Older versions of this script whose monthly files the cell step still accepts, because each was
+# checked to compute the same numbers as this version (Chris, 2026-10-21). Any other version's
+# files are refused, so without an entry here even a comment edit would make the cell step refuse
+# every month built before it. Add a version only after that check, one line each, saying what
+# changed and how the check was made, e.g.
+#   'c0ffee...(its 64-character SHA-256)',   # commit 1a2b3c4: comment-only change; verified by ...
+# A version's SHA-256 is the one in its monthly files and build records. Empty: this version only.
+ACCEPTED_OLDER_SHAS = c(
+)
 
 APPEEARS_DIR = file.path(WORK_DIR, 'appeears')  # collected months, one folder each
 RECORDS_DIR = file.path(WORK_DIR, 'records')     # kept for good: checksum lists, AppEEARS's files, build records
@@ -804,11 +817,13 @@ tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag, template 
          if (length(setdiff(have, want))) paste(', unexpected e.g.', setdiff(have, want)[1]))
   wrong = tf$file[!vapply(tf$file, function(f) identical(build_tag(f), tag), TRUE)]   # a missing tag counts as wrong
   if (length(wrong)) stop(length(wrong), ' monthly files were made with other settings, e.g. ', wrong[1])
-  # And made by this version of the script (Chris, 2026-10-21): a file with another script SHA-256,
-  # or with none (made before the files recorded it), stops the cell step, so the cell table never
-  # mixes outputs of different code.
-  stale = tf$file[!vapply(tf$file, function(f) identical(build_tag(f, 'paleoRF_script_sha256'), SCRIPT_SHA), TRUE)]
-  if (length(stale)) stop(length(stale), ' monthly files were made by another version of this script, or do not say which, e.g. ',
+  # And made by this version of the script or an older one listed in ACCEPTED_OLDER_SHAS (Chris,
+  # 2026-10-21): a file with any other script SHA-256, or with none (made before the files recorded
+  # it), stops the cell step, so the cell table never mixes outputs of code not known to agree.
+  accepted = c(SCRIPT_SHA, ACCEPTED_OLDER_SHAS)
+  stale = tf$file[!vapply(tf$file, function(f) build_tag(f, 'paleoRF_script_sha256') %in% accepted, TRUE)]
+  if (length(stale)) stop(length(stale), ' monthly files were made by another version of this script, not one listed in ',
+                          'ACCEPTED_OLDER_SHAS, or do not say which, e.g. ',
                           stale[1], ' (SHA-256 ', build_tag(stale[1], 'paleoRF_script_sha256'), ', now ', SCRIPT_SHA, ')')
   ll = pixel_lonlat(template)
   cell = paste(floor(ll[, 1]) + 0.5, floor(ll[, 2]) + 0.5)
@@ -835,6 +850,20 @@ combine_parts = function(parts, tiles) {
   parts = parts[vapply(parts, nrow, 1) > 0]
   if (!length(parts)) stop('no land pixels in any cell')
   do.call(rbind, parts)
+}
+
+# Which versions of this script made the monthly files, for the note beside the cell table: per
+# script SHA-256, the number of files and whether it is this version or an accepted older one
+# (ACCEPTED_OLDER_SHAS). The files of any version other than this one are named, so each tile can be
+# traced to the code that made it. A file that records no SHA-256 is counted as such, not left out.
+script_versions = function(files) {
+  sha = vapply(files, build_tag, '', name = 'paleoRF_script_sha256', USE.NAMES = FALSE)
+  sha[is.na(sha)] = 'none recorded'
+  vapply(unique(sha), function(s) {
+    whose = if (s == SCRIPT_SHA) 'this version' else if (s %in% ACCEPTED_OLDER_SHAS) 'an accepted older version' else 'not accepted'
+    line = sprintf('monthly files by build script sha256: %s - %d files (%s)', s, sum(sha == s), whose)
+    if (s == SCRIPT_SHA) line else paste0(line, ': ', paste(basename(files[sha == s]), collapse = ' '))
+  }, '', USE.NAMES = FALSE)
 }
 
 # The cell table: per cell and calendar month, for each version, the climatology (see
@@ -920,16 +949,12 @@ if (sys.nframe() == 0) {
     write.csv(table, OUT_FILE, row.names = FALSE)
     cat(OUT_FILE, ':', nrow(table), 'cell-months;', length(unique(paste(table$x, table$y))), 'cells\n')
     # Beside the table: the land rule it used, and which versions of this script made the monthly
-    # files. The cell step accepts only files made by this version (tile_cell_totals), so the tiles
-    # it read all show one SHA-256; the count covers every file in the folder, and a file that
-    # records no SHA-256 is counted as such rather than left out.
+    # files (script_versions).
     files = list.files(monthly_dir, pattern = '^h\\d{2}v\\d{2}_\\d{4}_\\d{2}\\.tif$', full.names = TRUE)
-    shas = vapply(files, build_tag, '', name = 'paleoRF_script_sha256')
-    shas = table(ifelse(is.na(shas), 'none recorded', shas))
     writeLines(c(paste('cell table:', OUT_FILE, 'written', format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z')),
                  paste('land rule:', LAND_RULE), paste('settings:', SETTINGS_TAG),
                  paste('cell step script sha256:', SCRIPT_SHA),
-                 paste('monthly files by build script sha256:', names(shas), '-', shas, 'files')),
+                 script_versions(files)),
                sub('\\.csv$', '_provenance.txt', OUT_FILE))
 
   } else if (step == 'test') {
