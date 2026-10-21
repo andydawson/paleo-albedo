@@ -176,6 +176,17 @@ invisible(file.remove(file.path(deliv, "MCD43A3.061_Albedo_BSA_v2_doy20051900000
 invisible(file.remove(list.files(deliv, pattern = "Snow_BRDF_Albedo", full.names = TRUE)))  # a whole layer missing
 missing_layer_stops <- inherits(try(delivery_table(deliv, july, LAYERS$name), silent = TRUE), "try-error")
 stopifnot(stray_stops, renamed_stops, missing_layer_stops)
+# A month in which every layer has files but no day has them all would build empty tiles: it
+# stops (Chris, 2026-10-21). One complete day is enough to go on.
+partial <- file.path(tmp, "partial_days"); dir.create(partial)
+make_day_files(partial, july, LAYERS$file[!LAYERS$name %in% c("bsa", "wsa")])
+make_day_files(partial, july[1:15], LAYERS$file[LAYERS$name == "bsa"])
+make_day_files(partial, july[16:31], LAYERS$file[LAYERS$name == "wsa"])
+no_usable_msg <- tryCatch(delivery_table(partial, july, LAYERS$name), error = conditionMessage)
+make_day_files(partial, july[1], LAYERS$file[LAYERS$name == "wsa"])
+one_day <- delivery_summary(delivery_table(partial, july, LAYERS$name), LAYERS$name)
+stopifnot(is.character(no_usable_msg), grepl("no day has every needed layer", no_usable_msg),
+          grepl("with every needed layer: 1$", one_day[1]), grepl("skipped.*: 30 ", one_day[3]))
 
 # Keeping day files: a month built with "keep" keeps them, and a later build without names skips
 # it (its files and first build record survive); naming it rebuilds it and still keeps the files.

@@ -77,7 +77,7 @@
 #      keeps the checksum list and AppEEARS's other files (its copy of the request, the granule
 #      list, metadata; named with hyphens) in data/modis_albedo/records/<year-month>/.
 #   5. "build" checks the month's files against the checksum list again, checks that every layer
-#      was delivered and that the request (AppEEARS's copy if filed) asked for the right days and
+#      was delivered, that at least one day has them all (else it stops), and that the request (AppEEARS's copy if filed) asked for the right days and
 #      layers, reduces the month tile by tile to data/modis_albedo/monthly/<tile>_<year>_<month>.tif
 #      (per-pixel sums and counts, tagged with the settings and this script's SHA-256), checks every
 #      layer of each new file under a temporary name before naming it, adds a section to
@@ -306,8 +306,9 @@ month_days = function(month) {
 # Which layers were delivered on which day (rows: days, columns: LAYERS$name). The checksum list
 # proves that what AppEEARS listed arrived intact, not that it processed every layer and day, so
 # this stops if any GeoTIFF in the folder is not one of our layers on a day of this month (a
-# renamed layer, a wrong month), or if a needed layer has no file at all (every day would be
-# skipped and the tiles would come out empty).
+# renamed layer, a wrong month), if a needed layer has no file at all, or if no day has every
+# needed layer (Chris, 2026-10-21): in either case every day would be skipped and the tiles would
+# come out empty, yet pass their checks as valid zeros.
 delivery_table = function(day_dir, days, needed) {
   tifs = list.files(day_dir, pattern = '\\.tif$')
   named = grepl('_doy\\d{7}000000_aid0001\\.tif$', tifs)
@@ -319,15 +320,21 @@ delivery_table = function(day_dir, days, needed) {
   colnames(present) = LAYERS$name
   none = needed[colSums(present[, needed, drop = FALSE]) == 0]
   if (length(none)) stop(day_dir, ': no file at all for ', paste(none, collapse = ', '), '; the delivery is incomplete')
+  if (!any(usable_days(present, needed)))
+    stop(day_dir, ': no day has every needed layer (', paste(setdiff(needed, 'sza'), collapse = ', '),
+         '); every day would be skipped, so the delivery is incomplete')
   data.frame(day = days, present, check.names = FALSE)
 }
+
+# The days the build can use: those with every needed layer but the noon zenith (a day missing
+# only the zenith is used by the version with no low-sun rule). `present`: days by layer names.
+usable_days = function(present, needed) apply(present[, setdiff(needed, 'sza'), drop = FALSE], 1, all)
 
 # How the days are used (the same rule as process_tile_month): a day missing an albedo, quality,
 # snow or land layer is skipped; a day missing only the noon zenith is used, but only by the
 # version with no low-sun rule. Lines for the build record, so that archive gaps stay visible.
 delivery_summary = function(tab, needed) {
-  core = intersect(setdiff(needed, 'sza'), LAYERS$name)
-  skipped = !apply(tab[, core, drop = FALSE], 1, all)
+  skipped = !usable_days(tab, needed)
   no_zenith = !skipped & 'sza' %in% needed & !tab$sza
   dates = function(k) if (any(k)) paste(format(tab$day[k], '%d'), collapse = ' ') else '-'
   c(sprintf('days in the month: %d; with every needed layer: %d', nrow(tab), sum(!skipped & !no_zenith)),
