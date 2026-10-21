@@ -159,6 +159,7 @@ deliv <- file.path(tmp, "delivery"); dir.create(deliv)
 july <- month_days(as.Date("2005-07-01"))
 make_day_files <- function(dir, days, layers = LAYERS$file)
   for (l in layers) invisible(file.create(file.path(dir, sprintf("%s_doy%s000000_aid0001.tif", l, format(days, "%Y%j")))))
+day_file <- function(name, days) sprintf("%s_doy%s000000_aid0001.tif", LAYERS$file[LAYERS$name == name], format(days, "%Y%j"))
 make_day_files(deliv, july)
 invisible(file.remove(file.path(deliv, sprintf("%s_doy%s000000_aid0001.tif", LAYERS$file[LAYERS$name == "sza"], "2005190"))))
 invisible(file.remove(file.path(deliv, sprintf("%s_doy%s000000_aid0001.tif", LAYERS$file[LAYERS$name == "snow"], "2005200"))))
@@ -187,6 +188,23 @@ make_day_files(partial, july[1], LAYERS$file[LAYERS$name == "wsa"])
 one_day <- delivery_summary(delivery_table(partial, july, LAYERS$name), LAYERS$name)
 stopifnot(is.character(no_usable_msg), grepl("no day has every albedo, quality, snow and land layer \\(bsa, wsa, qa, snow, land\\)", no_usable_msg),
           grepl("used by every version: 1$", one_day[1]), grepl("skipped.*: 30 ", one_day[3]))
+# A month in which no usable day has the noon zenith stops as well (Chris, 2026-10-21): the versions
+# with a low-sun rule would be empty. First no zenith file at all; then one only on 1 July, a day
+# skipped for want of its snow file. One usable day with the zenith is enough to go on, and the
+# July 2005 test, which does not need the zenith, is not stopped by its absence.
+no_zen <- file.path(tmp, "no_zenith"); dir.create(no_zen)
+make_day_files(no_zen, july, LAYERS$file[LAYERS$name != "sza"])
+zenith_nowhere_msg <- tryCatch(delivery_table(no_zen, july, LAYERS$name), error = conditionMessage)
+zenith_not_needed <- delivery_table(no_zen, july, setdiff(LAYERS$name, "sza"))
+invisible(file.remove(file.path(no_zen, day_file("snow", july[1]))))
+make_day_files(no_zen, july[1], LAYERS$file[LAYERS$name == "sza"])
+zenith_skipped_only_msg <- tryCatch(delivery_table(no_zen, july, LAYERS$name), error = conditionMessage)
+make_day_files(no_zen, july[2], LAYERS$file[LAYERS$name == "sza"])
+one_zenith_day <- delivery_summary(delivery_table(no_zen, july, LAYERS$name), LAYERS$name)
+stopifnot(is.character(zenith_nowhere_msg), grepl("no file at all for sza", zenith_nowhere_msg), is.data.frame(zenith_not_needed),
+          is.character(zenith_skipped_only_msg), grepl("no usable day has the noon solar zenith layer", zenith_skipped_only_msg),
+          grepl("used by every version: 1$", one_zenith_day[1]), grepl("zenith .*: 29 \\(", one_zenith_day[2]),
+          grepl("skipped.*: 1 \\(01\\)", one_zenith_day[3]))
 
 # Keeping day files: a month built with "keep" keeps them, and a later build without names skips
 # it (its files and first build record survive); naming it rebuilds it and still keeps the files.
@@ -205,12 +223,14 @@ write_appeears_copy <- function(ours, dir, change = identity) {
                        auto_unbox = TRUE, digits = NA)
 }
 test_ring <- request_area(data.frame(x = c(-100.5, -99.5), y = c(40.5, 41.5)))
-# A collected month for build_collected: day files of every layer and day, their checksum list in
-# the records, our request file and, unless appeears_copy = FALSE, AppEEARS's copy of it.
-collected_month <- function(m, appeears_copy = TRUE) {
+# A collected month for build_collected: day files of every layer and day (but those named in
+# `drop`), their checksum list in the records, our request file and, unless appeears_copy = FALSE,
+# AppEEARS's copy of it.
+collected_month <- function(m, appeears_copy = TRUE, drop = character(0)) {
   dd <- file.path(APPEEARS_DIR, m); dir.create(dd, recursive = TRUE)
   rd <- file.path(RECORDS_DIR, m); dir.create(rd, recursive = TRUE)
   make_day_files(dd, month_days(as.Date(paste0(m, "-01"))))
+  invisible(file.remove(file.path(dd, drop)))
   tifs <- list.files(dd)
   writeLines(paste(vapply(file.path(dd, tifs), function(f) as.character(openssl::sha256(file(f))), ""), tifs),
              file.path(rd, paste0("paleoRFMCD43", m, "-sha256sums.txt")))
@@ -269,6 +289,14 @@ two_copies_msg <- tryCatch(capture.output(build_collected("h00v00", file.path(kb
 stopifnot(grepl("^2005-07: AppEEARS's copy of the request is not unique", two_copies_msg),
           grepl("stopped before building or deleting anything", two_copies_msg),
           length(list.files(dd, pattern = "\\.tif$")) == 31 * nrow(LAYERS), !file.exists(file.path(RECORDS_DIR, "2005-07", "build.txt")))
+# A month in which no usable day has the noon zenith stops the build before any tile is built or
+# anything deleted (Chris, 2026-10-21): August 2005 with the zenith only on 1 August, which has no
+# snow file.
+aug <- month_days(as.Date("2005-08-01"))
+dd <- collected_month("2005-08", drop = c(day_file("sza", aug[-1]), day_file("snow", aug[1])))
+no_zenith_msg <- tryCatch(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-08")), error = conditionMessage)
+stopifnot(grepl("no usable day has the noon solar zenith layer", no_zenith_msg),
+          length(list.files(dd, pattern = "\\.tif$")) == 31 * nrow(LAYERS) - 31, !file.exists(file.path(RECORDS_DIR, "2005-08", "build.txt")))
 APPEEARS_DIR <- saved[[1]]; RECORDS_DIR <- saved[[2]]; WORK_DIR <- saved[[3]]; build_month <- saved[[4]]
 
 # The request: before a build deletes day files, AppEEARS's copy must be in the records and ask

@@ -77,7 +77,8 @@
 #      keeps the checksum list and AppEEARS's other files (its copy of the request, the granule
 #      list, metadata; named with hyphens) in data/modis_albedo/records/<year-month>/.
 #   5. "build" checks the month's files against the checksum list again, checks that every layer
-#      was delivered, that at least one day has them all, and that the request asked for the right
+#      was delivered, that at least one day has every albedo, quality, snow and land layer and that
+#      at least one such day also has the noon solar zenith, and that the request asked for the right
 #      days and layers. AppEEARS's copy of the request must be in the records and ask for the same
 #      dates, layers and area as our request file; with "keep" a missing or different copy only
 #      gives a warning. Any of these failing stops the build before anything is built or deleted.
@@ -325,7 +326,10 @@ month_days = function(month) {
 # this stops if any GeoTIFF in the folder is not one of our layers on a day of this month (a
 # renamed layer, a wrong month), if a needed layer has no file at all, or if no day has every
 # albedo, quality, snow and land layer (Chris, 2026-10-21): in either case every day would be
-# skipped and the tiles would come out empty, yet pass their checks as valid zeros.
+# skipped and the tiles would come out empty, yet pass their checks as valid zeros. It also stops
+# if the noon zenith is needed but no such usable day has it (Chris, 2026-10-21): the versions with
+# a low-sun rule, the main one among them, would then be empty in the same way. A day missing only
+# the zenith is still used by the version with no low-sun rule.
 delivery_table = function(day_dir, days, needed) {
   tifs = list.files(day_dir, pattern = '\\.tif$')
   named = grepl('_doy\\d{7}000000_aid0001\\.tif$', tifs)
@@ -340,6 +344,9 @@ delivery_table = function(day_dir, days, needed) {
   if (!any(usable_days(present, needed)))
     stop(day_dir, ': no day has every albedo, quality, snow and land layer (', paste(setdiff(needed, 'sza'), collapse = ', '),
          '); every day would be skipped, so the delivery is incomplete')
+  if ('sza' %in% needed && !any(usable_days(present, needed) & present[, 'sza']))
+    stop(day_dir, ': no usable day has the noon solar zenith layer (sza); the versions with a low-sun rule, ',
+         'the main one among them, would have no data, so the delivery is incomplete')
   data.frame(day = days, present, check.names = FALSE)
 }
 
