@@ -198,7 +198,7 @@ first_record <- record("2005-03")
 out <- capture.output(build_collected("h00v00", file.path(kb, "monthly")))   # unnamed, no "keep"
 stopifnot(dir.exists(file.path(APPEEARS_DIR, "2005-03")), file.exists(file.path(APPEEARS_DIR, "2005-03", KEEP_MARKER)),
           identical(record("2005-03"), first_record),                       # skipped: record untouched
-          any(grepl("2005-03 : built earlier with \"keep\"; skipped", out)),
+          any(grepl("2005-03 : marked \"keep\" by an earlier build; skipped", out)),
           !dir.exists(file.path(APPEEARS_DIR, "2005-04")),                  # an ordinary month: built, files deleted
           any(grepl("day files: deleted after this record", record("2005-04"))),
           any(grepl("day files: kept", first_record)))
@@ -206,6 +206,20 @@ invisible(capture.output(build_collected("h00v00", file.path(kb, "monthly"), nam
 stopifnot(dir.exists(file.path(APPEEARS_DIR, "2005-03")),                  # still kept
           sum(grepl("^=== built:", record("2005-03"))) == 2,               # a second section, the first kept
           identical(record("2005-03")[seq_along(first_record)], first_record))
+# The KEEP file is written before the month is built (Chris, 2026-10-21): a build with "keep" that
+# fails part-way leaves it, so a later build without names skips the month and its day files survive.
+dd <- file.path(APPEEARS_DIR, "2005-06"); dir.create(dd); dir.create(file.path(RECORDS_DIR, "2005-06"))
+make_day_files(dd, month_days(as.Date("2005-06-01")))
+writeLines(paste(vapply(file.path(dd, list.files(dd)), function(f) as.character(openssl::sha256(file(f))), ""), list.files(dd)),
+           file.path(RECORDS_DIR, "2005-06", "paleoRFMCD432005-06-sha256sums.txt"))
+build_month <- function(...) stop("worker crashed")
+crash_msg <- tryCatch(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-06", keep = TRUE)),
+                      error = conditionMessage)
+build_month <- function(tiles, month, day_dir, out_dir, ...) paste("tile", tiles, ": made in this run")
+out <- capture.output(build_collected("h00v00", file.path(kb, "monthly")))   # unnamed, no "keep"
+stopifnot(identical(crash_msg, "worker crashed"), file.exists(file.path(dd, KEEP_MARKER)),
+          any(grepl("2005-06 : marked \"keep\" by an earlier build; skipped", out)),
+          length(list.files(dd, pattern = "\\.tif$")) == 30 * nrow(LAYERS))   # 30 days in June
 APPEEARS_DIR <- saved[[1]]; RECORDS_DIR <- saved[[2]]; WORK_DIR <- saved[[3]]; build_month <- saved[[4]]
 
 # The request file must ask for the month's days and our layers.

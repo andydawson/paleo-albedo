@@ -83,7 +83,8 @@
 #      layer of each new file under a temporary name before naming it, adds a section to
 #      records/<year-month>/build.txt (code, settings, inputs, days used and skipped, each tile's
 #      origin, retrievals lost), and only then deletes the month's day files. "keep" keeps them for
-#      good (a KEEP file in the day folder; later builds without month names skip that month).
+#      good (a KEEP file in the day folder, written before the month is built so that a failed
+#      build leaves it too; later builds without month names skip that month).
 #   6. Once every month is built, "cells" decides the land pixels and writes the cell table, with
 #      a note beside it of the land rule and the script versions that made the monthly files. It
 #      stops if any monthly file was made with other settings or by another version of this script
@@ -685,7 +686,9 @@ write_build_record = function(month, record_dir, n_files, tiles, delivery, tile_
 # Builds collected months (all of them, or those named) and deletes their day files, unless "keep"
 # is asked for. A month built with "keep" gets a KEEP file in its day folder and keeps its day
 # files for good: a later build without names skips it, and a build that names it rebuilds it but
-# still keeps its files. Only removing its KEEP file by hand lets a build delete them.
+# still keeps its files. Only removing its KEEP file by hand lets a build delete them. The KEEP file
+# is written before the month is built (Chris, 2026-10-21), so a build that fails part-way still
+# leaves the day files protected.
 KEEP_MARKER = 'KEEP'
 build_collected = function(tiles, monthly_dir, named = character(0), keep = FALSE) {
   require_script_sha()                               # before the long checksum checks
@@ -698,9 +701,11 @@ build_collected = function(tiles, monthly_dir, named = character(0), keep = FALS
   for (day_dir in day_dirs) {
     kept_before = file.exists(file.path(day_dir, KEEP_MARKER))
     if (kept_before && !length(named)) {
-      cat(basename(day_dir), ': built earlier with "keep"; skipped (name it to rebuild it)\n'); next
+      cat(basename(day_dir), ': marked "keep" by an earlier build; skipped (name it to build it again)\n'); next
     }
     keep_this = keep || kept_before
+    if (keep_this) writeLines('Marked by a build with "keep": this folder\'s day files are kept. Remove this file to let a build delete them.',
+                              file.path(day_dir, KEEP_MARKER))
     started = Sys.time()
     record_dir = file.path(RECORDS_DIR, basename(day_dir))
     list_file = list.files(record_dir, pattern = '-sha256sums\\.txt$', full.names = TRUE)
@@ -711,8 +716,6 @@ build_collected = function(tiles, monthly_dir, named = character(0), keep = FALS
                  delivery_summary(delivery_table(day_dir, month_days(month), LAYERS$name), LAYERS$name))
     cat(basename(day_dir), ':', delivery, sep = '\n  ')
     tile_lines = build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid
-    if (keep_this) writeLines('Built with "keep": this folder\'s day files are kept. Remove this file to let a build delete them.',
-                              file.path(day_dir, KEEP_MARKER))
     write_build_record(month, record_dir, n_files, tiles,
                        c(delivery, if (keep_this) 'day files: kept (built with "keep"; KEEP file in the day folder)'
                                    else 'day files: deleted after this record'), tile_lines)
