@@ -77,8 +77,11 @@
 #      keeps the checksum list and AppEEARS's other files (its copy of the request, the granule
 #      list, metadata; named with hyphens) in data/modis_albedo/records/<year-month>/.
 #   5. "build" checks the month's files against the checksum list again, checks that every layer
-#      was delivered, that at least one day has them all (else it stops), and that the request (AppEEARS's copy if filed) asked for the right days and
-#      layers, reduces the month tile by tile to data/modis_albedo/monthly/<tile>_<year>_<month>.tif
+#      was delivered, that at least one day has them all, and that the request asked for the right
+#      days and layers. AppEEARS's copy of the request must be in the records and ask for the same
+#      dates, layers and area as our request file; with "keep" a missing or different copy only
+#      gives a warning. Any of these failing stops the build before anything is built or deleted.
+#      It then reduces the month tile by tile to data/modis_albedo/monthly/<tile>_<year>_<month>.tif
 #      (per-pixel sums and counts, tagged with the settings and this script's SHA-256), checks every
 #      layer of each new file under a temporary name before naming it, adds a section to
 #      records/<year-month>/build.txt (code, settings, inputs, days used and skipped, each tile's
@@ -343,28 +346,61 @@ delivery_summary = function(tab, needed) {
     paste('days with a file, by layer:', paste(sprintf('%s %d', LAYERS$name, colSums(tab[, LAYERS$name])), collapse = ', ')))
 }
 
-# The request behind a month, if its file is at hand: AppEEARS's copy in the records if collect
-# filed it, else ours in requests/ (which only shows what we meant to ask; the record says which).
-# Its dates and layers must be the month's days and our layers, else the build stops.
-check_request = function(month, record_dir) {
+# What a request file asks for: its dates, layers (<product>_<layer>) and area (the polygon's
+# coordinates, in order). NULL if the file is missing or cannot be read.
+read_request = function(f) {
+  req = tryCatch(jsonlite::fromJSON(f), error = function(e) NULL)
+  r = tryCatch(list(dates  = as.Date(unlist(req$params$dates[1, c('startDate', 'endDate')]), '%m-%d-%Y'),
+                    layers = paste(req$params$layers$product, req$params$layers$layer, sep = '_'),
+                    area   = as.numeric(unlist(req$params$geo$features$geometry$coordinates))),
+               error = function(e) NULL)
+  if (is.null(r) || length(r$dates) != 2 || anyNA(r$dates) || !length(r$layers) || !length(r$area)) NULL else r
+}
+
+# Where two requests differ in what they ask for: dates, layers or area (empty if nowhere).
+request_differences = function(a, b) {
+  c(if (!identical(as.numeric(a$dates), as.numeric(b$dates))) 'dates',
+    if (!setequal(a$layers, b$layers)) 'layers',
+    if (length(a$area) != length(b$area) || max(abs(a$area - b$area)) > 1e-9) 'area')
+}
+
+# The request behind a month. AppEEARS's copy, which collect files in the records, shows what
+# AppEEARS was actually asked to do; it must be there and ask for the same dates, layers and area
+# as our request file in requests/. A build that will delete the day files stops if it is missing
+# or differs (Chris, 2026-10-21): once they are gone, nothing else shows what the month was made
+# from. A build with "keep" only warns. Either way, what was asked (AppEEARS's copy if it can be
+# read, else ours) must be the month's days and our layers, else the build stops.
+check_request = function(month, record_dir, deleting = TRUE) {
   theirs = list.files(record_dir, pattern = 'request.*\\.json$', full.names = TRUE)
   ours = file.path(WORK_DIR, 'requests', paste0(task_name(month), '.json'))
-  candidates = c(theirs, ours)
-  candidates = candidates[file.exists(candidates)]
-  days = month_days(month)
-  for (f in candidates) {                            # the first one that can be read
-    req = tryCatch(jsonlite::fromJSON(f), error = function(e) NULL)
-    dates = tryCatch(as.Date(unlist(req$params$dates[1, c('startDate', 'endDate')]), '%m-%d-%Y'), error = function(e) NULL)
-    layers = tryCatch(paste(req$params$layers$product, req$params$layers$layer, sep = '_'), error = function(e) NULL)
-    if (length(dates) != 2 || anyNA(dates) || !length(layers)) next
-    if (!identical(as.numeric(dates), as.numeric(range(days))))
-      stop(f, ': requested ', paste(dates, collapse = ' to '), ', not ', paste(range(days), collapse = ' to '))
-    if (!all(LAYERS$file %in% layers)) stop(f, ': does not request ', paste(setdiff(LAYERS$file, layers), collapse = ', '))
-    whose = if (f %in% theirs) "AppEEARS's copy, i.e. what it was asked to do" else
-      "our own request file only (AppEEARS's copy was not found in the records), i.e. what we meant to ask"
-    return(paste('request file:', f, '-', whose, '- dates and layers as expected'))
+  their_request = if (length(theirs) == 1) read_request(theirs)
+  our_request = read_request(ours)
+  differ = if (!is.null(their_request) && !is.null(our_request)) request_differences(their_request, our_request)
+  problem = character(0)
+  if (length(theirs) != 1) {
+    problem = paste0("AppEEARS's copy of the request ", if (length(theirs)) 'is not unique' else 'is missing', ' in ', record_dir)
+  } else if (is.null(their_request)) {
+    problem = paste("AppEEARS's copy of the request cannot be read:", theirs)
+  } else if (is.null(our_request)) {
+    problem = paste("our request file is missing or cannot be read, so AppEEARS's copy cannot be compared with it:", ours)
+  } else if (length(differ)) {
+    problem = paste0("AppEEARS's copy of the request differs from ours in ", paste(differ, collapse = ', '), ': ', theirs)
   }
-  'request file: none found or readable; checked against the checksum list only'
+  if (length(problem) && deleting)
+    stop(format(month, '%Y-%m'), ': ', problem, '; stopped before building or deleting anything')
+  if (length(problem)) warning(format(month, '%Y-%m'), ': ', problem, ' (going on: a build with "keep")', call. = FALSE, immediate. = TRUE)
+
+  f = if (!is.null(their_request)) theirs else ours
+  r = if (!is.null(their_request)) their_request else our_request
+  if (is.null(r)) return(paste('request file: none found or readable; checked against the checksum list only. WARNING', problem))
+  days = month_days(month)
+  if (!identical(as.numeric(r$dates), as.numeric(range(days))))
+    stop(f, ': requested ', paste(r$dates, collapse = ' to '), ', not ', paste(range(days), collapse = ' to '))
+  if (!all(LAYERS$file %in% r$layers)) stop(f, ': does not request ', paste(setdiff(LAYERS$file, r$layers), collapse = ', '))
+  whose = if (!length(problem)) "AppEEARS's copy, i.e. what it was asked to do; the same dates, layers and area as our request file"
+          else if (identical(f, theirs)) paste("AppEEARS's copy, i.e. what it was asked to do. WARNING", problem)
+          else paste("our own request file only, i.e. what we meant to ask. WARNING", problem)
+  paste('request file:', f, '-', whose, '- dates and layers as expected')
 }
 
 # --- reading one day ----------------------------------------------------------------------
@@ -719,7 +755,7 @@ build_collected = function(tiles, monthly_dir, named = character(0), keep = FALS
     if (length(list_file) != 1) stop(basename(day_dir), ': expected one checksum list in ', record_dir)
     n_files = check_checksums(list_file, day_dir)   # what AppEEARS listed is there and intact
     month = as.Date(paste0(basename(day_dir), '-01'))
-    delivery = c(check_request(month, record_dir),  # and it is what we asked for, every layer
+    delivery = c(check_request(month, record_dir, deleting = !keep_this),  # and it is what we asked for, every layer
                  delivery_summary(delivery_table(day_dir, month_days(month), LAYERS$name), LAYERS$name))
     cat(basename(day_dir), ':', delivery, sep = '\n  ')
     tile_lines = build_month(tiles, month, day_dir, monthly_dir)  # stops, keeping the day files, unless all tiles are valid

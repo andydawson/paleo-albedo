@@ -192,17 +192,37 @@ stopifnot(is.character(no_usable_msg), grepl("no day has every needed layer", no
 # it (its files and first build record survive); naming it rebuilds it and still keeps the files.
 # A month built without "keep" has its day files deleted. The tiles themselves are not built here:
 # build_month is replaced by a stand-in that only reports, as the real one does when all tiles pass.
+# The warnings an expression gives, and its value.
+with_warnings <- function(expr) { w <- character(0)
+  value <- withCallingHandlers(expr, warning = function(c) { w <<- c(w, conditionMessage(c)); invokeRestart("muffleWarning") })
+  list(value = value, warnings = w) }
+# AppEEARS's copy of our request file, as it comes back: our request plus its own fields, named
+# with hyphens, in `dir`; `change` alters what it asks for.
+write_appeears_copy <- function(ours, dir, change = identity) {
+  req <- change(jsonlite::fromJSON(ours, simplifyVector = FALSE))
+  req$task_id <- "abc"; req$status <- "done"; req$params$dates[[1]]$recurring <- FALSE
+  jsonlite::write_json(req, file.path(dir, paste0(gsub("_", "-", sub("\\.json$", "", basename(ours))), "-request.json")),
+                       auto_unbox = TRUE, digits = NA)
+}
+test_ring <- request_area(data.frame(x = c(-100.5, -99.5), y = c(40.5, 41.5)))
+# A collected month for build_collected: day files of every layer and day, their checksum list in
+# the records, our request file and, unless appeears_copy = FALSE, AppEEARS's copy of it.
+collected_month <- function(m, appeears_copy = TRUE) {
+  dd <- file.path(APPEEARS_DIR, m); dir.create(dd, recursive = TRUE)
+  rd <- file.path(RECORDS_DIR, m); dir.create(rd, recursive = TRUE)
+  make_day_files(dd, month_days(as.Date(paste0(m, "-01"))))
+  tifs <- list.files(dd)
+  writeLines(paste(vapply(file.path(dd, tifs), function(f) as.character(openssl::sha256(file(f))), ""), tifs),
+             file.path(rd, paste0("paleoRFMCD43", m, "-sha256sums.txt")))
+  ours <- write_request(as.Date(paste0(m, "-01")), test_ring)
+  if (appeears_copy) write_appeears_copy(ours, rd)
+  dd
+}
 kb <- file.path(tempdir(), "keep_test"); unlink(kb, recursive = TRUE)
 saved <- list(APPEEARS_DIR, RECORDS_DIR, WORK_DIR, build_month)
 APPEEARS_DIR <- file.path(kb, "appeears"); RECORDS_DIR <- file.path(kb, "records"); WORK_DIR <- kb
 build_month <- function(tiles, month, day_dir, out_dir, ...) paste("tile", tiles, ": made in this run")
-for (m in c("2005-03", "2005-04")) {
-  dd <- file.path(APPEEARS_DIR, m); dir.create(dd, recursive = TRUE); dir.create(file.path(RECORDS_DIR, m), recursive = TRUE)
-  make_day_files(dd, month_days(as.Date(paste0(m, "-01"))))
-  tifs <- list.files(dd)
-  writeLines(paste(vapply(file.path(dd, tifs), function(f) as.character(openssl::sha256(file(f))), ""), tifs),
-             file.path(RECORDS_DIR, m, paste0("paleoRFMCD43", m, "-sha256sums.txt")))
-}
+for (m in c("2005-03", "2005-04")) collected_month(m)
 record <- function(m) readLines(file.path(RECORDS_DIR, m, "build.txt"))
 invisible(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-03", keep = TRUE)))
 first_record <- record("2005-03")
@@ -219,10 +239,7 @@ stopifnot(dir.exists(file.path(APPEEARS_DIR, "2005-03")),                  # sti
           identical(record("2005-03")[seq_along(first_record)], first_record))
 # The KEEP file is written before the month is built (Chris, 2026-10-21): a build with "keep" that
 # fails part-way leaves it, so a later build without names skips the month and its day files survive.
-dd <- file.path(APPEEARS_DIR, "2005-06"); dir.create(dd); dir.create(file.path(RECORDS_DIR, "2005-06"))
-make_day_files(dd, month_days(as.Date("2005-06-01")))
-writeLines(paste(vapply(file.path(dd, list.files(dd)), function(f) as.character(openssl::sha256(file(f))), ""), list.files(dd)),
-           file.path(RECORDS_DIR, "2005-06", "paleoRFMCD432005-06-sha256sums.txt"))
+dd <- collected_month("2005-06")
 build_month <- function(...) stop("worker crashed")
 crash_msg <- tryCatch(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-06", keep = TRUE)),
                       error = conditionMessage)
@@ -231,22 +248,56 @@ out <- capture.output(build_collected("h00v00", file.path(kb, "monthly")))   # u
 stopifnot(identical(crash_msg, "worker crashed"), file.exists(file.path(dd, KEEP_MARKER)),
           any(grepl("2005-06 : marked \"keep\" by an earlier build; skipped", out)),
           length(list.files(dd, pattern = "\\.tif$")) == 30 * nrow(LAYERS))   # 30 days in June
+# A build that will delete the day files needs AppEEARS's copy of the request (Chris, 2026-10-21):
+# without it the build stops before building or deleting anything; with "keep" it only warns.
+dd <- collected_month("2005-05", appeears_copy = FALSE)
+no_copy_msg <- tryCatch(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-05")), error = conditionMessage)
+stopifnot(grepl("^2005-05: AppEEARS's copy of the request is missing", no_copy_msg),
+          grepl("stopped before building or deleting anything", no_copy_msg),
+          length(list.files(dd, pattern = "\\.tif$")) == 31 * nrow(LAYERS), !file.exists(file.path(RECORDS_DIR, "2005-05", "build.txt")))
+kept_build <- with_warnings(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-05", keep = TRUE)))
+stopifnot(length(kept_build$warnings) == 1, grepl("AppEEARS's copy of the request is missing", kept_build$warnings),
+          length(list.files(dd, pattern = "\\.tif$")) == 31 * nrow(LAYERS),
+          any(grepl("our own request file only.*WARNING", record("2005-05"))))
 APPEEARS_DIR <- saved[[1]]; RECORDS_DIR <- saved[[2]]; WORK_DIR <- saved[[3]]; build_month <- saved[[4]]
 
-# The request file must ask for the month's days and our layers.
-WORK_DIR <- tmp; rec <- file.path(tmp, "rec_req"); dir.create(rec)
-invisible(write_request(as.Date("2005-07-01"), request_area(data.frame(x = c(-100.5, -99.5), y = c(40.5, 41.5)))))
-only_ours <- check_request(as.Date("2005-07-01"), rec)
-stopifnot(grepl("as expected", only_ours), grepl("our own request file only", only_ours))
-# AppEEARS's copy, as it comes back: our request plus its own fields, named with hyphens.
-theirs <- jsonlite::fromJSON(file.path(tmp, "requests", "paleoRF_MCD43_2005-07.json"), simplifyVector = FALSE)
-theirs$task_id <- "abc"; theirs$status <- "done"; theirs$params$dates[[1]]$recurring <- FALSE
-jsonlite::write_json(theirs, file.path(rec, "paleoRF-MCD43-2005-07-request.json"), auto_unbox = TRUE)
-their_line <- check_request(as.Date("2005-07-01"), rec)
-stopifnot(grepl("as expected", their_line), grepl("AppEEARS's copy", their_line), grepl("paleoRF-MCD43-2005-07-request.json", their_line))
-wrong <- theirs; wrong$params$layers <- wrong$params$layers[1:5]
-jsonlite::write_json(wrong, file.path(rec, "paleoRF-MCD43-2005-07-request.json"), auto_unbox = TRUE)
-stopifnot(inherits(try(check_request(as.Date("2005-07-01"), rec), silent = TRUE), "try-error"))
+# The request: before a build deletes day files, AppEEARS's copy must be in the records and ask
+# for the same dates, layers and area as our request file (Chris, 2026-10-21); a build with "keep"
+# only warns. Either way, what was asked must be the month's days and our layers.
+WORK_DIR <- tmp; rec <- file.path(tmp, "rec_req"); dir.create(rec); jul <- as.Date("2005-07-01")
+ours <- write_request(jul, test_ring)
+only_ours_msg <- tryCatch(check_request(jul, rec), error = conditionMessage)
+only_ours <- with_warnings(check_request(jul, rec, deleting = FALSE))
+stopifnot(grepl("AppEEARS's copy of the request is missing", only_ours_msg),
+          grepl("as expected", only_ours$value), grepl("our own request file only", only_ours$value),
+          length(only_ours$warnings) == 1)
+write_appeears_copy(ours, rec)
+their_line <- with_warnings(check_request(jul, rec))
+stopifnot(grepl("as expected", their_line$value), grepl("the same dates, layers and area as our request file", their_line$value),
+          grepl("paleoRF-MCD43-2005-07-request.json", their_line$value), !length(their_line$warnings))
+# AppEEARS's copy asks for another area (shifted a degree east): a deleting build stops, a build
+# with "keep" warns and goes on.
+shift_east <- function(req) {
+  ring <- req$params$geo$features[[1]]$geometry$coordinates[[1]]
+  req$params$geo$features[[1]]$geometry$coordinates[[1]] <- lapply(ring, function(p) list(p[[1]] + 1, p[[2]])); req }
+write_appeears_copy(ours, rec, shift_east)
+area_msg <- tryCatch(check_request(jul, rec), error = conditionMessage)
+area_keep <- with_warnings(check_request(jul, rec, deleting = FALSE))
+stopifnot(grepl("differs from ours in area", area_msg), grepl("stopped before building or deleting anything", area_msg),
+          length(area_keep$warnings) == 1, grepl("differs from ours in area", area_keep$warnings),
+          grepl("AppEEARS's copy.*WARNING", area_keep$value))
+# Other dates, or fewer layers: a deleting build stops on the difference; a build with "keep" too,
+# since what was asked is then not the month's days and our layers.
+one_day_short <- function(req) { req$params$dates[[1]]$endDate <- "07-30-2005"; req }
+five_layers <- function(req) { req$params$layers <- req$params$layers[1:5]; req }
+write_appeears_copy(ours, rec, one_day_short)
+dates_msg <- tryCatch(check_request(jul, rec), error = conditionMessage)
+dates_keep_stops <- inherits(try(suppressWarnings(check_request(jul, rec, deleting = FALSE)), silent = TRUE), "try-error")
+write_appeears_copy(ours, rec, five_layers)
+layers_msg <- tryCatch(check_request(jul, rec), error = conditionMessage)
+layers_keep_stops <- inherits(try(suppressWarnings(check_request(jul, rec, deleting = FALSE)), silent = TRUE), "try-error")
+stopifnot(grepl("differs from ours in dates", dates_msg), dates_keep_stops,
+          grepl("differs from ours in layers", layers_msg), layers_keep_stops)
 WORK_DIR <- "data/modis_albedo"
 
 # A monthly file is accepted only if it lies on its tile grid, has our layers and tag, reads in
