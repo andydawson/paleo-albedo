@@ -259,6 +259,16 @@ kept_build <- with_warnings(capture.output(build_collected("h00v00", file.path(k
 stopifnot(length(kept_build$warnings) == 1, grepl("AppEEARS's copy of the request is missing", kept_build$warnings),
           length(list.files(dd, pattern = "\\.tif$")) == 31 * nrow(LAYERS),
           any(grepl("our own request file only.*WARNING", record("2005-05"))))
+# Two copies of AppEEARS's request in the records (e.g. a browser download saved twice, as
+# "...-request (1).json", which collect files with the others) also stop a deleting build: which one
+# AppEEARS worked from cannot be told.
+dd <- collected_month("2005-07")
+their_copy <- file.path(RECORDS_DIR, "2005-07", "paleoRF-MCD43-2005-07-request.json")
+invisible(file.copy(their_copy, sub("\\.json$", " (1).json", their_copy)))
+two_copies_msg <- tryCatch(capture.output(build_collected("h00v00", file.path(kb, "monthly"), named = "2005-07")), error = conditionMessage)
+stopifnot(grepl("^2005-07: AppEEARS's copy of the request is not unique", two_copies_msg),
+          grepl("stopped before building or deleting anything", two_copies_msg),
+          length(list.files(dd, pattern = "\\.tif$")) == 31 * nrow(LAYERS), !file.exists(file.path(RECORDS_DIR, "2005-07", "build.txt")))
 APPEEARS_DIR <- saved[[1]]; RECORDS_DIR <- saved[[2]]; WORK_DIR <- saved[[3]]; build_month <- saved[[4]]
 
 # The request: before a build deletes day files, AppEEARS's copy must be in the records and ask
