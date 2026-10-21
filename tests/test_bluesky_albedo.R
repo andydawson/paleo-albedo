@@ -288,6 +288,16 @@ invisible(file.copy(good, file.path(reuse_dir, "h00v01_2005_07.tif")))
 stopifnot(grepl("is stale: it was made by another version of this script", stale_msg),
           identical(process_tile_month("h00v01", as.Date("2005-07-01"), tmp, reuse_dir), file.path(reuse_dir, "h00v01_2005_07.tif")))
 
+# Without its own SHA-256 the script refuses to build or combine monthly files (Chris,
+# 2026-10-21): each entry point stops before doing anything else.
+saved_sha <- SCRIPT_SHA; SCRIPT_SHA <- "unknown"
+no_sha <- c(build_collected = tryCatch(build_collected("h00v00", file.path(tmp, "no_such_dir")), error = conditionMessage),
+            build_month = tryCatch(build_month("h00v00", as.Date("2005-07-01"), tmp, file.path(tmp, "no_such_dir")), error = conditionMessage),
+            cell_table = tryCatch(cell_table("h00v00", data.frame(x = 0.5, y = 0.5), file.path(tmp, "no_such_dir"), as.Date("2005-07-01")),
+                                  error = conditionMessage))
+SCRIPT_SHA <- saved_sha
+stopifnot(all(grepl("^cannot tell which version of this script is running", no_sha)), !dir.exists(file.path(tmp, "no_such_dir")))
+
 # Publishing: a new monthly file is checked under its temporary name and renamed only if it passes;
 # a file that fails is left as ".tmp.tif" and the tile fails.
 pub <- file.path(tmp, "publish"); dir.create(pub)

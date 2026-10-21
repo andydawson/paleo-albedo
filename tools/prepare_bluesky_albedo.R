@@ -92,7 +92,7 @@
 # Every step can be rerun: requests are not written for months already collected or built, a
 # month already collected is not collected again, and a tile-month whose file exists is reused,
 # unless it was made with other settings or by another version of this script, which stops the
-# build.
+# build. "build", "cells" and "test" stop at once if they cannot read this script's own SHA-256.
 #
 # "test" builds July 2005 from data/modis_albedo/appeears_full_2005-07/ (downloaded 2026-10-19,
 # before the noon solar zenith layer was added to the requests, so the zenith is taken as 0:
@@ -151,6 +151,13 @@ SCRIPT_FILE = local({
 })
 SCRIPT_SHA = if (length(SCRIPT_FILE) == 1 && !is.na(SCRIPT_FILE) && file.exists(SCRIPT_FILE))
   as.vector(as.character(openssl::sha256(file(SCRIPT_FILE)))) else 'unknown'   # as.vector: drop the 'hash' class
+# Without its SHA-256 the build could not tell its own files from those of another version, so the
+# steps that write or combine monthly files stop first (Chris, 2026-10-21).
+require_script_sha = function() {
+  if (!grepl('^[0-9a-f]{64}$', SCRIPT_SHA))
+    stop('cannot tell which version of this script is running (its SHA-256 is "', SCRIPT_SHA,
+         '"); run it with Rscript tools/prepare_bluesky_albedo.R from the repository root')
+}
 
 APPEEARS_DIR = file.path(WORK_DIR, 'appeears')  # collected months, one folder each
 RECORDS_DIR = file.path(WORK_DIR, 'records')     # kept for good: checksum lists, AppEEARS's files, build records
@@ -615,6 +622,7 @@ valid_output = function(file, ...) !length(output_problems(file, ...))
 # checked against the expected files rather than by looking for failure messages. Rerunning
 # retries the missing tiles.
 build_month = function(tiles, month, day_dir, out_dir, need_zenith = TRUE) {
+  require_script_sha()
   expected = file.path(out_dir, sprintf('%s_%s.tif', tiles, format(month, '%Y_%m')))
   reused = file.exists(expected)
   done = parallel::mclapply(tiles, function(tile)
@@ -680,6 +688,7 @@ write_build_record = function(month, record_dir, n_files, tiles, delivery, tile_
 # still keeps its files. Only removing its KEEP file by hand lets a build delete them.
 KEEP_MARKER = 'KEEP'
 build_collected = function(tiles, monthly_dir, named = character(0), keep = FALSE) {
+  require_script_sha()                               # before the long checksum checks
   day_dirs = list.files(APPEEARS_DIR, pattern = '^\\d{4}-\\d{2}$', full.names = TRUE)
   if (length(named)) {
     if (!all(named %in% basename(day_dirs))) stop('not collected: ', paste(setdiff(named, basename(day_dirs)), collapse = ' '))
@@ -788,6 +797,7 @@ combine_parts = function(parts, tiles) {
 # cell's land pixels with at least one qualifying day) and the qualifying days per land pixel in
 # a year with data.
 cell_table = function(tiles, cells, monthly_dir, months, tag = SETTINGS_TAG, template_of = tile_template) {
+  require_script_sha()
   parts = parallel::mclapply(tiles, function(tile) tryCatch(tile_cell_totals(tile, paste(cells$x, cells$y), monthly_dir, months, tag,
                                                                              template_of(tile)),
                                                             error = function(e) paste('FAILED', tile, conditionMessage(e))),
