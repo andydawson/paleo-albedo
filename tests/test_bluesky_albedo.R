@@ -365,14 +365,23 @@ stopifnot(grepl("is stale: it was made by another version of this script", stale
           identical(process_tile_month("h00v01", as.Date("2005-07-01"), tmp, reuse_dir), file.path(reuse_dir, "h00v01_2005_07.tif")))
 
 # Without its own SHA-256 the script refuses to build or combine monthly files (Chris,
-# 2026-10-21): each entry point stops before doing anything else.
-saved_sha <- SCRIPT_SHA; SCRIPT_SHA <- "unknown"
-no_sha <- c(build_collected = tryCatch(build_collected("h00v00", file.path(tmp, "no_such_dir")), error = conditionMessage),
-            build_month = tryCatch(build_month("h00v00", as.Date("2005-07-01"), tmp, file.path(tmp, "no_such_dir")), error = conditionMessage),
-            cell_table = tryCatch(cell_table("h00v00", data.frame(x = 0.5, y = 0.5), file.path(tmp, "no_such_dir"), as.Date("2005-07-01")),
-                                  error = conditionMessage))
-SCRIPT_SHA <- saved_sha
-stopifnot(all(grepl("^cannot tell which version of this script is running", no_sha)), !dir.exists(file.path(tmp, "no_such_dir")))
+# 2026-10-21): each entry point stops before doing anything else. The folders point at an empty
+# scratch folder meanwhile, so that a guard lost by a later edit cannot reach the real data. Being
+# empty, it also leaves build_collected no month to hand to build_month (which has its own guard):
+# only build_collected's guard can make it stop here.
+saved <- list(SCRIPT_SHA, APPEEARS_DIR, RECORDS_DIR, WORK_DIR)
+no_sha_dir <- file.path(tmp, "no_sha"); dir.create(no_sha_dir)
+SCRIPT_SHA <- "unknown"; APPEEARS_DIR <- file.path(no_sha_dir, "appeears"); RECORDS_DIR <- file.path(no_sha_dir, "records")
+WORK_DIR <- no_sha_dir
+no_sha <- list(build_collected = tryCatch(build_collected("h00v00", file.path(tmp, "no_such_dir")), error = conditionMessage),
+               build_month = tryCatch(build_month("h00v00", as.Date("2005-07-01"), tmp, file.path(tmp, "no_such_dir")), error = conditionMessage),
+               cell_table = tryCatch(cell_table("h00v00", data.frame(x = 0.5, y = 0.5), file.path(tmp, "no_such_dir"), as.Date("2005-07-01")),
+                                     error = conditionMessage))
+SCRIPT_SHA <- saved[[1]]; APPEEARS_DIR <- saved[[2]]; RECORDS_DIR <- saved[[3]]; WORK_DIR <- saved[[4]]
+# (a list, and each entry checked, so that an entry point that returns without stopping fails here)
+stopifnot(length(no_sha) == 3,
+          all(vapply(no_sha, function(m) is.character(m) && grepl("^cannot tell which version of this script is running", m), TRUE)),
+          !dir.exists(file.path(tmp, "no_such_dir")), identical(list.files(no_sha_dir), character(0)))
 
 # Publishing: a new monthly file is checked under its temporary name and renamed only if it passes;
 # a file that fails is left as ".tmp.tif" and the tile fails.
