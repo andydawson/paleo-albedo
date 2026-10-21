@@ -383,6 +383,13 @@ stopifnot(length(no_sha) == 3,
           all(vapply(no_sha, function(m) is.character(m) && grepl("^cannot tell which version of this script is running", m), TRUE)),
           !dir.exists(file.path(tmp, "no_such_dir")), identical(list.files(no_sha_dir), character(0)))
 
+# The "test" step checks for the SHA-256 first, before hashing the July 2005 download. Fed to Rscript
+# on standard input, the script cannot hash itself; the tile named is not one of ours, so a test step
+# without that check stops on the tile instead, before touching any data.
+test_step <- suppressWarnings(system2(file.path(R.home("bin"), "Rscript"), c("-", "test", "h99v99"),
+                                      stdin = "tools/prepare_bluesky_albedo.R", stdout = TRUE, stderr = TRUE))
+stopifnot(!is.null(attr(test_step, "status")), any(grepl("cannot tell which version of this script is running", test_step)))
+
 # Publishing: a new monthly file is checked under its temporary name and renamed only if it passes;
 # a file that fails is left as ".tmp.tif" and the tile fails.
 pub <- file.path(tmp, "publish"); dir.create(pub)

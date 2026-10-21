@@ -100,7 +100,8 @@
 # Every step can be rerun: requests are not written for months already collected or built, a
 # month already collected is not collected again, and a tile-month whose file exists is reused,
 # unless it was made with other settings or by another version of this script, which stops the
-# build. "build", "cells" and "test" stop at once if they cannot read this script's own SHA-256.
+# build. Without this script's own SHA-256, "build" and "test" stop before anything else they do,
+# and "cells" before it reads any monthly file.
 #
 # "test" builds July 2005 from data/modis_albedo/appeears_full_2005-07/ (downloaded 2026-10-19,
 # before the noon solar zenith layer was added to the requests, so the zenith is taken as 0:
@@ -958,6 +959,7 @@ if (sys.nframe() == 0) {
                sub('\\.csv$', '_provenance.txt', OUT_FILE))
 
   } else if (step == 'test') {
+    require_script_sha()                               # before hashing the July download (about 11 GB)
     # July 2005 into a folder of its own: one tile ("test h11v04"), or every tile and the cell
     # table for that one month ("test all").
     test_tiles = if (identical(args[2], 'all')) tiles else args[-1]
