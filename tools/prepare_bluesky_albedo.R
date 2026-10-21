@@ -823,9 +823,11 @@ tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag, template 
   # it), stops the cell step, so the cell table never mixes outputs of code not known to agree.
   accepted = c(SCRIPT_SHA, ACCEPTED_OLDER_SHAS)
   stale = tf$file[!vapply(tf$file, function(f) build_tag(f, 'paleoRF_script_sha256') %in% accepted, TRUE)]
-  if (length(stale)) stop(length(stale), ' monthly files were made by another version of this script, not one listed in ',
-                          'ACCEPTED_OLDER_SHAS, or do not say which, e.g. ',
-                          stale[1], ' (SHA-256 ', build_tag(stale[1], 'paleoRF_script_sha256'), ', now ', SCRIPT_SHA, ')')
+  if (length(stale)) {
+    stale_sha = build_tag(stale[1], 'paleoRF_script_sha256')
+    stop(length(stale), ' monthly files were made by another version of this script, not one listed in ACCEPTED_OLDER_SHAS, ',
+         'or do not say which, e.g. ', stale[1], ' (SHA-256 ', if (is.na(stale_sha)) 'none recorded' else stale_sha, ', now ', SCRIPT_SHA, ')')
+  }
   ll = pixel_lonlat(template)
   cell = paste(floor(ll[, 1]) + 0.5, floor(ll[, 2]) + 0.5)
   keep = tile_land(tf$file) & cell %in% cell_keys

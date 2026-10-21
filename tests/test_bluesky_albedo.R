@@ -475,7 +475,7 @@ script_check <- function(sha) {
 untagged_msg <- script_check(NA)
 other_msg <- script_check("0123abcd")
 stopifnot(is.character(untagged_msg),
-          grepl("another version of this script, not one listed in ACCEPTED_OLDER_SHAS, or do not say which, e.g. .*h02v01_2006_07.tif \\(SHA-256 NA",
+          grepl("another version of this script, not one listed in ACCEPTED_OLDER_SHAS, or do not say which, e.g. .*h02v01_2006_07.tif \\(SHA-256 none recorded, now ",
                 untagged_msg),
           is.character(other_msg), grepl("h02v01_2006_07.tif \\(SHA-256 0123abcd, now ", other_msg),
           is.data.frame(script_check(SCRIPT_SHA)))
