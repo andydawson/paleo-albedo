@@ -85,7 +85,10 @@
 #      origin, retrievals lost), and only then deletes the month's day files. "keep" keeps them for
 #      good (a KEEP file in the day folder; later builds without month names skip that month).
 #   6. Once every month is built, "cells" decides the land pixels and writes the cell table, with
-#      a note beside it of the land rule and the script versions that made the monthly files.
+#      a note beside it of the land rule and the script versions that made the monthly files. It
+#      stops if any monthly file was made with other settings or by another version of this script
+#      (or does not record which), so after an edit to this script every month must be rebuilt, from
+#      day files downloaded again where they were deleted.
 # Every step can be rerun: requests are not written for months already collected or built, a
 # month already collected is not collected again, and a tile-month whose file exists is reused,
 # unless it was made with other settings or by another version of this script, which stops the
@@ -746,6 +749,12 @@ tile_cell_totals = function(tile, cell_keys, monthly_dir, months, tag, template 
          if (length(setdiff(have, want))) paste(', unexpected e.g.', setdiff(have, want)[1]))
   wrong = tf$file[!vapply(tf$file, function(f) identical(build_tag(f), tag), TRUE)]   # a missing tag counts as wrong
   if (length(wrong)) stop(length(wrong), ' monthly files were made with other settings, e.g. ', wrong[1])
+  # And made by this version of the script (Chris, 2026-10-21): a file with another script SHA-256,
+  # or with none (made before the files recorded it), stops the cell step, so the cell table never
+  # mixes outputs of different code.
+  stale = tf$file[!vapply(tf$file, function(f) identical(build_tag(f, 'paleoRF_script_sha256'), SCRIPT_SHA), TRUE)]
+  if (length(stale)) stop(length(stale), ' monthly files were made by another version of this script, or do not say which, e.g. ',
+                          stale[1], ' (SHA-256 ', build_tag(stale[1], 'paleoRF_script_sha256'), ', now ', SCRIPT_SHA, ')')
   ll = pixel_lonlat(template)
   cell = paste(floor(ll[, 1]) + 0.5, floor(ll[, 2]) + 0.5)
   keep = tile_land(tf$file) & cell %in% cell_keys
@@ -855,10 +864,12 @@ if (sys.nframe() == 0) {
     write.csv(table, OUT_FILE, row.names = FALSE)
     cat(OUT_FILE, ':', nrow(table), 'cell-months;', length(unique(paste(table$x, table$y))), 'cells\n')
     # Beside the table: the land rule it used, and which versions of this script made the monthly
-    # files (the cell step does not require one version: a month whose day files are deleted cannot
-    # be rebuilt, so a later edit to this script must not make its files unusable; the record says).
+    # files. The cell step accepts only files made by this version (tile_cell_totals), so the tiles
+    # it read all show one SHA-256; the count covers every file in the folder, and a file that
+    # records no SHA-256 is counted as such rather than left out.
     files = list.files(monthly_dir, pattern = '^h\\d{2}v\\d{2}_\\d{4}_\\d{2}\\.tif$', full.names = TRUE)
-    shas = table(vapply(files, build_tag, '', name = 'paleoRF_script_sha256'))
+    shas = vapply(files, build_tag, '', name = 'paleoRF_script_sha256')
+    shas = table(ifelse(is.na(shas), 'none recorded', shas))
     writeLines(c(paste('cell table:', OUT_FILE, 'written', format(Sys.time(), '%Y-%m-%d %H:%M:%S %Z')),
                  paste('land rule:', LAND_RULE), paste('settings:', SETTINGS_TAG),
                  paste('cell step script sha256:', SCRIPT_SHA),

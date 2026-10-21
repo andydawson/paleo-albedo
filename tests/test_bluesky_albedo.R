@@ -314,12 +314,15 @@ templates <- list(h01v01 = tpl1, h02v01 = tpl2)
 cdir <- file.path(tmp, "monthly_e2e"); dir.create(cdir)
 pixel <- function(n_all = 0, n_snow = 0, n_free = 0, s_all = 0, s_snow = 0, s_free = 0, land = 0, shore = 0, read = 0)
   c(n_all = n_all, n_snow = n_snow, n_free = n_free, s_all = s_all, s_snow = s_snow, s_free = s_free, land_days = land, shore_days = shore, read_days = read)
-write_monthly <- function(tile, year, pixels) {          # pixels: one pixel() per cell of the tile, row by row from the top left
+# pixels: one pixel() per cell of the tile, row by row from the top left; sha NA writes no script
+# SHA-256, as files made before the files recorded it.
+write_monthly <- function(tile, year, pixels, dir = cdir, sha = SCRIPT_SHA) {
   m <- do.call(rbind, pixels)
   layers <- lapply(TILE_LAYERS, function(n) { sum_name <- sub("^(full|any)_[^_]+_", "", n)
     setValues(templates[[tile]], m[, if (n %in% c("land_days", "shore_days", "read_days")) n else sum_name]) })
-  r <- rast(layers); names(r) <- TILE_LAYERS; metags(r) <- c(paleoRF_build = SETTINGS_TAG, paleoRF_script_sha256 = SCRIPT_SHA)
-  writeRaster(r, file.path(cdir, sprintf("%s_%d_07.tif", tile, year)), overwrite = TRUE)
+  r <- rast(layers); names(r) <- TILE_LAYERS
+  metags(r) <- c(paleoRF_build = SETTINGS_TAG, if (!is.na(sha)) c(paleoRF_script_sha256 = sha))
+  writeRaster(r, file.path(dir, sprintf("%s_%d_07.tif", tile, year)), overwrite = TRUE)
 }
 none <- pixel()
 write_monthly("h01v01", 2005, list(pixel(1, 0, 1, 0.15, 0, 0.15, land = 1, read = 1), none, none, none))
@@ -356,5 +359,21 @@ dead_stops <- inherits(try(combine_parts(list(data.frame(a = 1), NULL), c("h01v0
 error_stops <- inherits(try(combine_parts(list(data.frame(a = 1), "FAILED h02v01 boom"), c("h01v01", "h02v01")), silent = TRUE), "try-error")
 stopifnot(missing_month_stops, wrong_tag_stops, dead_stops, error_stops,
           identical(combine_parts(list(data.frame(a = 1), data.frame()), c("h01v01", "h02v01")), data.frame(a = 1)))
+
+# Only files made by this version of the script are accepted at the cell step (Chris, 2026-10-21):
+# the same four files, but one without a script SHA-256 (made before the files recorded it) or
+# one with another SHA-256 among them, stop it and name the file; the tagged ones alone pass.
+script_check <- function(sha) {
+  d <- file.path(tmp, paste0("monthly_sha_", if (is.na(sha)) "none" else sha)); dir.create(d)
+  invisible(file.copy(list.files(cdir, full.names = TRUE), d))
+  write_monthly("h02v01", 2006, list(none, none, pixel(2, 0, 2, 0.6, 0, 0.6, land = 2, read = 2), pixel(shore = 1, read = 1),
+                                     none, none, none, none), dir = d, sha = sha)
+  tryCatch(cell_table(names(templates), cells2, d, yrs, template_of = function(t) templates[[t]]), error = conditionMessage)
+}
+untagged_msg <- script_check(NA)
+other_msg <- script_check("0123abcd")
+stopifnot(is.character(untagged_msg), grepl("another version of this script, or do not say which, e.g. .*h02v01_2006_07.tif \\(SHA-256 NA", untagged_msg),
+          is.character(other_msg), grepl("h02v01_2006_07.tif \\(SHA-256 0123abcd, now ", other_msg),
+          is.data.frame(script_check(SCRIPT_SHA)))
 
 cat("test_bluesky_albedo: all tests passed\n")
