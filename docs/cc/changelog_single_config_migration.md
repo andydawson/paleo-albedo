@@ -817,9 +817,9 @@ as settings, with the original kept in `configs/legacy_config.R`.
 **Changed:**
 - **Comparison by ML** (question B4): `fit_calibration_model()` takes `method`;
   `analysis$calibration$comparison_method = "ML"` (legacy `"REML"`). Script 4 fits the
-  eight-model ladder by it, prints a convergence line for each fit (until 2026-10-22 bam's
-  `converged` field, which bam always sets to TRUE; see the 2026-10-22 entry), and fits the model used for
-  prediction (`model_id`) by REML into a new file, `calibration_prediction_fit_{month}_{tag}.RDS`.
+  eight-model ladder by it, prints a convergence line for each fit (until 2026-10-22 this
+  was bam's `converged` field, which bam sets to TRUE without checking; see the 2026-10-22
+  entry), and fits the model used for prediction (`model_id`) by REML into a new file, `calibration_prediction_fit_{month}_{tag}.RDS`.
   The original refitted model 8 a third time and saved it over the ladder's fit; with an ML
   ladder the two must differ. Script 5 reads the new file at its three selected-model sites.
 - **Present-day ice caps out of the calibration** (question B8):
@@ -1261,3 +1261,39 @@ table byte-identical to the first run; legacy anchors match): all PASS.
 
 **Open.** The `output/forcing/forcing_by_period.csv` tracked in git dates from September
 (e0ad29b) and is not today's headline; whether to refresh it or stop tracking it is to be asked.
+
+## Script 4 reports real convergence; model 7 did not converge in 7 months, 2026-10-22
+
+**Why.** Script 4 printed `converged: TRUE` after every fit. Every calibration model is fitted
+with `mgcv::bam()`, which stores `converged = TRUE` (and `boundary = FALSE`) without checking
+anything (mgcv 1.9.4): its fitting loop keeps the real flag to itself and only warns
+"algorithm did not converge". The printed line was therefore no evidence (Chris, 2026-10-22).
+
+**Changed.** A helper, `fit_convergence()` in `R/model_registry.R`, gives one line per fit:
+the fitting-loop steps used against the limit of 500 (bam's own test), and what mgcv's
+`gam.check()` prints for the smoothing-parameter optimiser: full convergence or not, its
+iterations, the largest gradient, and whether the Hessian is positive definite. Every sign of
+failure says NOT, so a log can be searched for it; at the step limit the line says "probably NOT
+converged" and points to R's warning, because a fit that converged on its very last step looks
+the same. Script 4 prints the line after saving each ladder fit and the prediction fit, so a
+failing log line can never cost a saved fit. Tested on made-up fits (`tests/test_model_registry.R`).
+No fit, file or number changes.
+
+**What it found.** Applied to the saved fits, the new line shows **model 7 (the Gaussian-process
+land-cover smooth) reached the 500-step limit without converging in 7 of 12 months**, in both
+the full run of 18 October (February, March, April, June, September, October, December) and
+the headline run of 19 October with ice caps kept (January, February, March, May, June, July,
+November). R did warn each time, but the warnings come at the end of each month loop without
+naming the model, and the printed line said TRUE. Every other fit converged, including all of
+model 8, the prediction model, so the forcing is unaffected. The AIC ladder is affected: in
+the headline run model 7 has a lower AIC than model 8 in January (-6694 against -6683) and May
+(-10253 against -10241) on fits that did not converge (and ties in March); its win in December
+(-6124 against -6115) is on a converged fit. The I16b note that "ML, not the ice mask, makes
+model 7 beat model 8 in January" rests on such a fit. A diagnostic refit of model 7 for January
+and May with a step limit of 2000 was started on 22 October (scratch only).
+
+**Review and verification.** One change-reviewer (plumbing: printed text only); its
+should-fixes (this entry, the test, saving before printing, the wording at the step limit and
+NOT on any optimiser failure) were approved by Chris and applied. Verification:
+`2026-10-22_convergence-report` (no script rerun; the helper on all 204 fits of the full run of
+18 October, script 4's print lines, the new test).
