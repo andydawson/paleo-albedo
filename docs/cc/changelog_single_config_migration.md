@@ -817,7 +817,8 @@ as settings, with the original kept in `configs/legacy_config.R`.
 **Changed:**
 - **Comparison by ML** (question B4): `fit_calibration_model()` takes `method`;
   `analysis$calibration$comparison_method = "ML"` (legacy `"REML"`). Script 4 fits the
-  eight-model ladder by it, prints whether each fit converged, and fits the model used for
+  eight-model ladder by it, prints a convergence line for each fit (until 2026-10-22 bam's
+  `converged` field, which bam always sets to TRUE; see the 2026-10-22 entry), and fits the model used for
   prediction (`model_id`) by REML into a new file, `calibration_prediction_fit_{month}_{tag}.RDS`.
   The original refitted model 8 a third time and saved it over the ladder's fit; with an ML
   ladder the two must differ. Script 5 reads the new file at its three selected-model sites.
@@ -858,8 +859,9 @@ rerun from its own worktree at 5deabac):
 - **Registry REML refit**, January, through `tools/check_calibration_month.R` with
   `fit_calibration_model(method = "REML")`: predictions within 1e-6 of the stored model,
   AIC -6669 as anchored (21 min).
-- **ML smoke test** (model 1, January): ML and REML both converge (AIC -6582 and -6583).
-- **January pilot of script 4, new configuration** (150 min): all 9 fits converged; AIC
+- **ML smoke test** (model 1, January): ML and REML both fit (AIC -6582 and -6583).
+- **January pilot of script 4, new configuration** (150 min): all 9 fits printed
+  "converged: TRUE", which is no evidence for bam fits (see the 2026-10-22 entry); AIC
   table above.
 - **A slip, without consequence:** the main checkout was switched to another branch for a
   few seconds while script 4 ran from it. The running R kept reading the file it had opened
