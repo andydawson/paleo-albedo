@@ -138,12 +138,16 @@ published climatologies; both reviews found those statements wrong.*
 - Averaging: within each year, the mean over all usable land pixel-days of the cell; then the years
   weighted equally. A mean, not a median, because forcing is linear in albedo (our judgement).
 
-**Open question.**
-1. **Shoreline pixels.** The product labels pixels touching a lake shore or coastline as a separate
-   class. Should they count as land? They contain some water (darker), but in lake country they are a
-   large part of the land: on one Minnesota-Ontario tile, the most common label of 18% of the pixels
-   with readings is "shoreline". The build keeps both options open; Chris will choose once the test
-   months show the difference, and your view is welcome.
+**Shoreline pixels: land only (Chris, 22 October, from the four test months; your view welcome).**
+The product labels pixels touching a lake shore or coastline as a separate class. They are not
+counted as land: the cell albedo is meant to describe the land surface the vegetation
+reconstruction stands for, and these pixels mix in water. They matter in lake country and on coasts:
+in the test months (March 2000, March 2005, July 2005, December 2005) the median cell has 15% of its
+land-or-shoreline pixels on shorelines, and 44% of cell-months have more than 20%. Counting them would
+make such cells darker by about 0.006 on average (5-95% range -0.04 to +0.03 where shoreline is over
+half), mostly in summer (open water; July -0.005 overall) and hardly in December (-0.001). It would
+add an albedo to only 52 of 7,078 cell-months. The build keeps the shoreline days per pixel, so this
+can be changed later without rebuilding.
 
 **Current defaults (Chris, 20 October). They can be changed later without rebuilding; tell us only if
 you disagree.**
@@ -153,6 +157,10 @@ you disagree.**
   days, share of land observed) are kept beside each value. In July 2005, 30% of cells had
   full-quality retrievals for under 90% of their land (mostly Alaska and south of 30 N); there the
   full-quality and any-quality values differ by 0.014-0.020 on average.
+  In late winter the full-quality requirement removes much more in the north: north of 60 N, the land
+  pixels with at least one full-quality day in March 2005 were about half those with any usable day
+  (5.9 against 12.1 million; July 2005: 10.3 against 12.7 million). Both versions are kept with their
+  coverage, so the choice can be revisited once the whole decade is built (Chris, 22 October).
 - *Days with unknown snow status* stay in the all-days value; their share and mean are reported, so
   the snowy, snow-free and unknown parts mix back exactly.
 
