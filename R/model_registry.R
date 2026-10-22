@@ -78,3 +78,22 @@ fit_calibration_model = function(model_id, month, data, method = "REML") {
             na.action = na.omit,
             control   = CALIBRATION_CONTROL)
 }
+
+# One line saying whether a fit really converged, for script 4's log. bam() always stores
+# converged = TRUE without checking (mgcv 1.9.4), so its own field is no evidence. These are
+# the checks mgcv's gam.check() reports: the fitting loop stopped before its step limit, and
+# the smoothing-parameter optimiser (in its last loop step, for bam) reached full convergence
+# with a small gradient and a positive definite Hessian.
+fit_convergence = function(fit) {
+  loop = if (fit$iter >= fit$control$maxit) {
+    sprintf('fitting loop: hit the limit of %d steps, NOT converged', fit$control$maxit)
+  } else {
+    sprintf('fitting loop: %d of %d steps', fit$iter, fit$control$maxit)
+  }
+  outer = fit$outer.info
+  if (is.null(outer) || is.null(outer$conv)) return(paste0(loop, '; smoothing parameters: not available'))
+  smallest_eigenvalue = min(eigen(outer$hess, symmetric = TRUE, only.values = TRUE)$values)
+  sprintf('%s; smoothing parameters: %s after %d iterations; largest gradient %.1e; Hessian %s (smallest eigenvalue %.2g)',
+          loop, outer$conv, outer$iter, max(abs(outer$grad)),
+          if (smallest_eigenvalue > 0) 'positive definite' else 'NOT positive definite', smallest_eigenvalue)
+}

@@ -39,7 +39,7 @@ for (month in months) {
   for (model_id in LADDER_MODELS) {
     print(paste('Fitting', CALIBRATION_MODELS[[model_id]]$label, 'by', comparison_method))
     fit = fit_calibration_model(model_id, month, cal_interp_data, method = comparison_method)
-    print(paste('converged:', fit$converged))
+    print(fit_convergence(fit))
     write_output(run, fit, path_calibration_model(paths, model_id, month))
   }
 
@@ -97,7 +97,7 @@ for (month in months) {
 
   print(paste('Fitting', CALIBRATION_MODELS[[prediction_model_id]]$label, 'by REML, for prediction'))
   fit = fit_calibration_model(prediction_model_id, month, cal_interp_data, method = 'REML')
-  print(paste('converged:', fit$converged))
+  print(fit_convergence(fit))
   write_output(run, fit, path_file(paths, 'calibration_prediction_fit', month = month))
 
 }
