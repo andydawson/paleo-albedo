@@ -1158,6 +1158,23 @@ Two facts would settle how: what the `cell_area` field in the land-cover posteri
 or of its land. Vegetated land, ice and water should form one partition of each cell
 without overlap. A modern mask also cannot show past coastlines or proglacial lakes.
 
+**Added 2026-10-22 (size of the effect and published practice; Chris keeps whole-cell weighting
+for now and leaves the choice to Andria).** The new MODIS albedo is land only, so the question is
+sharper. Recomputed on the current run (feature/single-config 1716516, partial ice, vegetation kept on
+ice caps), holding each cell's forcing fixed and weighting by today's land share (sea removed, lakes
+kept; `non_ocean_share` in `data/elev_land_mean_cells.csv`): area falls 3.7%; the HadGEM3 global
+equivalent falls 4.0% at 8-10 ka and 4.2% at 10-12 ka (CAM5 and CACK about the same); the study-area
+mean moves only 0.3%. Small periods move more and in both directions (2-4 ka +6.7%, 0.5-2 ka -6.2%).
+Ocean only from MOD44W: -3.5% at 8-10 ka. Dropping cells under 50% land instead: -2.3%. Studies that
+use observed land albedo weight by land area (Boisier et al. 2013, Biogeosciences,
+doi:10.5194/bg-10-1501-2013, "global ice-free land"; Oleson et al. 2003, GRL,
+doi:10.1029/2002GL016749, land-only albedo and mixed cells dropped); none found that weights a
+land-only change by whole-cell area. Climate-model studies (e.g. Strandberg 2014, Dallmeyer and
+Claussen 2011) mix land and sea in each cell by construction, so whole-cell weights are right there.
+Today's land share would drop the real ice-to-sea change at Hudson Bay; a land share for each time
+slice (e.g. from ICE-6G_C land-sea masks) would handle it but is the most work. Script:
+`land_weight_effect.R` (Chris's scratch folder, coastal/).
+
 ## D. Land cover
 
 **Andria's answer (email to Chris, early October; passed on 2026-10-19).** The `cell_area` column of `veg_posts_interp_ice.RDS` exists; checked 2026-10-19: it is the whole 1-degree cell area in km² (ratio to our polygon areas 0.996-0.999), not land area, so it gives no land share.
